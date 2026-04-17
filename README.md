@@ -165,3 +165,225 @@ integrated-lab-manager/
 │  └─ protocols/
 ├─ README.md
 └─ LICENSE
+````
+
+This structure is only a recommended direction and may evolve as the platform grows.
+
+---
+
+## Future integration ideas across modules
+
+Over time, the platform may support links such as:
+
+* protocols referencing required reagents from inventory
+* projects referencing associated protocols
+* funding records referencing supported projects
+* experiments referencing both protocols and reagent usage
+* purchasing tied to inventory status and project budgets
+* AI-assisted conversion of legacy documents into structured records
+
+These are future directions rather than current commitments.
+
+---
+
+## Technical direction
+
+The project is intended to favor:
+
+* **TypeScript-first development**
+* **strong data models**
+* **schema validation**
+* **component modularity**
+* **frontend architectures that can start simple and scale later**
+
+For the protocol designer specifically, the current preferred stack is:
+
+* React
+* TypeScript
+* Vite
+* static deployment compatible with GitHub Pages
+* local storage for early persistence
+* structured JSON as canonical storage format
+
+As the broader project grows, some modules may eventually require backend services, but the architecture should avoid introducing unnecessary complexity too early.
+
+---
+
+## AI compatibility
+
+A central design goal of Integrated Lab Manager is to make structured scientific content easier to generate, inspect, validate, and refine with AI assistance.
+
+This includes:
+
+* well-defined schemas
+* explicit controlled vocabularies where useful
+* portable import/export formats
+* repairable validation workflows
+* copyable AI import instructions for converting existing lab materials into structured formats
+
+AI is intended to assist with structuring and transformation, not replace scientific judgment.
+
+---
+
+## Status
+
+This repository is currently in an early design and prototyping stage.
+
+Current emphasis:
+
+* defining the product architecture
+* designing the protocol data model
+* building the first editor module
+* establishing reusable schema and validation patterns
+* keeping the larger platform direction in mind from the beginning
+
+---
+
+## Early roadmap
+
+### Phase 1
+
+Build the protocol designer module:
+
+* structured protocol data model
+* visual editor
+* JSON import/export
+* validation
+* AI-assisted import instructions
+* protocol preview
+
+### Phase 2
+
+Stabilize shared platform architecture:
+
+* shared UI package
+* shared type definitions
+* shared validation utilities
+* documentation of schema conventions
+
+### Phase 3
+
+Add additional operational modules:
+
+* supply/reagent management
+* project management
+* funding/budget organization
+
+### Phase 4
+
+Explore cross-module linking:
+
+* protocol-to-reagent links
+* project-to-protocol links
+* budget/project associations
+* experiment/workflow integration
+
+---
+
+## Intended users
+
+This project is meant for:
+
+* academic labs
+* small research teams
+* computational/experimental hybrid labs
+* trainees and scientists who want more structured lab workflows
+* groups exploring AI-assisted scientific operations
+
+---
+
+## Development priorities
+
+When building this repository, prioritize:
+
+1. clean data models
+2. modular architecture
+3. maintainable code
+4. scientist-friendly UX
+5. portability of stored data
+6. extensibility without overengineering
+
+---
+
+## Contributing philosophy
+
+At this stage, contributions should align with the core design goals:
+
+* preserve modularity
+* avoid unnecessary complexity
+* keep schemas explicit and readable
+* prefer extensible structures over hard-coded assumptions
+* document new modules and interfaces clearly
+
+As the project matures, contribution guidelines can be formalized further.
+
+---
+
+## Naming note
+
+**Integrated Lab Manager** is the umbrella platform name.
+
+The initial protocol-design submodule is currently referred to as:
+
+**ProtoWeave**
+*A visual, structured, AI-compatible wet-lab protocol designer.*
+
+This naming allows the broader repository to grow without forcing the protocol tool to carry the entire platform identity.
+
+---
+
+## Long-term aspiration
+
+The long-term aspiration is to build a practical, extensible platform where structured scientific operations can be authored, organized, and gradually connected across the daily work of a research lab.
+
+Rather than replacing every existing tool immediately, Integrated Lab Manager aims to provide a strong structured foundation that can expand over time.
+
+---
+
+## License
+
+TBD
+
+---
+
+## Contact / notes
+
+This repository is currently under active design and prototyping. Documentation, schemas, and module boundaries are expected to evolve as the system takes shape.
+
+```
+
+---
+
+A couple of strategic notes for the umbrella repo:
+
+## Recommended naming structure
+I would use:
+
+- **Umbrella repo/product:** `integrated-lab-manager`
+- **Protocol module/app:** `protoweave`
+
+That keeps the larger vision clean and avoids a protocol-specific name becoming awkward later.
+
+## Recommended architecture choice
+Since you already know this will become a larger project, I would strongly lean toward a **monorepo** mindset from the start, even if only one module exists initially. That will make it much easier to share:
+
+- UI components
+- schema validators
+- common types
+- AI import utilities
+- cross-module conventions
+
+## README style choice
+The README above is intentionally:
+- visionary enough for the whole platform
+- concrete enough to explain what exists first
+- flexible enough that future modules can be added without rewriting everything
+
+I can also draft these next as matching files:
+
+- `docs/ARCHITECTURE.md`
+- `docs/ROADMAP.md`
+- `apps/protocol-designer/README.md`
+
+The third one would be especially useful, because the root README should stay umbrella-level while the protocol module can have a more implementation-focused README.
+```
