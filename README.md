@@ -146,7 +146,7 @@ This means the repo should support:
 ```text
 integrated-lab-manager/
 ├─ apps/
-│  ├─ protocol-designer/          # ProtoWeave module
+│  ├─ protocol-designer/          # Current dev module
 │  ├─ supply-manager/             # future
 │  ├─ project-manager/            # future
 │  └─ funding-manager/            # future
@@ -325,7 +325,7 @@ As the project matures, contribution guidelines can be formalized further.
 
 The initial protocol-design submodule is currently referred to as:
 
-**ProtoWeave**
+**Protocol Manager**
 *A visual, structured, AI-compatible wet-lab protocol designer.*
 
 This naming allows the broader repository to grow without forcing the protocol tool to carry the entire platform identity.
@@ -342,48 +342,10 @@ Rather than replacing every existing tool immediately, Integrated Lab Manager ai
 
 ## License
 
-TBD
+MIT
 
 ---
 
 ## Contact / notes
 
 This repository is currently under active design and prototyping. Documentation, schemas, and module boundaries are expected to evolve as the system takes shape.
-
-```
-
----
-
-A couple of strategic notes for the umbrella repo:
-
-## Recommended naming structure
-I would use:
-
-- **Umbrella repo/product:** `integrated-lab-manager`
-- **Protocol module/app:** `protoweave`
-
-That keeps the larger vision clean and avoids a protocol-specific name becoming awkward later.
-
-## Recommended architecture choice
-Since you already know this will become a larger project, I would strongly lean toward a **monorepo** mindset from the start, even if only one module exists initially. That will make it much easier to share:
-
-- UI components
-- schema validators
-- common types
-- AI import utilities
-- cross-module conventions
-
-## README style choice
-The README above is intentionally:
-- visionary enough for the whole platform
-- concrete enough to explain what exists first
-- flexible enough that future modules can be added without rewriting everything
-
-I can also draft these next as matching files:
-
-- `docs/ARCHITECTURE.md`
-- `docs/ROADMAP.md`
-- `apps/protocol-designer/README.md`
-
-The third one would be especially useful, because the root README should stay umbrella-level while the protocol module can have a more implementation-focused README.
-```
