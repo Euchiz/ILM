@@ -342,7 +342,7 @@ Rather than replacing every existing tool immediately, Integrated Lab Manager ai
 
 ## License
 
-MIT
+Apache 2.0
 
 ---
 
