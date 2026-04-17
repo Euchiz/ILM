@@ -1,0 +1,15 @@
+{
+  "name": "integrated-lab-manager",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run --workspaces build",
+    "dev": "npm run -w @ilm/protocol-manager dev",
+    "lint": "npm run --workspaces lint",
+    "typecheck": "npm run --workspaces typecheck"
+  }
+}

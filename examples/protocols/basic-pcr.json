@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "1.0.0",
+  "protocol": {
+    "id": "protocol-basic-pcr",
+    "title": "Basic PCR Amplification",
+    "description": "Example protocol demonstrating sections, step kinds, and typed blocks.",
+    "createdAt": "2026-04-17T00:00:00.000Z",
+    "updatedAt": "2026-04-17T00:00:00.000Z",
+    "authors": ["Integrated Lab Manager"],
+    "tags": ["PCR", "Example"],
+    "metadata": {
+      "organism": "generic"
+    },
+    "sections": [
+      {
+        "id": "section-pcr-setup",
+        "title": "PCR setup",
+        "description": "Set up reaction and run program",
+        "sections": [],
+        "steps": [
+          {
+            "id": "step-prep-mix",
+            "title": "Prepare reaction mix",
+            "stepKind": "preparation",
+            "blocks": [
+              {
+                "id": "block-recipe",
+                "type": "recipe",
+                "title": "Master Mix",
+                "items": [
+                  { "component": "2x PCR mix", "quantity": "12.5 µL" },
+                  { "component": "Forward primer", "quantity": "0.5 µL" },
+                  { "component": "Reverse primer", "quantity": "0.5 µL" },
+                  { "component": "Water", "quantity": "10.5 µL" }
+                ]
+              },
+              {
+                "id": "block-caution",
+                "type": "caution",
+                "severity": "high",
+                "text": "Use aerosol-resistant tips and separated pre/post-PCR spaces."
+              }
+            ]
+          },
+          {
+            "id": "step-cycler",
+            "title": "Run thermal program",
+            "stepKind": "action",
+            "blocks": [
+              {
+                "id": "block-timeline",
+                "type": "timeline",
+                "stages": [
+                  { "label": "Initial denaturation", "duration": "3 min", "temperature": "95°C" },
+                  { "label": "35 cycles", "duration": "30 s each", "details": "95°C / 58°C / 72°C" },
+                  { "label": "Final extension", "duration": "5 min", "temperature": "72°C" }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-gel-qc",
+            "title": "QC on agarose gel",
+            "stepKind": "qc",
+            "blocks": [
+              {
+                "id": "block-qc",
+                "type": "qc",
+                "checkpoint": "Run 5 µL product on 1.5% agarose gel",
+                "acceptanceCriteria": "Single expected-size band"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "extensions": {}
+  },
+  "extensions": {}
+}

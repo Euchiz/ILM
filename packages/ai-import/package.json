@@ -1,0 +1,15 @@
+{
+  "name": "@ilm/ai-import",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@ilm/types": "file:../types"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'no lint configured for @ilm/ai-import'"
+  }
+}

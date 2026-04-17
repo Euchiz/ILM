@@ -1,0 +1,54 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { padding: 14px; }
+header h1 { margin: 0 0 12px; font-size: 1.2rem; }
+.layout {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+}
+
+button {
+  border: 1px solid #94a3b8;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+label { display: grid; gap: 4px; font-size: 14px; margin-bottom: 8px; }
+.field {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  width: 100%;
+  font: inherit;
+}
+
+.button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.outline-item {
+  border: none;
+  background: transparent;
+  display: block;
+  padding: 4px;
+  width: 100%;
+  text-align: left;
+}
+.outline-item.step { margin-left: 12px; }
+.outline-item.active { background: #dbeafe; border-radius: 6px; }
+.preview-step { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px; background: #fff; }
+.kind-qc { border-left: 4px solid #eab308; }
+.kind-preparation { border-left: 4px solid #0284c7; }
+.kind-optional { border-left: 4px solid #94a3b8; }
+.kind-pause { border-left: 4px solid #f97316; }
+.card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: #f8fafc; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.status-list { margin: 0; padding-left: 18px; font-size: 14px; color: #1e293b; }
+.file-input input { display: none; }
+.file-input { border: 1px dashed #94a3b8; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
