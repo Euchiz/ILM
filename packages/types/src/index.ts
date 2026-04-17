@@ -36,7 +36,26 @@ export interface Protocol {
   authors: string[];
   tags: string[];
   metadata?: Record<string, unknown>;
+  reagents: ProtocolReagent[];
+  equipment: ProtocolEquipment[];
   sections: ProtocolSection[];
+  extensions?: Record<string, unknown>;
+}
+
+export interface ProtocolReagent {
+  id: string;
+  name: string;
+  supplier?: string;
+  catalogNumber?: string;
+  notes?: string;
+  extensions?: Record<string, unknown>;
+}
+
+export interface ProtocolEquipment {
+  id: string;
+  name: string;
+  model?: string;
+  notes?: string;
   extensions?: Record<string, unknown>;
 }
 
