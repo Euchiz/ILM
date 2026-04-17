@@ -11,6 +11,25 @@
     "metadata": {
       "organism": "generic"
     },
+    "reagents": [
+      {
+        "id": "reagent-pcr-mix",
+        "name": "2x PCR mix",
+        "supplier": "Example Bio",
+        "catalogNumber": "PCR-200",
+        "notes": "Keep chilled until use.",
+        "extensions": {}
+      }
+    ],
+    "equipment": [
+      {
+        "id": "equipment-thermal-cycler",
+        "name": "Thermal cycler",
+        "model": "96-well",
+        "notes": "Confirm lid temperature settings before starting.",
+        "extensions": {}
+      }
+    ],
     "sections": [
       {
         "id": "section-pcr-setup",
@@ -28,19 +47,22 @@
                 "type": "recipe",
                 "title": "Master Mix",
                 "items": [
-                  { "component": "2x PCR mix", "quantity": "12.5 µL" },
-                  { "component": "Forward primer", "quantity": "0.5 µL" },
-                  { "component": "Reverse primer", "quantity": "0.5 µL" },
-                  { "component": "Water", "quantity": "10.5 µL" }
-                ]
+                  { "component": "2x PCR mix", "quantity": "12.5 uL", "notes": "" },
+                  { "component": "Forward primer", "quantity": "0.5 uL", "notes": "" },
+                  { "component": "Reverse primer", "quantity": "0.5 uL", "notes": "" },
+                  { "component": "Water", "quantity": "10.5 uL", "notes": "" }
+                ],
+                "extensions": {}
               },
               {
                 "id": "block-caution",
                 "type": "caution",
                 "severity": "high",
-                "text": "Use aerosol-resistant tips and separated pre/post-PCR spaces."
+                "text": "Use aerosol-resistant tips and separated pre/post-PCR spaces.",
+                "extensions": {}
               }
-            ]
+            ],
+            "extensions": {}
           },
           {
             "id": "step-cycler",
@@ -51,12 +73,14 @@
                 "id": "block-timeline",
                 "type": "timeline",
                 "stages": [
-                  { "label": "Initial denaturation", "duration": "3 min", "temperature": "95°C" },
-                  { "label": "35 cycles", "duration": "30 s each", "details": "95°C / 58°C / 72°C" },
-                  { "label": "Final extension", "duration": "5 min", "temperature": "72°C" }
-                ]
+                  { "label": "Initial denaturation", "duration": "3 min", "temperature": "95 C", "details": "" },
+                  { "label": "35 cycles", "duration": "30 s each", "temperature": "", "details": "95 C / 58 C / 72 C" },
+                  { "label": "Final extension", "duration": "5 min", "temperature": "72 C", "details": "" }
+                ],
+                "extensions": {}
               }
-            ]
+            ],
+            "extensions": {}
           },
           {
             "id": "step-gel-qc",
@@ -66,12 +90,15 @@
               {
                 "id": "block-qc",
                 "type": "qc",
-                "checkpoint": "Run 5 µL product on 1.5% agarose gel",
-                "acceptanceCriteria": "Single expected-size band"
+                "checkpoint": "Run 5 uL product on 1.5% agarose gel",
+                "acceptanceCriteria": "Single expected-size band",
+                "extensions": {}
               }
-            ]
+            ],
+            "extensions": {}
           }
-        ]
+        ],
+        "extensions": {}
       }
     ],
     "extensions": {}

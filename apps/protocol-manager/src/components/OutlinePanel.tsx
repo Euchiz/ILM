@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ProtocolSection } from "@ilm/types";
 import { Tag } from "@ilm/ui";
 import type { Selection } from "../state/protocolState";
@@ -9,26 +10,56 @@ interface OutlinePanelProps {
 }
 
 export const OutlinePanel = ({ sections, selection, onSelect }: OutlinePanelProps) => {
-  const renderSection = (section: ProtocolSection, level = 0) => (
-    <div key={section.id} style={{ marginLeft: level * 12, marginBottom: 8 }}>
-      <button
-        className={selection.type === "section" && selection.sectionId === section.id ? "outline-item active" : "outline-item"}
-        onClick={() => onSelect({ type: "section", sectionId: section.id })}
-      >
-        📁 {section.title}
+  const [collapsedIds, setCollapsedIds] = useState<string[]>([]);
+
+  const toggleCollapsed = (sectionId: string) => {
+    setCollapsedIds((current) => (current.includes(sectionId) ? current.filter((id) => id !== sectionId) : [...current, sectionId]));
+  };
+
+  const renderSection = (section: ProtocolSection, level = 0) => {
+    const isCollapsed = collapsedIds.includes(section.id);
+    const isSectionSelected = selection.type === "section" && selection.sectionId === section.id;
+
+    return (
+      <div key={section.id} style={{ marginLeft: level * 16 }}>
+        <div className={`tree-row ${isSectionSelected ? "active" : ""}`}>
+          <button className="collapse-toggle" onClick={() => toggleCollapsed(section.id)}>
+            {isCollapsed ? "+" : "-"}
+          </button>
+          <button className="outline-item" onClick={() => onSelect({ type: "section", sectionId: section.id })}>
+            {section.title}
+          </button>
+          <Tag label={`${section.steps.length} steps`} tone="neutral" />
+        </div>
+
+        {!isCollapsed && (
+          <div>
+            {section.steps.map((step) => {
+              const isStepSelected = selection.type === "step" && selection.stepId === step.id;
+
+              return (
+                <div className={`tree-row step-row ${isStepSelected ? "active" : ""}`} key={step.id}>
+                  <span className="tree-spacer" />
+                  <button className="outline-item step" onClick={() => onSelect({ type: "step", sectionId: section.id, stepId: step.id })}>
+                    {step.title}
+                  </button>
+                  <Tag label={step.stepKind} tone={step.stepKind === "qc" ? "warning" : "info"} />
+                </div>
+              );
+            })}
+            {section.sections.map((subsection) => renderSection(subsection, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="outline-tree">
+      <button className={`outline-root ${selection.type === "protocol" ? "active" : ""}`} onClick={() => onSelect({ type: "protocol" })}>
+        Protocol metadata
       </button>
-      {section.steps.map((step) => (
-        <button
-          key={step.id}
-          className={selection.type === "step" && selection.stepId === step.id ? "outline-item step active" : "outline-item step"}
-          onClick={() => onSelect({ type: "step", sectionId: section.id, stepId: step.id })}
-        >
-          ▸ {step.title} <Tag label={step.stepKind} tone={step.stepKind === "qc" ? "warning" : "info"} />
-        </button>
-      ))}
-      {section.sections.map((sub) => renderSection(sub, level + 1))}
+      {sections.map((section) => renderSection(section))}
     </div>
   );
-
-  return <div>{sections.map((section) => renderSection(section))}</div>;
 };
