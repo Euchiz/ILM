@@ -1,6 +1,42 @@
-Integrative Lab Manager (ILM) module: Protocol Manager
+## Module spotlight: Protocol Manager
 
+Protocol manager is the first module under development.
+
+### Purpose
+
+To provide a visual, structured, AI-compatible editor for wet-lab protocols. 
 Build a GitHub Pages-compatible web app for designing wet-lab protocols visually.
+
+### Key ideas
+
+* protocols are stored as structured JSON
+* protocol content is represented as explicit typed objects
+* import/export is portable
+* protocols can be created manually or generated from unstructured text via AI
+* the editor is designed for scientific workflows, not generic note-taking
+
+### Example protocol objects
+
+* sections
+* subsections
+* steps
+* preparation steps
+* optional steps
+* QC checkpoints
+* reaction recipes
+* PCR/incubation timelines
+* cautions
+* external links
+
+### Why this module comes first
+
+Protocols are a natural starting point because they:
+
+* are central to many labs
+* benefit strongly from structure
+* can be implemented client-side first
+* have immediate value
+* provide a useful foundation for future integration with projects, reagents, and workflows
 
 High-level goal:
 Create a static client-side protocol designer for wet-lab workflows. The app should let users build hierarchical protocols with sections, subsections, ordered steps, and specialized blocks such as reaction recipes, timelines, QC checkpoints, cautions, optional steps, and hyperlinks. Protocols must be saved as a standardized JSON format that users can export and import.
