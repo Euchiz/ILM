@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, Tag } from "@ilm/ui";
-import type { ProtocolDocument } from "@ilm/types";
+import type { ProtocolBlock, ProtocolDocument } from "@ilm/types";
 import { safeJsonParse, nowIso } from "@ilm/utils";
 import type { ValidationMode } from "@ilm/validation";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
@@ -13,15 +13,20 @@ import { PreviewPanel } from "./components/PreviewPanel";
 import {
   addSection,
   addStep,
+  collectStepIds,
   deleteSection,
   deleteStep,
+  deleteSteps,
   duplicateSection,
   duplicateStep,
+  findStepLocation,
   moveSection,
   moveStep,
+  pasteBlocksIntoStep,
+  removeBlocksFromStep,
   reorderSection,
-  reorderStep,
-  type Selection
+  type Selection,
+  moveStepsToSection
 } from "./state/protocolState";
 
 const STORAGE_KEY = "ilm.protocol-manager.document";
@@ -62,11 +67,15 @@ const MODULE_CARDS = [
 export const App = () => {
   const [doc, setDoc] = useState<ProtocolDocument>(createDefaultProtocol);
   const [selection, setSelection] = useState<Selection>({ type: "protocol" });
+  const [selectedStepIds, setSelectedStepIds] = useState<string[]>([]);
+  const [blockSelection, setBlockSelection] = useState<{ stepId: string; blockIds: string[] }>({ stepId: "", blockIds: [] });
+  const [blockClipboard, setBlockClipboard] = useState<ProtocolBlock[]>([]);
   const [jsonText, setJsonText] = useState("");
   const [status, setStatus] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
   const [activeTab, setActiveTab] = useState<AppTab>("author");
   const [activeModule, setActiveModule] = useState<ActiveModule>("home");
+  const previewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -98,9 +107,84 @@ export const App = () => {
   const templateJson = useMemo(() => JSON.stringify(createDefaultProtocol(), null, 2), []);
   const sectionCount = useMemo(() => countSections(doc.protocol.sections), [doc]);
   const stepCount = useMemo(() => countSteps(doc.protocol.sections), [doc]);
+  const allStepIds = useMemo(() => collectStepIds(doc.protocol.sections), [doc]);
+
+  useEffect(() => {
+    const validStepIds = new Set(allStepIds);
+    setSelectedStepIds((current) => current.filter((stepId) => validStepIds.has(stepId)));
+
+    if (!blockSelection.stepId || !validStepIds.has(blockSelection.stepId)) {
+      setBlockSelection({ stepId: "", blockIds: [] });
+      return;
+    }
+
+    const stepLocation = findStepLocation(doc.protocol.sections, blockSelection.stepId);
+    if (!stepLocation) {
+      setBlockSelection({ stepId: "", blockIds: [] });
+      return;
+    }
+
+    const validBlockIds = new Set(stepLocation.step.blocks.map((block) => block.id));
+    setBlockSelection((current) => ({
+      stepId: current.stepId,
+      blockIds: current.blockIds.filter((blockId) => validBlockIds.has(blockId))
+    }));
+  }, [allStepIds, blockSelection.stepId, doc.protocol.sections]);
 
   const updateDoc = (nextDoc: ProtocolDocument) => {
     setDoc({ ...nextDoc, protocol: { ...nextDoc.protocol, updatedAt: nowIso() } });
+  };
+
+  const clearBlockSelection = () => setBlockSelection({ stepId: "", blockIds: [] });
+
+  const resetSelection = () => {
+    setSelection({ type: "protocol" });
+    setSelectedStepIds([]);
+    clearBlockSelection();
+  };
+
+  const selectProtocol = () => {
+    setSelection({ type: "protocol" });
+    setSelectedStepIds([]);
+    clearBlockSelection();
+  };
+
+  const selectSection = (sectionId: string) => {
+    setSelection({ type: "section", sectionId });
+    setSelectedStepIds([]);
+    clearBlockSelection();
+  };
+
+  const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
+    clearBlockSelection();
+
+    if (options?.toggle) {
+      setSelectedStepIds((current) => {
+        if (current.includes(stepId)) {
+          const next = current.filter((id) => id !== stepId);
+          if (next.length === 0) {
+            setSelection({ type: "step", sectionId, stepId });
+            return [stepId];
+          }
+
+          const nextPrimary = next[0];
+          const nextLocation = findStepLocation(doc.protocol.sections, nextPrimary);
+          setSelection(
+            nextLocation
+              ? { type: "step", sectionId: nextLocation.sectionId, stepId: nextPrimary }
+              : { type: "step", sectionId, stepId }
+          );
+          return next;
+        }
+
+        setSelection({ type: "step", sectionId, stepId });
+        return [...current, stepId];
+      });
+      return;
+    }
+
+    setSelection({ type: "step", sectionId, stepId });
+    setSelectedStepIds([stepId]);
   };
 
   const importParsed = (value: unknown) => {
@@ -116,35 +200,100 @@ export const App = () => {
 
     const normalized = normalizeProtocolDocument(result.data);
     setDoc({ ...normalized, protocol: { ...normalized.protocol, updatedAt: nowIso() } });
-    setSelection({ type: "protocol" });
+    resetSelection();
     setStatus([
       `Import successful (${importMode} mode).`,
       ...result.warnings.map((warning) => `Warning: ${warning}`)
     ]);
   };
 
-  const resetSelection = () => setSelection({ type: "protocol" });
-
   const handleDeleteSelection = () => {
     if (selection.type === "section") {
       updateDoc(deleteSection(doc, selection.sectionId));
       resetSelection();
+      return;
     }
 
     if (selection.type === "step") {
-      updateDoc(deleteStep(doc, selection.sectionId, selection.stepId));
-      setSelection({ type: "section", sectionId: selection.sectionId });
+      const stepIdsToDelete = selectedStepIds.includes(selection.stepId) ? selectedStepIds : [selection.stepId];
+      updateDoc(deleteSteps(doc, stepIdsToDelete));
+      resetSelection();
     }
   };
 
   const handleDuplicateSelection = () => {
-    if (selection.type === "section") updateDoc(duplicateSection(doc, selection.sectionId));
-    if (selection.type === "step") updateDoc(duplicateStep(doc, selection.sectionId, selection.stepId));
+    if (selection.type === "section") {
+      updateDoc(duplicateSection(doc, selection.sectionId));
+      return;
+    }
+
+    if (selection.type === "step") {
+      const orderedIds = orderStepIdsByDocument(doc, selectedStepIds.includes(selection.stepId) ? selectedStepIds : [selection.stepId]);
+      const duplicatedDoc = orderedIds.reduce((nextDoc, stepId) => {
+        const location = findStepLocation(nextDoc.protocol.sections, stepId);
+        return location ? duplicateStep(nextDoc, location.sectionId, stepId) : nextDoc;
+      }, doc);
+      updateDoc(duplicatedDoc);
+    }
   };
 
   const handleMoveSelection = (direction: "up" | "down") => {
-    if (selection.type === "section") updateDoc(moveSection(doc, selection.sectionId, direction));
-    if (selection.type === "step") updateDoc(moveStep(doc, selection.sectionId, selection.stepId, direction));
+    if (selection.type === "section") {
+      updateDoc(moveSection(doc, selection.sectionId, direction));
+      return;
+    }
+
+    if (selection.type === "step" && selectedStepIds.length <= 1) {
+      updateDoc(moveStep(doc, selection.sectionId, selection.stepId, direction));
+    }
+  };
+
+  const handleDeleteSingleStep = (sectionId: string, stepId: string) => {
+    updateDoc(deleteStep(doc, sectionId, stepId));
+    setSelectedStepIds((current) => current.filter((id) => id !== stepId));
+    clearBlockSelection();
+    if (selection.type === "step" && selection.stepId === stepId) {
+      setSelection({ type: "section", sectionId });
+    }
+  };
+
+  const handleMoveSteps = (stepIds: string[], destinationSectionId: string, targetStepId?: string) => {
+    if (selection.type === "step" && stepIds.includes(selection.stepId)) {
+      setSelection({ type: "step", sectionId: destinationSectionId, stepId: selection.stepId });
+    }
+    setSelectedStepIds(stepIds);
+    updateDoc(moveStepsToSection(doc, stepIds, destinationSectionId, targetStepId));
+  };
+
+  const handleSetSelectedBlockIds = (stepId: string, blockIds: string[]) => {
+    setBlockSelection({ stepId, blockIds });
+  };
+
+  const handleCutBlocks = (sectionId: string, stepId: string, blockIds: string[]) => {
+    const location = findStepLocation(doc.protocol.sections, stepId);
+    if (!location || blockIds.length === 0) return;
+
+    const selectedBlocks = location.step.blocks.filter((block) => blockIds.includes(block.id));
+    setBlockClipboard(cloneBlocks(selectedBlocks));
+    updateDoc(removeBlocksFromStep(doc, sectionId, stepId, blockIds));
+    clearBlockSelection();
+    setStatus([`Cut ${selectedBlocks.length} block(s).`, "Paste them into any step using the block toolbar."]);
+  };
+
+  const handleCopyBlocks = (stepId: string, blockIds: string[]) => {
+    const location = findStepLocation(doc.protocol.sections, stepId);
+    if (!location || blockIds.length === 0) return;
+
+    const selectedBlocks = location.step.blocks.filter((block) => blockIds.includes(block.id));
+    setBlockClipboard(cloneBlocks(selectedBlocks));
+    setStatus([`Copied ${selectedBlocks.length} block(s).`, "Paste them into any step using the block toolbar."]);
+  };
+
+  const handlePasteBlocks = (sectionId: string, stepId: string, afterBlockId?: string) => {
+    if (blockClipboard.length === 0) return;
+    updateDoc(pasteBlocksIntoStep(doc, sectionId, stepId, blockClipboard, afterBlockId));
+    clearBlockSelection();
+    setStatus([`Pasted ${blockClipboard.length} block(s).`]);
   };
 
   const downloadTextFile = (filename: string, content: string) => {
@@ -155,6 +304,50 @@ export const App = () => {
     anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handlePrintPreview = () => {
+    const previewMarkup = previewRef.current?.innerHTML;
+    if (!previewMarkup) {
+      setStatus(["Preview content is not ready for printing yet."]);
+      return;
+    }
+
+    const printWindow = window.open("", "_blank", "width=1100,height=900");
+    if (!printWindow) {
+      setStatus(["Could not open the print window. Please allow pop-ups and try again."]);
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']")).map((node) => node.outerHTML).join("\n");
+    printWindow.document.write(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(doc.protocol.title)} - Print</title>
+    ${styles}
+    <style>${PRINT_WINDOW_STYLES}</style>
+  </head>
+  <body class="print-window-body">
+    <main class="print-document">
+      <div class="print-document-header">
+        <p>Integrated Lab Manager</p>
+        <h1>${escapeHtml(doc.protocol.title)}</h1>
+      </div>
+      ${previewMarkup}
+    </main>
+    <script>
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          window.focus();
+          window.print();
+        }, 250);
+      });
+    </script>
+  </body>
+</html>`);
+    printWindow.document.close();
+    setStatus(["Opened a print-ready document in a separate window. Use the browser dialog to save as PDF."]);
   };
 
   const openProtocolManager = () => {
@@ -235,7 +428,7 @@ export const App = () => {
               <Panel title="Outline">
                 <div className="panel-content">
                   <p className="section-intro">
-                    Build the protocol hierarchy first. The outline is interactive and grouped into section cards with nested steps.
+                    Build the protocol hierarchy first. Steps can now move across sections and subsections, and multi-selected steps can travel together.
                   </p>
                   <div className="toolbar">
                     <button onClick={() => updateDoc(addSection(doc, "New top-level section"))}>Add section</button>
@@ -248,10 +441,10 @@ export const App = () => {
                     <button onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
                       Duplicate
                     </button>
-                    <button onClick={() => handleMoveSelection("up")} disabled={selection.type === "protocol"}>
+                    <button onClick={() => handleMoveSelection("up")} disabled={selection.type === "protocol" || (selection.type === "step" && selectedStepIds.length > 1)}>
                       Move up
                     </button>
-                    <button onClick={() => handleMoveSelection("down")} disabled={selection.type === "protocol"}>
+                    <button onClick={() => handleMoveSelection("down")} disabled={selection.type === "protocol" || (selection.type === "step" && selectedStepIds.length > 1)}>
                       Move down
                     </button>
                     <button onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
@@ -261,11 +454,15 @@ export const App = () => {
                   <OutlinePanel
                     sections={doc.protocol.sections}
                     selection={selection}
-                    onSelect={setSelection}
+                    selectedStepIds={selectedStepIds}
+                    onSelectProtocol={selectProtocol}
+                    onSelectSection={selectSection}
+                    onSelectStep={selectStep}
+                    onClearStepSelection={() => setSelectedStepIds(selection.type === "step" ? [selection.stepId] : [])}
                     onReorderSection={(parentSectionId, sectionId, targetSectionId) =>
                       updateDoc(reorderSection(doc, parentSectionId, sectionId, targetSectionId))
                     }
-                    onReorderStep={(sectionId, stepId, targetStepId) => updateDoc(reorderStep(doc, sectionId, stepId, targetStepId))}
+                    onMoveSteps={handleMoveSteps}
                     onAddSubsection={(sectionId) => updateDoc(addSection(doc, "New subsection", sectionId))}
                     onAddStep={(sectionId) => updateDoc(addStep(doc, sectionId, "New step"))}
                     onDuplicateSection={(sectionId) => updateDoc(duplicateSection(doc, sectionId))}
@@ -274,10 +471,7 @@ export const App = () => {
                       resetSelection();
                     }}
                     onDuplicateStep={(sectionId, stepId) => updateDoc(duplicateStep(doc, sectionId, stepId))}
-                    onDeleteStep={(sectionId, stepId) => {
-                      updateDoc(deleteStep(doc, sectionId, stepId));
-                      setSelection({ type: "section", sectionId });
-                    }}
+                    onDeleteStep={handleDeleteSingleStep}
                   />
                 </div>
               </Panel>
@@ -285,9 +479,21 @@ export const App = () => {
               <Panel title="Details">
                 <div className="panel-content">
                   <p className="section-intro">
-                    Refine the selected object on the right. Metadata and structured blocks are edited in compact detail bubbles.
+                    Refine the selected object on the right. Blocks support multi-selection, copy, cut, and paste so you can restructure large steps faster.
                   </p>
-                  <EditorPanel doc={doc} selection={selection} onDocChange={updateDoc} />
+                  <EditorPanel
+                    doc={doc}
+                    selection={selection}
+                    selectedBlockIds={selection.type === "step" && blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
+                    canPasteBlocks={blockClipboard.length > 0}
+                    clipboardBlockCount={blockClipboard.length}
+                    onDocChange={updateDoc}
+                    onSetSelectedBlockIds={handleSetSelectedBlockIds}
+                    onClearBlockSelection={clearBlockSelection}
+                    onCutBlocks={handleCutBlocks}
+                    onCopyBlocks={handleCopyBlocks}
+                    onPasteBlocks={handlePasteBlocks}
+                  />
                 </div>
               </Panel>
             </section>
@@ -298,12 +504,12 @@ export const App = () => {
               <Panel title="Render Preview">
                 <div className="panel-content">
                   <div className="toolbar">
-                    <button onClick={() => window.print()}>Print / Save as PDF</button>
+                    <button onClick={handlePrintPreview}>Export PDF / Print</button>
                   </div>
                   <p className="section-intro">
-                    Use your browser&apos;s print dialog to save a PDF. The print stylesheet hides tabs and controls so the rendered protocol becomes the document.
+                    The export now opens a dedicated print-ready document so the PDF renderer only sees the protocol content and its print styles.
                   </p>
-                  <div className="print-surface">
+                  <div className="print-surface" ref={previewRef}>
                     <PreviewPanel doc={doc} />
                   </div>
                 </div>
@@ -365,3 +571,143 @@ const countSections = (sections: ProtocolDocument["protocol"]["sections"]): numb
 
 const countSteps = (sections: ProtocolDocument["protocol"]["sections"]): number =>
   sections.reduce((total, section) => total + section.steps.length + countSteps(section.sections), 0);
+
+const orderStepIdsByDocument = (doc: ProtocolDocument, stepIds: string[]) => {
+  const selectedIds = new Set(stepIds);
+  return collectStepIds(doc.protocol.sections).filter((stepId) => selectedIds.has(stepId));
+};
+
+const cloneBlocks = (blocks: ProtocolBlock[]): ProtocolBlock[] =>
+  JSON.parse(JSON.stringify(blocks)) as ProtocolBlock[];
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const PRINT_WINDOW_STYLES = `
+  :root {
+    color: #1e1e1e;
+    background: #ffffff;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 14mm;
+    size: auto;
+  }
+
+  html, body {
+    margin: 0;
+    background: #ffffff;
+  }
+
+  body.print-window-body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1e1e1e;
+  }
+
+  .print-document {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 28px 40px;
+    background: #ffffff;
+  }
+
+  .print-document-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #d6d0c3;
+  }
+
+  .print-document-header p {
+    margin: 0 0 8px;
+    color: #6e685c;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .print-document-header h1 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 34px;
+    font-weight: 500;
+  }
+
+  .editor-stack {
+    gap: 20px;
+  }
+
+  .preview-section,
+  .preview-step,
+  .preview-subcard,
+  .preview-note,
+  .preview-caution,
+  .preview-qc {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .preview-section {
+    gap: 14px;
+  }
+
+  .preview-step {
+    border-top: 1px solid #d6d0c3;
+    padding-top: 14px;
+  }
+
+  .preview-subcard {
+    border: 1px solid #d6d0c3 !important;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .preview-note,
+  .preview-caution,
+  .preview-qc {
+    background: #ffffff !important;
+    border-left: 4px solid #b9b0a0;
+  }
+
+  .preview-caution {
+    border-left-color: #c57967;
+  }
+
+  .preview-qc {
+    border-left-color: #c29a3f;
+  }
+
+  .preview-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .preview-table th,
+  .preview-table td {
+    border-bottom: 1px solid #d6d0c3;
+    padding: 8px 6px;
+    text-align: left;
+  }
+
+  .preview-table thead {
+    display: table-header-group;
+  }
+
+  a {
+    color: #2d4e74;
+    text-decoration: none;
+  }
+`;

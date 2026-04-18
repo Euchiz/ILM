@@ -226,6 +226,19 @@ label {
   gap: 0.7rem;
 }
 
+.outline-selection-bar,
+.block-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(39, 39, 39, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
 .quick-actions-row {
   display: flex;
   align-items: center;
@@ -380,6 +393,21 @@ label {
   gap: 0.8rem;
 }
 
+.section-drop-target {
+  padding: 0.8rem 0.95rem;
+  border: 1px dashed rgba(129, 117, 96, 0.5);
+  border-radius: 16px;
+  color: #6e6658;
+  background: rgba(248, 244, 236, 0.65);
+  font-size: 0.9rem;
+}
+
+.section-drop-target.active {
+  border-color: #6f7f66;
+  background: rgba(221, 231, 216, 0.92);
+  color: #304632;
+}
+
 .outline-step-list,
 .outline-subsections {
   display: grid;
@@ -403,6 +431,11 @@ label {
   background: #212121;
   color: #f8f4ec;
   border-color: #212121;
+}
+
+.outline-step-pill.group-selected {
+  background: rgba(221, 231, 216, 0.92);
+  border-color: rgba(48, 70, 50, 0.22);
 }
 
 .outline-step-content {
@@ -629,6 +662,15 @@ label {
   padding-left: 1.25rem;
 }
 
+.block-selector {
+  gap: 0.75rem;
+}
+
+.selected-block-card {
+  border-color: rgba(48, 70, 50, 0.28);
+  box-shadow: 0 12px 30px rgba(48, 70, 50, 0.08);
+}
+
 .file-input {
   display: inline-flex;
   align-items: center;
@@ -663,6 +705,8 @@ label {
   .toolbar,
   .mini-toolbar,
   .mode-switch,
+  .outline-selection-bar,
+  .block-selection-toolbar,
   .module-card-header,
   .module-toolbar {
     align-items: flex-start;

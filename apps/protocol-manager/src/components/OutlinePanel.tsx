@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import {
+  closestCorners,
+  DndContext,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ProtocolSection, ProtocolStep } from "@ilm/types";
@@ -10,9 +18,13 @@ import { ActionMenu } from "./ActionMenu";
 interface OutlinePanelProps {
   sections: ProtocolSection[];
   selection: Selection;
-  onSelect: (selection: Selection) => void;
+  selectedStepIds: string[];
+  onSelectProtocol: () => void;
+  onSelectSection: (sectionId: string) => void;
+  onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
+  onClearStepSelection: () => void;
   onReorderSection: (parentSectionId: string | null, sectionId: string, targetSectionId: string) => void;
-  onReorderStep: (sectionId: string, stepId: string, targetStepId: string) => void;
+  onMoveSteps: (stepIds: string[], destinationSectionId: string, targetStepId?: string) => void;
   onAddSubsection: (sectionId: string) => void;
   onAddStep: (sectionId: string) => void;
   onDuplicateSection: (sectionId: string) => void;
@@ -23,13 +35,18 @@ interface OutlinePanelProps {
 
 const getSectionDragId = (sectionId: string) => `section:${sectionId}`;
 const getStepDragId = (stepId: string) => `step:${stepId}`;
+const getSectionDropId = (sectionId: string) => `section-drop:${sectionId}`;
 
 export const OutlinePanel = ({
   sections,
   selection,
-  onSelect,
+  selectedStepIds,
+  onSelectProtocol,
+  onSelectSection,
+  onSelectStep,
+  onClearStepSelection,
   onReorderSection,
-  onReorderStep,
+  onMoveSteps,
   onAddSubsection,
   onAddStep,
   onDuplicateSection,
@@ -49,14 +66,31 @@ export const OutlinePanel = ({
 
     const activeData = active.data.current;
     const overData = over.data.current;
-    if (!activeData || !overData || activeData.type !== overData.type) return;
+    if (!activeData || !overData) return;
 
-    if (activeData.type === "section" && activeData.parentSectionId === overData.parentSectionId && activeData.sectionId !== overData.sectionId) {
-      onReorderSection(activeData.parentSectionId, activeData.sectionId, overData.sectionId);
+    if (activeData.type === "section" && overData.type === "section") {
+      if (activeData.parentSectionId === overData.parentSectionId && activeData.sectionId !== overData.sectionId) {
+        onReorderSection(activeData.parentSectionId, activeData.sectionId, overData.sectionId);
+      }
+      return;
     }
 
-    if (activeData.type === "step" && activeData.sectionId === overData.sectionId && activeData.stepId !== overData.stepId) {
-      onReorderStep(activeData.sectionId, activeData.stepId, overData.stepId);
+    if (activeData.type !== "step") return;
+
+    const movingStepIds =
+      Array.isArray(activeData.selectedStepIds) && activeData.selectedStepIds.includes(activeData.stepId)
+        ? activeData.selectedStepIds
+        : [activeData.stepId];
+
+    if (overData.type === "step") {
+      if (!movingStepIds.includes(overData.stepId)) {
+        onMoveSteps(movingStepIds, overData.sectionId, overData.stepId);
+      }
+      return;
+    }
+
+    if (overData.type === "section" || overData.type === "section-drop") {
+      onMoveSteps(movingStepIds, overData.sectionId);
     }
   };
 
@@ -74,11 +108,13 @@ export const OutlinePanel = ({
             onDeleteStep={onDeleteStep}
             onDuplicateSection={onDuplicateSection}
             onDuplicateStep={onDuplicateStep}
-            onSelect={onSelect}
+            onSelectSection={onSelectSection}
+            onSelectStep={onSelectStep}
             parentSectionId={parentSectionId}
             renderChildren={renderSectionList}
             section={section}
             sectionPath={pathPrefix ? `${pathPrefix}.${index + 1}` : `${index + 1}`}
+            selectedStepIds={selectedStepIds}
             selection={selection}
             toggleCollapsed={toggleCollapsed}
           />
@@ -88,13 +124,23 @@ export const OutlinePanel = ({
   );
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
       <div className="outline-tree">
-        <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={() => onSelect({ type: "protocol" })}>
+        <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={onSelectProtocol}>
           <span className="outline-marker">Protocol</span>
           <strong>{selection.type === "protocol" ? "Editing metadata" : "Open protocol metadata"}</strong>
         </button>
-        <p className="helper-text">Drag cards by their handles to reorder sections and steps. Use the action menus for quick edits.</p>
+        <p className="helper-text">
+          Drag steps into any section or subsection to reorganize the protocol. Use Ctrl/Cmd-click on step titles to build a multi-step drag selection.
+        </p>
+        {selectedStepIds.length > 1 ? (
+          <div className="outline-selection-bar">
+            <Tag label={`${selectedStepIds.length} steps selected`} tone="info" />
+            <button type="button" onClick={onClearStepSelection}>
+              Clear selection
+            </button>
+          </div>
+        ) : null}
         {renderSectionList(sections, null)}
       </div>
     </DndContext>
@@ -106,9 +152,11 @@ interface SortableSectionCardProps {
   sectionPath: string;
   parentSectionId: string | null;
   selection: Selection;
+  selectedStepIds: string[];
   collapsedIds: string[];
   level: number;
-  onSelect: (selection: Selection) => void;
+  onSelectSection: (sectionId: string) => void;
+  onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
   onAddSubsection: (sectionId: string) => void;
   onAddStep: (sectionId: string) => void;
   onDuplicateSection: (sectionId: string) => void;
@@ -124,9 +172,11 @@ const SortableSectionCard = ({
   sectionPath,
   parentSectionId,
   selection,
+  selectedStepIds,
   collapsedIds,
   level,
-  onSelect,
+  onSelectSection,
+  onSelectStep,
   onAddSubsection,
   onAddStep,
   onDuplicateSection,
@@ -142,6 +192,10 @@ const SortableSectionCard = ({
     id: getSectionDragId(section.id),
     data: { type: "section", parentSectionId, sectionId: section.id }
   });
+  const { setNodeRef: setDropNodeRef, isOver } = useDroppable({
+    id: getSectionDropId(section.id),
+    data: { type: "section-drop", sectionId: section.id }
+  });
 
   return (
     <article
@@ -156,7 +210,7 @@ const SortableSectionCard = ({
         <button className="collapse-toggle" onClick={() => toggleCollapsed(section.id)}>
           {isCollapsed ? "+" : "-"}
         </button>
-        <button className="outline-card-title" onClick={() => onSelect({ type: "section", sectionId: section.id })}>
+        <button className="outline-card-title" onClick={() => onSelectSection(section.id)}>
           <span className="outline-marker">Section {sectionPath}</span>
           <strong>{section.title}</strong>
           {section.description ? <small>{section.description}</small> : null}
@@ -180,6 +234,10 @@ const SortableSectionCard = ({
 
       {!isCollapsed ? (
         <div className="outline-card-body">
+          <div ref={setDropNodeRef} className={isOver ? "section-drop-target active" : "section-drop-target"}>
+            Drop selected steps here to append them to this section.
+          </div>
+
           {section.steps.length > 0 ? (
             <SortableContext items={section.steps.map((step) => getStepDragId(step.id))} strategy={verticalListSortingStrategy}>
               <div className="outline-step-list">
@@ -189,9 +247,10 @@ const SortableSectionCard = ({
                     key={step.id}
                     onDeleteStep={onDeleteStep}
                     onDuplicateStep={onDuplicateStep}
-                    onSelect={onSelect}
+                    onSelectStep={onSelectStep}
                     sectionId={section.id}
                     sectionPath={sectionPath}
+                    selectedStepIds={selectedStepIds}
                     selection={selection}
                     step={step}
                   />
@@ -199,7 +258,7 @@ const SortableSectionCard = ({
               </div>
             </SortableContext>
           ) : (
-            <p className="helper-text">No steps in this section yet.</p>
+            <p className="helper-text">No steps in this section yet. Drop selected steps here or add a new one.</p>
           )}
 
           {section.sections.length > 0 ? renderChildren(section.sections, section.id, sectionPath) : null}
@@ -215,7 +274,8 @@ interface SortableStepPillProps {
   sectionId: string;
   sectionPath: string;
   selection: Selection;
-  onSelect: (selection: Selection) => void;
+  selectedStepIds: string[];
+  onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
   onDuplicateStep: (sectionId: string, stepId: string) => void;
   onDeleteStep: (sectionId: string, stepId: string) => void;
 }
@@ -226,26 +286,32 @@ const SortableStepPill = ({
   sectionId,
   sectionPath,
   selection,
-  onSelect,
+  selectedStepIds,
+  onSelectStep,
   onDuplicateStep,
   onDeleteStep
 }: SortableStepPillProps) => {
-  const isStepSelected = selection.type === "step" && selection.stepId === step.id;
+  const isPrimaryStep = selection.type === "step" && selection.stepId === step.id;
+  const isGroupSelected = selectedStepIds.includes(step.id);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: getStepDragId(step.id),
-    data: { type: "step", sectionId, stepId: step.id }
+    data: { type: "step", sectionId, stepId: step.id, selectedStepIds }
   });
 
   return (
     <div
-      className={isStepSelected ? "outline-step-pill selected" : "outline-step-pill"}
+      className={`${isPrimaryStep ? "outline-step-pill selected" : "outline-step-pill"} ${isGroupSelected && !isPrimaryStep ? "group-selected" : ""}`}
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.7 : 1 }}
     >
       <button className="drag-handle step" ref={setActivatorNodeRef} type="button" {...attributes} {...listeners}>
         ::
       </button>
-      <button className="outline-step-content" onClick={() => onSelect({ type: "step", sectionId, stepId: step.id })}>
+      <button
+        className="outline-step-content"
+        onClick={(event) => onSelectStep(sectionId, step.id, { toggle: event.metaKey || event.ctrlKey })}
+        aria-pressed={isGroupSelected}
+      >
         <span className="outline-step-index">{sectionPath}.{index + 1}</span>
         <span className="outline-step-copy">
           <strong>{step.title}</strong>

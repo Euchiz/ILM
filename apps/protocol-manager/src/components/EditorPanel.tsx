@@ -21,7 +21,15 @@ import { ActionMenu } from "./ActionMenu";
 interface EditorPanelProps {
   doc: ProtocolDocument;
   selection: Selection;
+  selectedBlockIds: string[];
+  canPasteBlocks: boolean;
+  clipboardBlockCount: number;
   onDocChange: (doc: ProtocolDocument) => void;
+  onSetSelectedBlockIds: (stepId: string, blockIds: string[]) => void;
+  onClearBlockSelection: () => void;
+  onCutBlocks: (sectionId: string, stepId: string, blockIds: string[]) => void;
+  onCopyBlocks: (stepId: string, blockIds: string[]) => void;
+  onPasteBlocks: (sectionId: string, stepId: string, afterBlockId?: string) => void;
 }
 
 const STEP_KINDS: StepKind[] = ["action", "preparation", "qc", "optional", "pause", "cleanup", "analysis"];
@@ -30,7 +38,19 @@ const BLOCK_TYPES: BlockType[] = ["paragraph", "note", "caution", "qc", "recipe"
 const createUniqueId = (prefix: string, label: string) =>
   createStableId(prefix, `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
 
-export const EditorPanel = ({ doc, selection, onDocChange }: EditorPanelProps) => {
+export const EditorPanel = ({
+  doc,
+  selection,
+  selectedBlockIds,
+  canPasteBlocks,
+  clipboardBlockCount,
+  onDocChange,
+  onSetSelectedBlockIds,
+  onClearBlockSelection,
+  onCutBlocks,
+  onCopyBlocks,
+  onPasteBlocks
+}: EditorPanelProps) => {
   const selectedSection = selection.type !== "protocol" ? findSection(doc.protocol.sections, selection.sectionId) : null;
   const selectedStep =
     selection.type === "step" ? selectedSection?.steps.find((candidate) => candidate.id === selection.stepId) ?? null : null;
@@ -44,7 +64,22 @@ export const EditorPanel = ({ doc, selection, onDocChange }: EditorPanelProps) =
   }
 
   if (selection.type === "step" && selectedSection && selectedStep) {
-    return <StepEditor doc={doc} sectionId={selection.sectionId} step={selectedStep} onDocChange={onDocChange} />;
+    return (
+      <StepEditor
+        doc={doc}
+        sectionId={selection.sectionId}
+        step={selectedStep}
+        selectedBlockIds={selectedBlockIds}
+        canPasteBlocks={canPasteBlocks}
+        clipboardBlockCount={clipboardBlockCount}
+        onDocChange={onDocChange}
+        onSetSelectedBlockIds={onSetSelectedBlockIds}
+        onClearBlockSelection={onClearBlockSelection}
+        onCutBlocks={onCutBlocks}
+        onCopyBlocks={onCopyBlocks}
+        onPasteBlocks={onPasteBlocks}
+      />
+    );
   }
 
   return <p>Select a protocol item from the outline to edit it.</p>;
@@ -211,12 +246,28 @@ const StepEditor = ({
   doc,
   sectionId,
   step,
-  onDocChange
+  selectedBlockIds,
+  canPasteBlocks,
+  clipboardBlockCount,
+  onDocChange,
+  onSetSelectedBlockIds,
+  onClearBlockSelection,
+  onCutBlocks,
+  onCopyBlocks,
+  onPasteBlocks
 }: {
   doc: ProtocolDocument;
   sectionId: string;
   step: ProtocolStep;
+  selectedBlockIds: string[];
+  canPasteBlocks: boolean;
+  clipboardBlockCount: number;
   onDocChange: (doc: ProtocolDocument) => void;
+  onSetSelectedBlockIds: (stepId: string, blockIds: string[]) => void;
+  onClearBlockSelection: () => void;
+  onCutBlocks: (sectionId: string, stepId: string, blockIds: string[]) => void;
+  onCopyBlocks: (stepId: string, blockIds: string[]) => void;
+  onPasteBlocks: (sectionId: string, stepId: string, afterBlockId?: string) => void;
 }) => {
   const saveStep = (nextStep: ProtocolStep) => {
     const nextSections = mapStep(doc.protocol.sections, sectionId, step.id, () => nextStep);
@@ -232,7 +283,11 @@ const StepEditor = ({
 
   const duplicateBlock = (blockIndex: number) => {
     const block = step.blocks[blockIndex];
-    const clone = { ...block, id: createUniqueId("block", block.type), extensions: { ...(block.extensions ?? {}) } };
+    const clone = {
+      ...(JSON.parse(JSON.stringify(block)) as ProtocolBlock),
+      id: createUniqueId("block", block.type),
+      extensions: { ...(block.extensions ?? {}) }
+    };
     saveStep({
       ...step,
       blocks: [...step.blocks.slice(0, blockIndex + 1), clone, ...step.blocks.slice(blockIndex + 1)]
@@ -251,6 +306,15 @@ const StepEditor = ({
     [next[blockIndex], next[target]] = [next[target], next[blockIndex]];
     saveStep({ ...step, blocks: next });
   };
+
+  const toggleBlockSelection = (blockId: string, checked: boolean) => {
+    const next = checked ? [...selectedBlockIds, blockId] : selectedBlockIds.filter((id) => id !== blockId);
+    onSetSelectedBlockIds(step.id, next);
+  };
+
+  const selectedBlocksInOrder = step.blocks.filter((block) => selectedBlockIds.includes(block.id));
+  const pasteAfterBlockId =
+    selectedBlocksInOrder.length > 0 ? selectedBlocksInOrder[selectedBlocksInOrder.length - 1]?.id : undefined;
 
   return (
     <div className="editor-stack">
@@ -287,24 +351,53 @@ const StepEditor = ({
         </div>
       </div>
 
-      {step.blocks.map((block, index) => (
-        <div className="card" key={block.id}>
-          <div className="card-header">
-            <strong>{block.type} block</strong>
-            <ActionMenu
-              buttonClassName="menu-trigger"
-              label="..."
-              items={[
-                { label: "Move up", onSelect: () => moveBlock(index, "up"), disabled: index === 0 },
-                { label: "Move down", onSelect: () => moveBlock(index, "down"), disabled: index === step.blocks.length - 1 },
-                { label: "Duplicate block", onSelect: () => duplicateBlock(index) },
-                { label: "Remove block", onSelect: () => removeBlock(index), disabled: step.blocks.length === 1, tone: "danger" }
-              ]}
-            />
-          </div>
-          <BlockEditor block={block} allStepIds={collectStepIds(doc)} onChange={(next) => updateBlock(index, next)} />
+      <div className="block-selection-toolbar">
+        <span className="field-label">
+          {selectedBlockIds.length > 0 ? `${selectedBlockIds.length} block(s) selected` : "Select blocks to cut, copy, or move them together."}
+        </span>
+        <div className="mini-toolbar">
+          <button onClick={() => onSetSelectedBlockIds(step.id, step.blocks.map((block) => block.id))} disabled={step.blocks.length === 0}>
+            Select all
+          </button>
+          <button onClick={onClearBlockSelection} disabled={selectedBlockIds.length === 0}>
+            Clear
+          </button>
+          <button onClick={() => onCopyBlocks(step.id, selectedBlockIds)} disabled={selectedBlockIds.length === 0}>
+            Copy selected
+          </button>
+          <button onClick={() => onCutBlocks(sectionId, step.id, selectedBlockIds)} disabled={selectedBlockIds.length === 0}>
+            Cut selected
+          </button>
+          <button onClick={() => onPasteBlocks(sectionId, step.id, pasteAfterBlockId)} disabled={!canPasteBlocks}>
+            {canPasteBlocks ? `Paste ${clipboardBlockCount} block(s)` : "Paste blocks"}
+          </button>
         </div>
-      ))}
+      </div>
+
+      {step.blocks.map((block, index) => {
+        const isSelected = selectedBlockIds.includes(block.id);
+        return (
+          <div className={isSelected ? "card selected-block-card" : "card"} key={block.id}>
+            <div className="card-header">
+              <label className="checkbox-row block-selector">
+                <input type="checkbox" checked={isSelected} onChange={(event) => toggleBlockSelection(block.id, event.target.checked)} />
+                <strong>{block.type} block</strong>
+              </label>
+              <ActionMenu
+                buttonClassName="menu-trigger"
+                label="..."
+                items={[
+                  { label: "Move up", onSelect: () => moveBlock(index, "up"), disabled: index === 0 },
+                  { label: "Move down", onSelect: () => moveBlock(index, "down"), disabled: index === step.blocks.length - 1 },
+                  { label: "Duplicate block", onSelect: () => duplicateBlock(index) },
+                  { label: "Remove block", onSelect: () => removeBlock(index), disabled: step.blocks.length === 1, tone: "danger" }
+                ]}
+              />
+            </div>
+            <BlockEditor block={block} allStepIds={collectStepIds(doc)} onChange={(next) => updateBlock(index, next)} />
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -659,4 +752,3 @@ const collectStepIds = (doc: ProtocolDocument): string[] => {
   visit(doc.protocol.sections);
   return ids;
 };
-

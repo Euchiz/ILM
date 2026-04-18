@@ -106,7 +106,7 @@ export const PreviewPanel = ({ doc }: { doc: ProtocolDocument }) => {
   );
 
   return (
-    <div className="editor-stack">
+    <div className="editor-stack preview-document">
       <div>
         <h2>{doc.protocol.title}</h2>
         {doc.protocol.description ? <p className="preview-description">{doc.protocol.description}</p> : null}

@@ -1,11 +1,4 @@
-import type {
-  BlockType,
-  ProtocolBlock,
-  ProtocolDocument,
-  ProtocolSection,
-  ProtocolStep,
-  StepKind
-} from "@ilm/types";
+import type { BlockType, ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep, StepKind } from "@ilm/types";
 import { createStableId } from "@ilm/utils";
 
 export type Selection =
@@ -23,6 +16,28 @@ export const findSection = (sections: ProtocolSection[], id: string): ProtocolSe
     if (nested) return nested;
   }
   return null;
+};
+
+export const findStepLocation = (
+  sections: ProtocolSection[],
+  stepId: string
+): { sectionId: string; step: ProtocolStep } | null => {
+  for (const section of sections) {
+    const step = section.steps.find((candidate) => candidate.id === stepId);
+    if (step) return { sectionId: section.id, step };
+    const nested = findStepLocation(section.sections, stepId);
+    if (nested) return nested;
+  }
+  return null;
+};
+
+export const collectStepIds = (sections: ProtocolSection[]): string[] => {
+  const ids: string[] = [];
+  sections.forEach((section) => {
+    section.steps.forEach((step) => ids.push(step.id));
+    ids.push(...collectStepIds(section.sections));
+  });
+  return ids;
 };
 
 export const mapSections = (
@@ -49,6 +64,19 @@ export const mapStep = (
     }
     return { ...section, sections: mapStep(section.sections, sectionId, stepId, mapFn) };
   });
+
+export const updateStep = (
+  doc: ProtocolDocument,
+  sectionId: string,
+  stepId: string,
+  mapFn: (step: ProtocolStep) => ProtocolStep
+): ProtocolDocument => ({
+  ...doc,
+  protocol: {
+    ...doc.protocol,
+    sections: mapStep(doc.protocol.sections, sectionId, stepId, (step) => mapFn(step))
+  }
+});
 
 export const addSection = (doc: ProtocolDocument, title: string, parentId?: string): ProtocolDocument => {
   const section: ProtocolSection = {
@@ -131,7 +159,7 @@ export const addStep = (doc: ProtocolDocument, sectionId: string, title: string,
     id: createUniqueId("step", title || "step"),
     title: title || "New step",
     stepKind,
-    blocks: [{ id: createUniqueId("block", "paragraph"), type: "paragraph", text: "", extensions: {} }],
+    blocks: [createDefaultParagraphBlock()],
     extensions: {}
   };
 
@@ -154,6 +182,17 @@ export const deleteStep = (doc: ProtocolDocument, sectionId: string, stepId: str
     }))
   }
 });
+
+export const deleteSteps = (doc: ProtocolDocument, stepIds: string[]): ProtocolDocument => {
+  const selectedIds = new Set(stepIds);
+  return {
+    ...doc,
+    protocol: {
+      ...doc.protocol,
+      sections: removeStepsFromSections(doc.protocol.sections, selectedIds)
+    }
+  };
+};
 
 export const duplicateStep = (doc: ProtocolDocument, sectionId: string, stepId: string): ProtocolDocument => ({
   ...doc,
@@ -207,6 +246,36 @@ export const reorderStep = (
   }
 });
 
+export const moveStepsToSection = (
+  doc: ProtocolDocument,
+  stepIds: string[],
+  destinationSectionId: string,
+  targetStepId?: string
+): ProtocolDocument => {
+  const selectedIds = new Set(stepIds);
+  if (selectedIds.size === 0 || !findSection(doc.protocol.sections, destinationSectionId)) return doc;
+
+  const movedSteps = collectStepsInDocumentOrder(doc.protocol.sections).filter((step) => selectedIds.has(step.id));
+  if (movedSteps.length === 0) return doc;
+
+  const sectionsWithoutMovedSteps = removeStepsFromSections(doc.protocol.sections, selectedIds);
+  const nextSections = mapSections(sectionsWithoutMovedSteps, destinationSectionId, (section) => {
+    const existingSteps = [...section.steps];
+    const insertIndex = targetStepId ? existingSteps.findIndex((step) => step.id === targetStepId) : -1;
+    const resolvedIndex = insertIndex >= 0 ? insertIndex : existingSteps.length;
+    existingSteps.splice(resolvedIndex, 0, ...movedSteps);
+    return { ...section, steps: existingSteps };
+  });
+
+  return {
+    ...doc,
+    protocol: {
+      ...doc.protocol,
+      sections: nextSections
+    }
+  };
+};
+
 export const addBlockToStep = (doc: ProtocolDocument, sectionId: string, stepId: string, blockType: BlockType): ProtocolDocument => {
   const block = createBlock(blockType);
   return {
@@ -216,6 +285,41 @@ export const addBlockToStep = (doc: ProtocolDocument, sectionId: string, stepId:
       sections: mapStep(doc.protocol.sections, sectionId, stepId, (step) => ({ ...step, blocks: [...step.blocks, block] }))
     }
   };
+};
+
+export const removeBlocksFromStep = (
+  doc: ProtocolDocument,
+  sectionId: string,
+  stepId: string,
+  blockIds: string[]
+): ProtocolDocument => {
+  const selectedIds = new Set(blockIds);
+  return updateStep(doc, sectionId, stepId, (step) => {
+    const remainingBlocks = step.blocks.filter((block) => !selectedIds.has(block.id));
+    return {
+      ...step,
+      blocks: remainingBlocks.length > 0 ? remainingBlocks : [createDefaultParagraphBlock()]
+    };
+  });
+};
+
+export const pasteBlocksIntoStep = (
+  doc: ProtocolDocument,
+  sectionId: string,
+  stepId: string,
+  blocks: ProtocolBlock[],
+  afterBlockId?: string
+): ProtocolDocument => {
+  if (blocks.length === 0) return doc;
+  return updateStep(doc, sectionId, stepId, (step) => {
+    const clonedBlocks = blocks.map((block) => cloneBlock(block));
+    const insertIndex = afterBlockId ? step.blocks.findIndex((block) => block.id === afterBlockId) + 1 : step.blocks.length;
+    const resolvedIndex = insertIndex > 0 ? insertIndex : step.blocks.length;
+    return {
+      ...step,
+      blocks: [...step.blocks.slice(0, resolvedIndex), ...clonedBlocks, ...step.blocks.slice(resolvedIndex)]
+    };
+  });
 };
 
 export const updateProtocol = <T extends keyof ProtocolDocument["protocol"]>(
@@ -242,6 +346,13 @@ const createBlock = (type: BlockType): ProtocolBlock => {
   if (type === "fileReference") return { id, type, label: "", path: "", extensions: {} };
   return { id, type: "branch", condition: "", thenStepIds: [], extensions: {} };
 };
+
+const createDefaultParagraphBlock = (): ProtocolBlock => ({
+  id: createUniqueId("block", "paragraph"),
+  type: "paragraph",
+  text: "",
+  extensions: {}
+});
 
 const mutateSections = (
   sections: ProtocolSection[],
@@ -274,6 +385,22 @@ const removeSection = (sections: ProtocolSection[], sectionId: string): Protocol
   sections
     .filter((section) => section.id !== sectionId)
     .map((section) => ({ ...section, sections: removeSection(section.sections, sectionId) }));
+
+const removeStepsFromSections = (sections: ProtocolSection[], selectedIds: Set<string>): ProtocolSection[] =>
+  sections.map((section) => ({
+    ...section,
+    steps: section.steps.filter((step) => !selectedIds.has(step.id)),
+    sections: removeStepsFromSections(section.sections, selectedIds)
+  }));
+
+const collectStepsInDocumentOrder = (sections: ProtocolSection[]): ProtocolStep[] => {
+  const steps: ProtocolStep[] = [];
+  sections.forEach((section) => {
+    section.steps.forEach((step) => steps.push(step));
+    steps.push(...collectStepsInDocumentOrder(section.sections));
+  });
+  return steps;
+};
 
 const moveInArray = <T,>(items: T[], index: number, direction: "up" | "down"): T[] => {
   const target = direction === "up" ? index - 1 : index + 1;
@@ -309,4 +436,42 @@ const cloneStep = (step: ProtocolStep): ProtocolStep => ({
   extensions: { ...(step.extensions ?? {}) }
 });
 
-const cloneBlock = (block: ProtocolBlock): ProtocolBlock => ({ ...block, id: createUniqueId("block", block.type), extensions: { ...(block.extensions ?? {}) } });
+const cloneBlock = (block: ProtocolBlock): ProtocolBlock => {
+  const id = createUniqueId("block", block.type);
+  const extensions = { ...(block.extensions ?? {}) };
+
+  if (block.type === "paragraph") return { ...block, id, extensions };
+  if (block.type === "note") return { ...block, id, extensions };
+  if (block.type === "caution") return { ...block, id, extensions };
+  if (block.type === "qc") return { ...block, id, extensions };
+  if (block.type === "recipe")
+    return {
+      ...block,
+      id,
+      items: block.items.map((item) => ({ ...item })),
+      extensions
+    };
+  if (block.type === "timeline")
+    return {
+      ...block,
+      id,
+      stages: block.stages.map((stage) => ({ ...stage })),
+      extensions
+    };
+  if (block.type === "link") return { ...block, id, extensions };
+  if (block.type === "table")
+    return {
+      ...block,
+      id,
+      columns: [...block.columns],
+      rows: block.rows.map((row) => [...row]),
+      extensions
+    };
+  if (block.type === "fileReference") return { ...block, id, extensions };
+  return {
+    ...block,
+    id,
+    thenStepIds: [...block.thenStepIds],
+    extensions
+  };
+};
