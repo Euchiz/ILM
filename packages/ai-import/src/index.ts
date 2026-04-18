@@ -2,7 +2,7 @@ export const AI_IMPORT_PANEL_TITLE = "Instructions for AI-assisted protocol impo
 
 export const AI_IMPORT_RULES = [
   "Output one complete valid JSON object only. No markdown fences. No commentary.",
-  "The output must be ready to save directly as a downloadable .json file for Protocol Manager import.",
+  "The output must be saved directly as a downloadable .json file.",
   "Do not split the result across sections, snippets, or multiple alternatives.",
   "Preserve the original procedure content as faithfully as possible.",
   "Organize the protocol into protocol metadata, sections, subsections if needed, ordered steps, and typed blocks.",
