@@ -29,6 +29,14 @@ npm run build
 npm run typecheck
 ```
 
+## Publishing
+
+This app is set up for GitHub Pages deployment at:
+
+`https://euchiz.github.io/ILM/`
+
+The GitHub Actions workflow builds the app with `VITE_BASE_PATH=/ILM/` so the generated asset URLs work correctly when served from the repository project site path.
+
 ## Data model principles
 
 - canonical JSON format
