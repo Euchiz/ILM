@@ -42,3 +42,12 @@ npm run dev
 ```
 
 Then open the local URL shown by Vite.
+
+## GitHub Pages
+
+The Protocol Manager app is configured to deploy to GitHub Pages from the `main` branch via GitHub Actions.
+
+- Production URL: `https://euchiz.github.io/ILM/`
+- Workflow file: `.github/workflows/deploy-protocol-manager-pages.yml`
+
+For local development, the app still runs at `/`. For the GitHub Pages build, the workflow sets `VITE_BASE_PATH=/ILM/` so static assets resolve correctly on the project site URL.
