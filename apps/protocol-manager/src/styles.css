@@ -226,6 +226,22 @@ label {
   gap: 0.7rem;
 }
 
+.quick-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(39, 39, 39, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.field-label {
+  font-size: 0.92rem;
+  color: #343434;
+}
+
 .editor-stack,
 .transfer-stack {
   display: grid;
@@ -301,6 +317,10 @@ label {
   padding: 1rem;
 }
 
+.outline-card.dragging {
+  box-shadow: 0 22px 48px rgba(83, 73, 56, 0.16);
+}
+
 .outline-card.level-1 {
   margin-left: 1rem;
 }
@@ -316,7 +336,7 @@ label {
 
 .outline-card-header {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto auto 1fr auto;
   gap: 0.75rem;
   align-items: start;
 }
@@ -368,19 +388,35 @@ label {
 
 .outline-step-pill {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 0.8rem;
   align-items: center;
   width: 100%;
   border-radius: 18px;
   text-align: left;
   padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(39, 39, 39, 0.09);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .outline-step-pill.selected {
   background: #212121;
   color: #f8f4ec;
   border-color: #212121;
+}
+
+.outline-step-content {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
 }
 
 .outline-step-index {
@@ -413,6 +449,72 @@ label {
   height: 2rem;
   padding: 0;
   border-radius: 50%;
+}
+
+.drag-handle,
+.menu-trigger,
+.quick-action-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  line-height: 1;
+}
+
+.drag-handle {
+  width: 2.1rem;
+  min-width: 2.1rem;
+  padding: 0;
+  cursor: grab;
+  letter-spacing: -0.08em;
+}
+
+.drag-handle.step {
+  align-self: stretch;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.menu-trigger,
+.quick-action-trigger {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.menu-trigger.step {
+  padding-inline: 0.68rem;
+}
+
+.action-menu {
+  z-index: 40;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 11.5rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(39, 39, 39, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 22px 48px rgba(83, 73, 56, 0.18);
+}
+
+.action-menu-item {
+  justify-content: flex-start;
+  border: none;
+  background: transparent;
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+}
+
+.action-menu-item:hover:not(:disabled) {
+  background: rgba(33, 33, 33, 0.06);
+  border-color: transparent;
+  transform: none;
+}
+
+.action-menu-item.danger {
+  color: #8b4132;
 }
 
 .ilm-tag {

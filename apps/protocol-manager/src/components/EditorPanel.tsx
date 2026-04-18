@@ -16,6 +16,7 @@ import {
   updateProtocol,
   updateSection
 } from "../state/protocolState";
+import { ActionMenu } from "./ActionMenu";
 
 interface EditorPanelProps {
   doc: ProtocolDocument;
@@ -273,43 +274,33 @@ const StepEditor = ({
           <input type="checkbox" checked={Boolean(step.optional)} onChange={(event) => saveStep({ ...step, optional: event.target.checked || undefined })} />
           Mark this step as optional
         </label>
-        <label>
-          Add block
-          <select
-            className="field"
-            defaultValue=""
-            onChange={(event) => {
-              if (!event.target.value) return;
-              onDocChange(addBlockToStep(doc, sectionId, step.id, event.target.value as BlockType));
-              event.currentTarget.value = "";
-            }}
-          >
-            <option value="">Select block type</option>
-            {BLOCK_TYPES.map((type) => (
-              <option value={type} key={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="quick-actions-row">
+          <span className="field-label">Add block</span>
+          <ActionMenu
+            buttonClassName="quick-action-trigger"
+            label="+ Block"
+            items={BLOCK_TYPES.map((type) => ({
+              label: `Add ${type}`,
+              onSelect: () => onDocChange(addBlockToStep(doc, sectionId, step.id, type))
+            }))}
+          />
+        </div>
       </div>
 
       {step.blocks.map((block, index) => (
         <div className="card" key={block.id}>
           <div className="card-header">
             <strong>{block.type} block</strong>
-            <div className="mini-toolbar">
-              <button onClick={() => moveBlock(index, "up")} disabled={index === 0}>
-                Up
-              </button>
-              <button onClick={() => moveBlock(index, "down")} disabled={index === step.blocks.length - 1}>
-                Down
-              </button>
-              <button onClick={() => duplicateBlock(index)}>Duplicate</button>
-              <button onClick={() => removeBlock(index)} disabled={step.blocks.length === 1}>
-                Remove
-              </button>
-            </div>
+            <ActionMenu
+              buttonClassName="menu-trigger"
+              label="..."
+              items={[
+                { label: "Move up", onSelect: () => moveBlock(index, "up"), disabled: index === 0 },
+                { label: "Move down", onSelect: () => moveBlock(index, "down"), disabled: index === step.blocks.length - 1 },
+                { label: "Duplicate block", onSelect: () => duplicateBlock(index) },
+                { label: "Remove block", onSelect: () => removeBlock(index), disabled: step.blocks.length === 1, tone: "danger" }
+              ]}
+            />
           </div>
           <BlockEditor block={block} allStepIds={collectStepIds(doc)} onChange={(next) => updateBlock(index, next)} />
         </div>
@@ -668,3 +659,4 @@ const collectStepIds = (doc: ProtocolDocument): string[] => {
   visit(doc.protocol.sections);
   return ids;
 };
+
