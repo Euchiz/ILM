@@ -10,10 +10,29 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { ProtocolSection, ProtocolStep } from "@ilm/types";
+import type { ProtocolSection, ProtocolStep, StepKind } from "@ilm/types";
 import { Tag } from "@ilm/ui";
+import {
+  Play,
+  FlaskConical,
+  CheckCircle,
+  EyeOff,
+  PauseCircle,
+  Trash2,
+  BarChart2
+} from "lucide-react";
 import type { Selection } from "../state/protocolState";
 import { ActionMenu } from "./ActionMenu";
+
+const STEP_KIND_ICONS: Record<StepKind, React.ReactNode> = {
+  action: <Play size={13} />,
+  preparation: <FlaskConical size={13} />,
+  qc: <CheckCircle size={13} />,
+  optional: <EyeOff size={13} />,
+  pause: <PauseCircle size={13} />,
+  cleanup: <Trash2 size={13} />,
+  analysis: <BarChart2 size={13} />
+};
 
 interface OutlinePanelProps {
   sections: ProtocolSection[];
@@ -315,7 +334,10 @@ const SortableStepPill = ({
         <span className="outline-step-index">{sectionPath}.{index + 1}</span>
         <span className="outline-step-copy">
           <strong>{step.title}</strong>
-          <span>{step.stepKind}</span>
+          <span className="outline-step-kind">
+            {STEP_KIND_ICONS[step.stepKind]}
+            {step.stepKind}
+          </span>
         </span>
       </button>
       <ActionMenu

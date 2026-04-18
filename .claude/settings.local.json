@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(git -C /mnt/isilon/wang_lab/zac/projects/ILM remote -v)",
+      "Bash(git init *)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git -C /mnt/isilon/wang_lab/zac/projects/ILM log --oneline -5)",
+      "Bash(npm --version)",
+      "Bash(singularity exec *)",
+      "Bash(git -C /mnt/isilon/wang_lab/zac/projects/ILM status)",
+      "Bash(git -C /mnt/isilon/wang_lab/zac/projects/ILM diff)",
+      "Bash(git -C /mnt/isilon/wang_lab/zac/projects/ILM add CLAUDE.md package-lock.json)",
+      "Bash(git -C /mnt/isilon/wang_lab/zac/projects/ILM commit -m ' *)",
+      "Bash(git *)",
+      "Read(//home/zouy1/.ssh/**)",
+      "Bash(ssh *)",
+      "Bash(gh issue *)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

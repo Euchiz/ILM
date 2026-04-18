@@ -10,6 +10,7 @@ import { EditorPanel } from "./components/EditorPanel";
 import { ImportExportPanel } from "./components/ImportExportPanel";
 import { OutlinePanel } from "./components/OutlinePanel";
 import { PreviewPanel } from "./components/PreviewPanel";
+import { StepEditorModal } from "./components/StepEditorModal";
 import {
   addSection,
   addStep,
@@ -75,6 +76,7 @@ export const App = () => {
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
   const [activeTab, setActiveTab] = useState<AppTab>("author");
   const [activeModule, setActiveModule] = useState<ActiveModule>("home");
+  const [stepModalOpen, setStepModalOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -178,6 +180,7 @@ export const App = () => {
         }
 
         setSelection({ type: "step", sectionId, stepId });
+        setStepModalOpen(true);
         return [...current, stepId];
       });
       return;
@@ -185,6 +188,7 @@ export const App = () => {
 
     setSelection({ type: "step", sectionId, stepId });
     setSelectedStepIds([stepId]);
+    setStepModalOpen(true);
   };
 
   const importParsed = (value: unknown) => {
@@ -479,14 +483,14 @@ export const App = () => {
               <Panel title="Details">
                 <div className="panel-content">
                   <p className="section-intro">
-                    Refine the selected object on the right. Blocks support multi-selection, copy, cut, and paste so you can restructure large steps faster.
+                    Refine the selected object on the right. Click any step pill to open the step editor. Blocks support multi-selection, copy, cut, and paste.
                   </p>
                   <EditorPanel
                     doc={doc}
-                    selection={selection}
-                    selectedBlockIds={selection.type === "step" && blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
-                    canPasteBlocks={blockClipboard.length > 0}
-                    clipboardBlockCount={blockClipboard.length}
+                    selection={selection.type === "step" ? { type: "protocol" } : selection}
+                    selectedBlockIds={[]}
+                    canPasteBlocks={false}
+                    clipboardBlockCount={0}
                     onDocChange={updateDoc}
                     onSetSelectedBlockIds={handleSetSelectedBlockIds}
                     onClearBlockSelection={clearBlockSelection}
@@ -494,8 +498,30 @@ export const App = () => {
                     onCopyBlocks={handleCopyBlocks}
                     onPasteBlocks={handlePasteBlocks}
                   />
+                  {selection.type === "step" && (
+                    <button className="open-step-editor-btn" onClick={() => setStepModalOpen(true)}>
+                      Open step editor
+                    </button>
+                  )}
                 </div>
               </Panel>
+
+              {stepModalOpen && selection.type === "step" && (
+                <StepEditorModal
+                  doc={doc}
+                  selection={selection}
+                  selectedBlockIds={blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
+                  canPasteBlocks={blockClipboard.length > 0}
+                  clipboardBlockCount={blockClipboard.length}
+                  onDocChange={updateDoc}
+                  onSetSelectedBlockIds={handleSetSelectedBlockIds}
+                  onClearBlockSelection={clearBlockSelection}
+                  onCutBlocks={handleCutBlocks}
+                  onCopyBlocks={handleCopyBlocks}
+                  onPasteBlocks={handlePasteBlocks}
+                  onClose={() => setStepModalOpen(false)}
+                />
+              )}
             </section>
           )}
 

@@ -1,4 +1,23 @@
-import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
+import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep, StepKind } from "@ilm/types";
+import {
+  Play,
+  FlaskConical,
+  CheckCircle,
+  EyeOff,
+  PauseCircle,
+  Trash2,
+  BarChart2
+} from "lucide-react";
+
+const STEP_KIND_ICONS: Record<StepKind, React.ReactNode> = {
+  action: <Play size={14} />,
+  preparation: <FlaskConical size={14} />,
+  qc: <CheckCircle size={14} />,
+  optional: <EyeOff size={14} />,
+  pause: <PauseCircle size={14} />,
+  cleanup: <Trash2 size={14} />,
+  analysis: <BarChart2 size={14} />
+};
 
 export const PreviewPanel = ({ doc }: { doc: ProtocolDocument }) => {
   const renderBlock = (block: ProtocolBlock) => {
@@ -15,13 +34,14 @@ export const PreviewPanel = ({ doc }: { doc: ProtocolDocument }) => {
     }
     if (block.type === "recipe") {
       return (
-        <div className="preview-subcard">
+        <div className="preview-subcard preview-subcard-recipe">
           <strong>Recipe: {block.title || "Mixture"}</strong>
           <ul>
             {block.items.map((item, idx) => (
               <li key={idx}>
-                {item.component}: {item.quantity}
-                {item.notes ? ` (${item.notes})` : ""}
+                <span className="recipe-component">{item.component}</span>
+                <span className="recipe-quantity">{item.quantity}</span>
+                {item.notes ? <span className="recipe-notes">{item.notes}</span> : null}
               </li>
             ))}
           </ul>
@@ -32,15 +52,19 @@ export const PreviewPanel = ({ doc }: { doc: ProtocolDocument }) => {
       return (
         <div className="preview-subcard">
           <strong>Timeline</strong>
-          <ol>
+          <div className="timeline-track">
             {block.stages.map((stage, idx) => (
-              <li key={idx}>
-                {stage.label} - {stage.duration}
-                {stage.temperature ? ` at ${stage.temperature}` : ""}
-                {stage.details ? ` (${stage.details})` : ""}
-              </li>
+              <div className="timeline-stage" key={idx}>
+                <div className="timeline-stage-bar" />
+                <div className="timeline-stage-label">{stage.label}</div>
+                <div className="timeline-stage-meta">
+                  <span>{stage.duration}</span>
+                  {stage.temperature ? <span>{stage.temperature}</span> : null}
+                </div>
+                {stage.details ? <div className="timeline-stage-details">{stage.details}</div> : null}
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       );
     }
@@ -86,6 +110,7 @@ export const PreviewPanel = ({ doc }: { doc: ProtocolDocument }) => {
   const renderStep = (step: ProtocolStep, label: string) => (
     <article key={step.id} className={`preview-step kind-${step.stepKind}`}>
       <h4>
+        <span className="preview-step-kind-icon">{STEP_KIND_ICONS[step.stepKind]}</span>
         {label} {step.title} <small>({step.stepKind})</small>
       </h4>
       {step.blocks.map((block) => (
