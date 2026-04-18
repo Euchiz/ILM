@@ -16,50 +16,72 @@ export const OutlinePanel = ({ sections, selection, onSelect }: OutlinePanelProp
     setCollapsedIds((current) => (current.includes(sectionId) ? current.filter((id) => id !== sectionId) : [...current, sectionId]));
   };
 
-  const renderSection = (section: ProtocolSection, level = 0) => {
+  const renderSection = (section: ProtocolSection, sectionPath: string, level = 0) => {
     const isCollapsed = collapsedIds.includes(section.id);
     const isSectionSelected = selection.type === "section" && selection.sectionId === section.id;
 
     return (
-      <div key={section.id} style={{ marginLeft: level * 16 }}>
-        <div className={`tree-row ${isSectionSelected ? "active" : ""}`}>
+      <article className={`outline-card level-${level} ${isSectionSelected ? "selected" : ""}`} key={section.id}>
+        <div className="outline-card-header">
           <button className="collapse-toggle" onClick={() => toggleCollapsed(section.id)}>
             {isCollapsed ? "+" : "-"}
           </button>
-          <button className="outline-item" onClick={() => onSelect({ type: "section", sectionId: section.id })}>
-            {section.title}
+          <button className="outline-card-title" onClick={() => onSelect({ type: "section", sectionId: section.id })}>
+            <span className="outline-marker">Section {sectionPath}</span>
+            <strong>{section.title}</strong>
+            {section.description ? <small>{section.description}</small> : null}
           </button>
+        </div>
+
+        <div className="outline-card-tags">
           <Tag label={`${section.steps.length} steps`} tone="neutral" />
+          {section.sections.length > 0 ? <Tag label={`${section.sections.length} subsections`} tone="info" /> : null}
         </div>
 
         {!isCollapsed && (
-          <div>
-            {section.steps.map((step) => {
-              const isStepSelected = selection.type === "step" && selection.stepId === step.id;
+          <div className="outline-card-body">
+            {section.steps.length > 0 ? (
+              <div className="outline-step-list">
+                {section.steps.map((step, index) => {
+                  const isStepSelected = selection.type === "step" && selection.stepId === step.id;
 
-              return (
-                <div className={`tree-row step-row ${isStepSelected ? "active" : ""}`} key={step.id}>
-                  <span className="tree-spacer" />
-                  <button className="outline-item step" onClick={() => onSelect({ type: "step", sectionId: section.id, stepId: step.id })}>
-                    {step.title}
-                  </button>
-                  <Tag label={step.stepKind} tone={step.stepKind === "qc" ? "warning" : "info"} />
-                </div>
-              );
-            })}
-            {section.sections.map((subsection) => renderSection(subsection, level + 1))}
+                  return (
+                    <button
+                      className={isStepSelected ? "outline-step-pill selected" : "outline-step-pill"}
+                      key={step.id}
+                      onClick={() => onSelect({ type: "step", sectionId: section.id, stepId: step.id })}
+                    >
+                      <span className="outline-step-index">{sectionPath}.{index + 1}</span>
+                      <span className="outline-step-copy">
+                        <strong>{step.title}</strong>
+                        <span>{step.stepKind}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="helper-text">No steps in this section yet.</p>
+            )}
+
+            {section.sections.length > 0 ? (
+              <div className="outline-subsections">
+                {section.sections.map((subsection, index) => renderSection(subsection, `${sectionPath}.${index + 1}`, level + 1))}
+              </div>
+            ) : null}
           </div>
         )}
-      </div>
+      </article>
     );
   };
 
   return (
     <div className="outline-tree">
-      <button className={`outline-root ${selection.type === "protocol" ? "active" : ""}`} onClick={() => onSelect({ type: "protocol" })}>
-        Protocol metadata
+      <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={() => onSelect({ type: "protocol" })}>
+        <span className="outline-marker">Protocol</span>
+        <strong>{selection.type === "protocol" ? "Editing metadata" : "Open protocol metadata"}</strong>
       </button>
-      {sections.map((section) => renderSection(section))}
+      {sections.map((section, index) => renderSection(section, `${index + 1}`))}
     </div>
   );
 };

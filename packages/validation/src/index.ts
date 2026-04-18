@@ -56,26 +56,23 @@ const equipmentSchema = z
   })
   .strict();
 
-const blockSchema = z
-  .object({
-    id: z.string().min(1),
-    type: blockTypeSchema,
-    extensions: extensionSchema
-  })
-  .and(
-    z.union([
-      z.object({ type: z.literal("paragraph"), text: z.string() }).strict(),
-      z.object({ type: z.literal("note"), text: z.string() }).strict(),
-      z.object({ type: z.literal("caution"), text: z.string(), severity: z.enum(["low", "medium", "high"]).optional() }).strict(),
-      z.object({ type: z.literal("qc"), checkpoint: z.string().min(1), acceptanceCriteria: z.string().optional() }).strict(),
-      z.object({ type: z.literal("recipe"), title: z.string().optional(), items: z.array(recipeItemSchema).min(1) }).strict(),
-      z.object({ type: z.literal("timeline"), stages: z.array(timelineStageSchema).min(1) }).strict(),
-      z.object({ type: z.literal("link"), label: z.string().min(1), url: z.string().url() }).strict(),
-      z.object({ type: z.literal("table"), columns: z.array(z.string().min(1)).min(1), rows: z.array(z.array(z.string())) }).strict(),
-      z.object({ type: z.literal("fileReference"), label: z.string().min(1), path: z.string().min(1) }).strict(),
-      z.object({ type: z.literal("branch"), condition: z.string().min(1), thenStepIds: z.array(z.string().min(1)) }).strict()
-    ])
-  );
+const baseBlockSchema = {
+  id: z.string().min(1),
+  extensions: extensionSchema
+} as const;
+
+const blockSchema = z.discriminatedUnion("type", [
+  z.object({ ...baseBlockSchema, type: z.literal("paragraph"), text: z.string() }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("note"), text: z.string() }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("caution"), text: z.string(), severity: z.enum(["low", "medium", "high"]).optional() }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("qc"), checkpoint: z.string().min(1), acceptanceCriteria: z.string().optional() }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("recipe"), title: z.string().optional(), items: z.array(recipeItemSchema).min(1) }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("timeline"), stages: z.array(timelineStageSchema).min(1) }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("link"), label: z.string().min(1), url: z.string().url() }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("table"), columns: z.array(z.string().min(1)).min(1), rows: z.array(z.array(z.string())) }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("fileReference"), label: z.string().min(1), path: z.string().min(1) }).strict(),
+  z.object({ ...baseBlockSchema, type: z.literal("branch"), condition: z.string().min(1), thenStepIds: z.array(z.string().min(1)) }).strict()
+]);
 
 const stepSchema: z.ZodType<ProtocolStep> = z.lazy(() =>
   z
