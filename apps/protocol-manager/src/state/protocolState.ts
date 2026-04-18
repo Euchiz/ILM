@@ -111,6 +111,21 @@ export const moveSection = (doc: ProtocolDocument, sectionId: string, direction:
   }
 });
 
+export const reorderSection = (
+  doc: ProtocolDocument,
+  parentSectionId: string | null,
+  sectionId: string,
+  targetSectionId: string
+): ProtocolDocument => ({
+  ...doc,
+  protocol: {
+    ...doc.protocol,
+    sections: mapSectionLists(doc.protocol.sections, parentSectionId, (siblings) =>
+      moveItemToTarget(siblings, sectionId, targetSectionId)
+    )
+  }
+});
+
 export const addStep = (doc: ProtocolDocument, sectionId: string, title: string, stepKind: StepKind = "action"): ProtocolDocument => {
   const newStep: ProtocolStep = {
     id: createUniqueId("step", title || "step"),
@@ -176,6 +191,22 @@ export const moveStep = (
   }
 });
 
+export const reorderStep = (
+  doc: ProtocolDocument,
+  sectionId: string,
+  stepId: string,
+  targetStepId: string
+): ProtocolDocument => ({
+  ...doc,
+  protocol: {
+    ...doc.protocol,
+    sections: mapSections(doc.protocol.sections, sectionId, (section) => ({
+      ...section,
+      steps: moveItemToTarget(section.steps, stepId, targetStepId)
+    }))
+  }
+});
+
 export const addBlockToStep = (doc: ProtocolDocument, sectionId: string, stepId: string, blockType: BlockType): ProtocolDocument => {
   const block = createBlock(blockType);
   return {
@@ -226,6 +257,19 @@ const mutateSections = (
   }));
 };
 
+const mapSectionLists = (
+  sections: ProtocolSection[],
+  parentSectionId: string | null,
+  mapFn: (siblings: ProtocolSection[]) => ProtocolSection[]
+): ProtocolSection[] => {
+  if (parentSectionId === null) return mapFn(sections);
+
+  return sections.map((section) => ({
+    ...section,
+    sections: section.id === parentSectionId ? mapFn(section.sections) : mapSectionLists(section.sections, parentSectionId, mapFn)
+  }));
+};
+
 const removeSection = (sections: ProtocolSection[], sectionId: string): ProtocolSection[] =>
   sections
     .filter((section) => section.id !== sectionId)
@@ -236,6 +280,17 @@ const moveInArray = <T,>(items: T[], index: number, direction: "up" | "down"): T
   if (target < 0 || target >= items.length) return items;
   const next = [...items];
   [next[index], next[target]] = [next[target], next[index]];
+  return next;
+};
+
+const moveItemToTarget = <T extends { id: string }>(items: T[], itemId: string, targetId: string): T[] => {
+  const fromIndex = items.findIndex((item) => item.id === itemId);
+  const targetIndex = items.findIndex((item) => item.id === targetId);
+  if (fromIndex === -1 || targetIndex === -1 || fromIndex === targetIndex) return items;
+
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(targetIndex, 0, moved);
   return next;
 };
 

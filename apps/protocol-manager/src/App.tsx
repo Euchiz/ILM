@@ -19,6 +19,8 @@ import {
   duplicateStep,
   moveSection,
   moveStep,
+  reorderSection,
+  reorderStep,
   type Selection
 } from "./state/protocolState";
 
@@ -256,7 +258,27 @@ export const App = () => {
                       Delete
                     </button>
                   </div>
-                  <OutlinePanel sections={doc.protocol.sections} selection={selection} onSelect={setSelection} />
+                  <OutlinePanel
+                    sections={doc.protocol.sections}
+                    selection={selection}
+                    onSelect={setSelection}
+                    onReorderSection={(parentSectionId, sectionId, targetSectionId) =>
+                      updateDoc(reorderSection(doc, parentSectionId, sectionId, targetSectionId))
+                    }
+                    onReorderStep={(sectionId, stepId, targetStepId) => updateDoc(reorderStep(doc, sectionId, stepId, targetStepId))}
+                    onAddSubsection={(sectionId) => updateDoc(addSection(doc, "New subsection", sectionId))}
+                    onAddStep={(sectionId) => updateDoc(addStep(doc, sectionId, "New step"))}
+                    onDuplicateSection={(sectionId) => updateDoc(duplicateSection(doc, sectionId))}
+                    onDeleteSection={(sectionId) => {
+                      updateDoc(deleteSection(doc, sectionId));
+                      resetSelection();
+                    }}
+                    onDuplicateStep={(sectionId, stepId) => updateDoc(duplicateStep(doc, sectionId, stepId))}
+                    onDeleteStep={(sectionId, stepId) => {
+                      updateDoc(deleteStep(doc, sectionId, stepId));
+                      setSelection({ type: "section", sectionId });
+                    }}
+                  />
                 </div>
               </Panel>
 
