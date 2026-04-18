@@ -65,6 +65,14 @@ export const ImportExportPanel = ({
         className="field"
       />
 
+      {status.length > 0 && (
+        <ul className="status-list" aria-live="polite">
+          {status.map((line, idx) => (
+            <li key={idx}>{line}</li>
+          ))}
+        </ul>
+      )}
+
       <div className="toolbar">
         <button onClick={onImportText}>Import pasted JSON</button>
         <label className="file-input">
@@ -92,13 +100,5 @@ export const ImportExportPanel = ({
       </div>
       <textarea readOnly rows={12} value={AI_IMPORT_INSTRUCTIONS_TEXT} className="field" />
     </section>
-
-    {status.length > 0 && (
-      <ul className="status-list">
-        {status.map((line, idx) => (
-          <li key={idx}>{line}</li>
-        ))}
-      </ul>
-    )}
   </div>
 );

@@ -138,16 +138,17 @@ export interface ValidationResult {
 
 export const validateProtocolDocument = (input: unknown, options: ValidationOptions = {}): ValidationResult => {
   const mode = options.mode ?? "strict";
-  const parsed = protocolSchema.safeParse(input);
+  const coerced = mode === "assisted" ? coerceAssistedImport(input) : { value: input, warnings: [] as string[] };
+  const parsed = protocolSchema.safeParse(coerced.value);
   if (!parsed.success) {
     return {
       success: false,
       errors: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`),
-      warnings: []
+      warnings: coerced.warnings
     };
   }
 
-  const warnings = collectWarnings(parsed.data);
+  const warnings = [...coerced.warnings, ...collectWarnings(parsed.data)];
   const errors = collectSemanticErrors(parsed.data);
 
   if (mode === "strict" && warnings.length > 0) {
@@ -164,6 +165,49 @@ export const validateProtocolDocument = (input: unknown, options: ValidationOpti
   }
 
   return { success: true, errors: [], warnings, data: parsed.data };
+};
+
+const coerceAssistedImport = (input: unknown): { value: unknown; warnings: string[] } => {
+  if (!isRecord(input) || !isRecord(input.protocol)) {
+    return { value: input, warnings: [] };
+  }
+
+  const warnings: string[] = [];
+  const now = new Date().toISOString();
+  const protocol = input.protocol;
+
+  const missingProtocolFields = ["createdAt", "updatedAt", "authors", "tags", "reagents", "equipment"].filter(
+    (key) => !(key in protocol)
+  );
+  if (missingProtocolFields.length > 0) {
+    warnings.push(`Assisted import filled missing protocol fields: ${missingProtocolFields.join(", ")}.`);
+  }
+
+  if (hasNonCanonicalStepFields(protocol.sections)) {
+    warnings.push("Assisted import removed noncanonical AI fields such as step order metadata.");
+  }
+
+  const normalized = {
+    schemaVersion:
+      typeof input.schemaVersion === "string" && input.schemaVersion.length > 0 ? input.schemaVersion : PROTOCOL_SCHEMA_VERSION,
+    protocol: {
+      id: asNonEmptyString(protocol.id),
+      title: asNonEmptyString(protocol.title),
+      description: asOptionalString(protocol.description),
+      createdAt: asIsoDate(protocol.createdAt) ?? now,
+      updatedAt: asIsoDate(protocol.updatedAt) ?? now,
+      authors: asStringArray(protocol.authors),
+      tags: asStringArray(protocol.tags),
+      metadata: isRecord(protocol.metadata) ? protocol.metadata : {},
+      reagents: normalizeReagents(protocol.reagents),
+      equipment: normalizeEquipment(protocol.equipment),
+      sections: normalizeSections(protocol.sections, warnings),
+      extensions: isRecord(protocol.extensions) ? protocol.extensions : {}
+    },
+    extensions: isRecord(input.extensions) ? input.extensions : {}
+  };
+
+  return { value: normalized, warnings };
 };
 
 export const normalizeProtocolDocument = (doc: ProtocolDocument): ProtocolDocument => ({
@@ -287,3 +331,292 @@ const walkSections = (
     walkSections(section.sections, `${path}.sections`, visit);
   });
 };
+
+const normalizeReagents = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((item, index) => ({
+      id: asNonEmptyString(item.id) || `reagent-${index + 1}`,
+      name: asNonEmptyString(item.name) || `Reagent ${index + 1}`,
+      supplier: asOptionalString(item.supplier),
+      catalogNumber: asOptionalString(item.catalogNumber),
+      notes: asOptionalString(item.notes),
+      extensions: isRecord(item.extensions) ? item.extensions : {}
+    }));
+};
+
+const normalizeEquipment = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((item, index) => ({
+      id: asNonEmptyString(item.id) || `equipment-${index + 1}`,
+      name: asNonEmptyString(item.name) || `Equipment ${index + 1}`,
+      model: asOptionalString(item.model),
+      notes: asOptionalString(item.notes),
+      extensions: isRecord(item.extensions) ? item.extensions : {}
+    }));
+};
+
+const normalizeSections = (value: unknown, warnings: string[]): ProtocolSection[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).map((section, index) => normalizeSectionInput(section, index, warnings));
+};
+
+const normalizeSectionInput = (section: Record<string, unknown>, index: number, warnings: string[]): ProtocolSection => ({
+  id: asNonEmptyString(section.id) || `section-${index + 1}`,
+  title: asNonEmptyString(section.title) || `Section ${index + 1}`,
+  description: asOptionalString(section.description),
+  sections: normalizeSections(section.sections, warnings),
+  steps: normalizeSteps(section.steps, warnings),
+  extensions: isRecord(section.extensions) ? section.extensions : {}
+});
+
+const normalizeSteps = (value: unknown, warnings: string[]): ProtocolStep[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).map((step, index) => normalizeStepInput(step, index, warnings));
+};
+
+const normalizeStepInput = (step: Record<string, unknown>, index: number, warnings: string[]): ProtocolStep => ({
+  id: asNonEmptyString(step.id) || `step-${index + 1}`,
+  title: asNonEmptyString(step.title) || `Step ${index + 1}`,
+  stepKind: asStepKind(step.stepKind),
+  optional: typeof step.optional === "boolean" ? step.optional : undefined,
+  blocks: normalizeBlocks(step.blocks, warnings),
+  extensions: isRecord(step.extensions) ? step.extensions : {}
+});
+
+const normalizeBlocks = (value: unknown, warnings: string[]) => {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).flatMap((block, index) => normalizeBlockInput(block, index, warnings));
+};
+
+const normalizeBlockInput = (block: Record<string, unknown>, index: number, warnings: string[]): ProtocolStep["blocks"] => {
+  const id = asNonEmptyString(block.id) || `block-${index + 1}`;
+  const extensions = isRecord(block.extensions) ? block.extensions : {};
+  const title = asOptionalString(block.title);
+
+  switch (block.type) {
+    case "paragraph":
+      return [{ id, type: "paragraph", text: asString(block.text), extensions }];
+    case "note":
+      return [{ id, type: "note", text: asString(block.text), extensions }];
+    case "caution":
+      return [
+        {
+          id,
+          type: "caution",
+          text: asString(block.text),
+          severity: asSeverity(block.severity),
+          extensions
+        }
+      ];
+    case "qc": {
+      const noteText = joinSentenceParts([asOptionalString(block.notes)]);
+      return [
+        {
+          id,
+          type: "qc",
+          checkpoint: asNonEmptyString(block.checkpoint) || asString(block.text),
+          acceptanceCriteria: asOptionalString(block.acceptanceCriteria),
+          extensions
+        },
+        ...createSupplementalNote(id, noteText)
+      ];
+    }
+    case "recipe": {
+      const noteText = joinSentenceParts([
+        asOptionalString(block.finalVolume) ? `Final volume: ${asOptionalString(block.finalVolume)}` : "",
+        asOptionalString(block.notes)
+      ]);
+      return [
+        {
+          id,
+          type: "recipe",
+          title: title ?? undefined,
+          items: normalizeRecipeItems(block.items),
+          extensions
+        },
+        ...createSupplementalNote(id, noteText)
+      ];
+    }
+    case "timeline":
+      return [
+        ...createSupplementalParagraph(id, title),
+        {
+          id,
+          type: "timeline",
+          stages: normalizeTimelineStages(block.stages),
+          extensions
+        }
+      ];
+    case "link":
+      return [
+        {
+          id,
+          type: "link",
+          label: asString(block.label),
+          url: asString(block.url),
+          extensions
+        }
+      ];
+    case "table":
+      return [
+        ...createSupplementalParagraph(id, title),
+        {
+          id,
+          type: "table",
+          columns: normalizeStringList(block.columns),
+          rows: normalizeTableRows(block.rows),
+          extensions
+        }
+      ];
+    case "fileReference":
+      return [
+        {
+          id,
+          type: "fileReference",
+          label: asString(block.label),
+          path: asString(block.path),
+          extensions
+        }
+      ];
+    case "branch":
+      if (Array.isArray(block.thenStepIds) || typeof block.condition === "string") {
+        return [
+          {
+            id,
+            type: "branch",
+            condition: asNonEmptyString(block.condition) || "Review branch logic",
+            thenStepIds: normalizeStringList(block.thenStepIds),
+            extensions
+          }
+        ];
+      }
+      if (Array.isArray(block.branches)) {
+        warnings.push(`Assisted import converted branch block "${id}" into a table because it used descriptive labels instead of step references.`);
+        return [
+          ...createSupplementalParagraph(id, title || "Branch conditions"),
+          {
+            id,
+            type: "table",
+            columns: ["Condition", "Value"],
+            rows: block.branches.filter(isRecord).map((entry) => [asString(entry.label), asString(entry.content)]),
+            extensions
+          }
+        ];
+      }
+      return createSupplementalNote(id, "Unsupported branch content was preserved as a note during assisted import.");
+    default:
+      warnings.push(`Assisted import converted unsupported block "${id}" into a note.`);
+      return createSupplementalNote(id, asString(block.text) || "Unsupported block content");
+  }
+};
+
+const normalizeRecipeItems = (value: unknown) => {
+  if (!Array.isArray(value)) return [{ component: "Unspecified", quantity: "Unspecified" }];
+  const items = value
+    .filter(isRecord)
+    .map((item, index) => ({
+      component: asNonEmptyString(item.component) || `Component ${index + 1}`,
+      quantity: asNonEmptyString(item.quantity) || "Unspecified",
+      notes: asOptionalString(item.notes)
+    }));
+  return items.length > 0 ? items : [{ component: "Unspecified", quantity: "Unspecified" }];
+};
+
+const normalizeTimelineStages = (value: unknown) => {
+  if (!Array.isArray(value)) return [{ label: "Unspecified stage", duration: "Unspecified" }];
+  const stages = value
+    .filter(isRecord)
+    .map((stage, index) => ({
+      label: asNonEmptyString(stage.label) || `Stage ${index + 1}`,
+      duration: asNonEmptyString(stage.duration) || "Unspecified",
+      temperature: asOptionalString(stage.temperature),
+      details: asOptionalString(stage.details)
+    }));
+  return stages.length > 0 ? stages : [{ label: "Unspecified stage", duration: "Unspecified" }];
+};
+
+const normalizeTableRows = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  return value.map((row) => (Array.isArray(row) ? row.map((cell) => `${cell ?? ""}`) : []));
+};
+
+const normalizeStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => `${item ?? ""}`).filter((item) => item.length > 0);
+};
+
+const createSupplementalNote = (baseId: string, text?: string) =>
+  text
+    ? [
+        {
+          id: `${baseId}-note`,
+          type: "note" as const,
+          text,
+          extensions: {}
+        }
+      ]
+    : [];
+
+const createSupplementalParagraph = (baseId: string, text?: string) =>
+  text
+    ? [
+        {
+          id: `${baseId}-title`,
+          type: "paragraph" as const,
+          text,
+          extensions: {}
+        }
+      ]
+    : [];
+
+const joinSentenceParts = (parts: Array<string | undefined>) => parts.filter((part): part is string => Boolean(part && part.trim())).join(" ");
+
+const hasNonCanonicalStepFields = (sections: unknown): boolean => {
+  if (!Array.isArray(sections)) return false;
+  return sections.some((section) => {
+    if (!isRecord(section)) return false;
+    const steps = Array.isArray(section.steps) ? section.steps : [];
+    const stepHasOrder = steps.some((step) => isRecord(step) && "order" in step);
+    return stepHasOrder || hasNonCanonicalStepFields(section.sections);
+  });
+};
+
+const asStepKind = (value: unknown): ProtocolStep["stepKind"] =>
+  value === "action" ||
+  value === "preparation" ||
+  value === "qc" ||
+  value === "optional" ||
+  value === "pause" ||
+  value === "cleanup" ||
+  value === "analysis"
+    ? value
+    : "action";
+
+const asSeverity = (value: unknown): "low" | "medium" | "high" | undefined =>
+  value === "low" || value === "medium" || value === "high" ? value : undefined;
+
+const asIsoDate = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
+const asStringArray = (value: unknown): string[] => (Array.isArray(value) ? value.map((item) => `${item ?? ""}`).filter(Boolean) : []);
+
+const asString = (value: unknown) => (typeof value === "string" ? value : `${value ?? ""}`);
+
+const asNonEmptyString = (value: unknown) => {
+  const text = asString(value).trim();
+  return text.length > 0 ? text : "";
+};
+
+const asOptionalString = (value: unknown) => {
+  const text = asNonEmptyString(value);
+  return text.length > 0 ? text : undefined;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
