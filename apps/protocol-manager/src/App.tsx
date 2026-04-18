@@ -3,6 +3,7 @@ import { Panel, Tag } from "@ilm/ui";
 import type { ProtocolDocument } from "@ilm/types";
 import { safeJsonParse, nowIso } from "@ilm/utils";
 import type { ValidationMode } from "@ilm/validation";
+import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
 import { normalizeProtocolDocument, validateProtocolDocument } from "@ilm/validation";
 import { createDefaultProtocol } from "./lib/defaultProtocol";
 import { EditorPanel } from "./components/EditorPanel";
@@ -22,6 +23,7 @@ import {
 } from "./state/protocolState";
 
 const STORAGE_KEY = "ilm.protocol-manager.document";
+type AppTab = "author" | "preview" | "transfer";
 
 export const App = () => {
   const [doc, setDoc] = useState<ProtocolDocument>(createDefaultProtocol);
@@ -29,6 +31,7 @@ export const App = () => {
   const [jsonText, setJsonText] = useState("");
   const [status, setStatus] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
+  const [activeTab, setActiveTab] = useState<AppTab>("author");
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -57,6 +60,7 @@ export const App = () => {
   }, [doc]);
 
   const exportedJson = useMemo(() => JSON.stringify(doc, null, 2), [doc]);
+  const templateJson = useMemo(() => JSON.stringify(createDefaultProtocol(), null, 2), []);
   const sectionCount = useMemo(() => countSections(doc.protocol.sections), [doc]);
   const stepCount = useMemo(() => countSteps(doc.protocol.sections), [doc]);
 
@@ -108,130 +112,153 @@ export const App = () => {
     if (selection.type === "step") updateDoc(moveStep(doc, selection.sectionId, selection.stepId, direction));
   };
 
+  const downloadTextFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="page-shell">
-      <nav className="top-nav" aria-label="Page sections">
-        <a href="#overview">Overview</a>
-        <a href="#outline">Outline</a>
-        <a href="#editor">Editor</a>
-        <a href="#preview">Preview</a>
-        <a href="#import-export">Import / Export</a>
-      </nav>
-
-      <section className="hero" id="overview">
-        <p className="hero-kicker">Integrated Lab Manager</p>
-        <h1>Protocol Manager</h1>
+      <header className="app-header">
+        <div>
+          <p className="hero-kicker">Integrated Lab Manager</p>
+          <h1 className="app-title">Protocol Manager</h1>
+        </div>
         <p className="hero-subtitle">
-          Build structured wet-lab protocols as readable, validated, machine-friendly records with a scientist-facing editor.
+          Write structured wet-lab protocols in focused tabs: authoring, print-ready preview, and transfer workflows.
         </p>
+      </header>
 
-        <div className="hero-links">
-          <a href="#outline">Outline</a>
-          <a href="#editor">Editor</a>
-          <a href="#preview">Preview</a>
-          <a href="#import-export">Import / Export</a>
-        </div>
-
-        <div className="hero-summary">
-          <p>
-            This module keeps protocol authoring local and frontend-first while preserving a canonical JSON document that can later plug into
-            the broader ILM ecosystem.
-          </p>
-          <div className="stat-row">
-            <Tag label={`${sectionCount} sections`} tone="neutral" />
-            <Tag label={`${stepCount} steps`} tone="info" />
-            <Tag label={`${doc.protocol.reagents.length} reagents`} tone="success" />
-            <Tag label={`${doc.protocol.equipment.length} equipment`} tone="neutral" />
-          </div>
-        </div>
-      </section>
-
-      <div className="section-stack">
-        <Panel title="Outline" >
-          <section id="outline" className="panel-content">
-            <p className="section-intro">
-              Shape the hierarchy first. Add sections, create subsections, and move through the protocol structure before refining the content.
-            </p>
-            <div className="toolbar">
-              <button onClick={() => updateDoc(addSection(doc, "New top-level section"))}>Add section</button>
-              <button onClick={() => selection.type === "section" && updateDoc(addSection(doc, "New subsection", selection.sectionId))} disabled={selection.type !== "section"}>
-                Add subsection
-              </button>
-              <button onClick={() => selection.type === "section" && updateDoc(addStep(doc, selection.sectionId, "New step"))} disabled={selection.type !== "section"}>
-                Add step
-              </button>
-              <button onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
-                Duplicate
-              </button>
-              <button onClick={() => handleMoveSelection("up")} disabled={selection.type === "protocol"}>
-                Move up
-              </button>
-              <button onClick={() => handleMoveSelection("down")} disabled={selection.type === "protocol"}>
-                Move down
-              </button>
-              <button onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
-                Delete
-              </button>
-            </div>
-            <OutlinePanel sections={doc.protocol.sections} selection={selection} onSelect={setSelection} />
-          </section>
-        </Panel>
-
-        <Panel title="Editor" >
-          <section id="editor" className="panel-content">
-            <p className="section-intro">
-              Edit the selected protocol object in place. Metadata, sections, steps, and structured scientific blocks all live in the same data model.
-            </p>
-            <EditorPanel doc={doc} selection={selection} onDocChange={updateDoc} />
-          </section>
-        </Panel>
-
-        <Panel title="Preview" >
-          <section id="preview" className="panel-content">
-            <p className="section-intro">
-              Review the protocol as a clean scientific document with readable sections, typed step cues, and formatted structured blocks.
-            </p>
-            <PreviewPanel doc={doc} />
-          </section>
-        </Panel>
-
-        <Panel title="Import / Export" >
-          <section id="import-export" className="panel-content">
-            <p className="section-intro">
-              Move between canonical JSON and the visual editor. Assisted mode accepts import warnings; strict mode blocks them.
-            </p>
-            <ImportExportPanel
-              importMode={importMode}
-              setImportMode={setImportMode}
-              jsonText={jsonText || exportedJson}
-              setJsonText={setJsonText}
-              onImportText={() => {
-                const parsed = safeJsonParse<unknown>(jsonText);
-                if (!parsed.ok) {
-                  setStatus([`Invalid JSON: ${parsed.error}`]);
-                  return;
-                }
-                importParsed(parsed.value);
-              }}
-              onFileUpload={async (file) => {
-                const text = await file.text();
-                setJsonText(text);
-                const parsed = safeJsonParse<unknown>(text);
-                if (!parsed.ok) {
-                  setStatus([`Invalid uploaded JSON: ${parsed.error}`]);
-                  return;
-                }
-                importParsed(parsed.value);
-              }}
-              onCopyExport={async () => {
-                await navigator.clipboard.writeText(exportedJson);
-                setStatus(["Exported JSON copied to clipboard."]);
-              }}
-              status={status}
-            />
-          </section>
-        </Panel>
+      <div className="tab-strip" role="tablist" aria-label="Protocol manager views">
+        <button className={activeTab === "author" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("author")} role="tab" aria-selected={activeTab === "author"}>
+          Author
+        </button>
+        <button className={activeTab === "preview" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("preview")} role="tab" aria-selected={activeTab === "preview"}>
+          Preview / Print
+        </button>
+        <button className={activeTab === "transfer" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("transfer")} role="tab" aria-selected={activeTab === "transfer"}>
+          Import / Export
+        </button>
       </div>
+
+      <div className="hero-summary">
+        <div className="stat-row">
+          <Tag label={`${sectionCount} sections`} tone="neutral" />
+          <Tag label={`${stepCount} steps`} tone="info" />
+          <Tag label={`${doc.protocol.reagents.length} reagents`} tone="success" />
+          <Tag label={`${doc.protocol.equipment.length} equipment`} tone="neutral" />
+        </div>
+      </div>
+
+      {activeTab === "author" && (
+        <section className="author-layout" aria-label="Authoring workspace">
+          <Panel title="Outline">
+            <div className="panel-content">
+              <p className="section-intro">
+                Build the protocol hierarchy first. The outline is interactive and grouped into section cards with nested steps.
+              </p>
+              <div className="toolbar">
+                <button onClick={() => updateDoc(addSection(doc, "New top-level section"))}>Add section</button>
+                <button onClick={() => selection.type === "section" && updateDoc(addSection(doc, "New subsection", selection.sectionId))} disabled={selection.type !== "section"}>
+                  Add subsection
+                </button>
+                <button onClick={() => selection.type === "section" && updateDoc(addStep(doc, selection.sectionId, "New step"))} disabled={selection.type !== "section"}>
+                  Add step
+                </button>
+                <button onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
+                  Duplicate
+                </button>
+                <button onClick={() => handleMoveSelection("up")} disabled={selection.type === "protocol"}>
+                  Move up
+                </button>
+                <button onClick={() => handleMoveSelection("down")} disabled={selection.type === "protocol"}>
+                  Move down
+                </button>
+                <button onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
+                  Delete
+                </button>
+              </div>
+              <OutlinePanel sections={doc.protocol.sections} selection={selection} onSelect={setSelection} />
+            </div>
+          </Panel>
+
+          <Panel title="Details">
+            <div className="panel-content">
+              <p className="section-intro">
+                Refine the selected object on the right. Metadata and structured blocks are edited in compact detail bubbles.
+              </p>
+              <EditorPanel doc={doc} selection={selection} onDocChange={updateDoc} />
+            </div>
+          </Panel>
+        </section>
+      )}
+
+      {activeTab === "preview" && (
+        <section className="single-tab" aria-label="Preview and print workspace">
+          <Panel title="Render Preview">
+            <div className="panel-content">
+              <div className="toolbar">
+                <button onClick={() => window.print()}>Print / Save as PDF</button>
+              </div>
+              <p className="section-intro">
+                Use your browser’s print dialog to save a PDF. The print stylesheet hides tabs and controls so the rendered protocol becomes the document.
+              </p>
+              <div className="print-surface">
+                <PreviewPanel doc={doc} />
+              </div>
+            </div>
+          </Panel>
+        </section>
+      )}
+
+      {activeTab === "transfer" && (
+        <section className="single-tab" aria-label="Import and export workspace">
+          <Panel title="Import / Export">
+            <div className="panel-content">
+              <ImportExportPanel
+                importMode={importMode}
+                setImportMode={setImportMode}
+                jsonText={jsonText}
+                setJsonText={setJsonText}
+                onImportText={() => {
+                  const parsed = safeJsonParse<unknown>(jsonText);
+                  if (!parsed.ok) {
+                    setStatus([`Invalid JSON: ${parsed.error}`]);
+                    return;
+                  }
+                  importParsed(parsed.value);
+                }}
+                onFileUpload={async (file) => {
+                  const text = await file.text();
+                  setJsonText(text);
+                  const parsed = safeJsonParse<unknown>(text);
+                  if (!parsed.ok) {
+                    setStatus([`Invalid uploaded JSON: ${parsed.error}`]);
+                    return;
+                  }
+                  importParsed(parsed.value);
+                }}
+                onCopyExport={async () => {
+                  await navigator.clipboard.writeText(exportedJson);
+                  setStatus(["Exported JSON copied to clipboard."]);
+                }}
+                onDownloadExport={() => downloadTextFile(`${doc.protocol.id || "protocol"}.json`, exportedJson)}
+                onCopyAiInstructions={async () => {
+                  await navigator.clipboard.writeText(AI_IMPORT_INSTRUCTIONS_TEXT);
+                  setStatus(["AI import instructions copied to clipboard."]);
+                }}
+                onDownloadTemplate={() => downloadTextFile("protocol-template-example.json", templateJson)}
+                status={status}
+              />
+            </div>
+          </Panel>
+        </section>
+      )}
     </main>
   );
 };
