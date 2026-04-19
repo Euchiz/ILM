@@ -42,8 +42,7 @@ interface OutlinePanelProps {
   onSelectProtocol: () => void;
   onSelectSection: (sectionId: string, options?: { toggle: boolean }) => void;
   onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
-  onClearStepSelection: () => void;
-  onClearSectionSelection: () => void;
+  onClearOutlineSelection: () => void;
   onReorderSection: (parentSectionId: string | null, sectionIds: string[], targetSectionId: string) => void;
   onMoveSteps: (stepIds: string[], destinationSectionId: string, targetStepId?: string) => void;
   onAddSubsection: (sectionId: string) => void;
@@ -66,8 +65,7 @@ export const OutlinePanel = ({
   onSelectProtocol,
   onSelectSection,
   onSelectStep,
-  onClearStepSelection,
-  onClearSectionSelection,
+  onClearOutlineSelection,
   onReorderSection,
   onMoveSteps,
   onAddSubsection,
@@ -153,32 +151,27 @@ export const OutlinePanel = ({
     </SortableContext>
   );
 
+  const handleBackgroundClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (
+      target.classList.contains("outline-tree") ||
+      target.classList.contains("outline-subsections") ||
+      target.classList.contains("outline-card-body")
+    ) {
+      onClearOutlineSelection();
+    }
+  };
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-      <div className="outline-tree">
+      <div className="outline-tree" onClick={handleBackgroundClick}>
         <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={onSelectProtocol}>
           <span className="outline-marker">Protocol</span>
           <strong>{selection.type === "protocol" ? "Editing metadata" : "Open protocol metadata"}</strong>
         </button>
         <p className="helper-text">
-          Drag steps or sections to reorganize the protocol. Use Shift/Ctrl/Cmd-click on titles to build a multi-selection. Use Ctrl/Cmd + C/X/V to copy, cut, paste.
+          Drag steps or sections to reorganize the protocol. Use Shift/Ctrl/Cmd-click on titles to build a multi-selection. Click empty space to clear it. Use Ctrl/Cmd + C/X/V to copy, cut, paste.
         </p>
-        {selectedStepIds.length > 1 ? (
-          <div className="outline-selection-bar">
-            <Tag label={`${selectedStepIds.length} steps selected`} tone="info" />
-            <button type="button" onClick={onClearStepSelection}>
-              Clear selection
-            </button>
-          </div>
-        ) : null}
-        {selectedSectionIds.length > 1 ? (
-          <div className="outline-selection-bar">
-            <Tag label={`${selectedSectionIds.length} sections selected`} tone="info" />
-            <button type="button" onClick={onClearSectionSelection}>
-              Clear selection
-            </button>
-          </div>
-        ) : null}
         {renderSectionList(sections, null)}
       </div>
     </DndContext>

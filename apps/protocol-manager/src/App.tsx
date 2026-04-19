@@ -598,8 +598,12 @@ export const App = () => {
                     onSelectProtocol={selectProtocol}
                     onSelectSection={selectSection}
                     onSelectStep={selectStep}
-                    onClearStepSelection={() => setSelectedStepIds(selection.type === "step" ? [selection.stepId] : [])}
-                    onClearSectionSelection={() => setSelectedSectionIds(selection.type === "section" ? [selection.sectionId] : [])}
+                    onClearOutlineSelection={() => {
+                      setSelection({ type: "protocol" });
+                      setSelectedStepIds([]);
+                      setSelectedSectionIds([]);
+                      clearBlockSelection();
+                    }}
                     onReorderSection={(parentSectionId, sectionIds, targetSectionId) =>
                       updateDoc(reorderSections(doc, parentSectionId, sectionIds, targetSectionId))
                     }

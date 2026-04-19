@@ -342,14 +342,11 @@ label {
   margin-left: 2rem;
 }
 
-.outline-card.selected {
-  border-color: rgba(33, 33, 33, 0.22);
-  box-shadow: 0 14px 34px rgba(83, 73, 56, 0.12);
-}
-
+.outline-card.selected,
 .outline-card.group-selected {
-  border-color: rgba(48, 70, 50, 0.32);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(221, 231, 216, 0.55) 100%);
+  border-color: rgba(120, 100, 70, 0.45);
+  background: linear-gradient(180deg, rgba(255, 250, 238, 0.98) 0%, rgba(240, 228, 200, 0.75) 100%);
+  box-shadow: 0 14px 34px rgba(120, 100, 70, 0.12);
 }
 
 .outline-card-header {
@@ -432,15 +429,11 @@ label {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.outline-step-pill.selected {
-  background: #212121;
-  color: #f8f4ec;
-  border-color: #212121;
-}
-
+.outline-step-pill.selected,
 .outline-step-pill.group-selected {
-  background: rgba(221, 231, 216, 0.92);
-  border-color: rgba(48, 70, 50, 0.22);
+  background: linear-gradient(180deg, rgba(255, 250, 238, 0.98) 0%, rgba(240, 228, 200, 0.85) 100%);
+  border-color: rgba(120, 100, 70, 0.45);
+  color: #232323;
 }
 
 .outline-step-content {
@@ -475,8 +468,9 @@ label {
   font-size: 0.8rem;
 }
 
-.outline-step-pill.selected .outline-step-index {
-  background: rgba(255, 255, 255, 0.16);
+.outline-step-pill.selected .outline-step-index,
+.outline-step-pill.group-selected .outline-step-index {
+  background: rgba(120, 100, 70, 0.18);
 }
 
 .outline-step-copy {
