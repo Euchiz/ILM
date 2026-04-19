@@ -407,6 +407,28 @@ export const App = () => {
   };
 
   useEffect(() => {
+    if (activeModule !== "protocol-manager" || activeTab !== "author") return;
+    if (selection.type === "protocol") return;
+    if (editorModalOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (event.shiftKey || event.metaKey || event.ctrlKey) return;
+      if (target.closest(".step-modal, [role='dialog'], [role='menu']")) return;
+      if (target.closest(".outline-tree button, .outline-tree a, .outline-tree input, .outline-tree textarea, .outline-tree select")) return;
+      if (target.closest(".outline-card.selected, .outline-card.group-selected, .outline-step-pill.selected, .outline-step-pill.group-selected")) return;
+      setSelection({ type: "protocol" });
+      setSelectedStepIds([]);
+      setSelectedSectionIds([]);
+      clearBlockSelection();
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeModule, activeTab, selection.type, editorModalOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
       const target = event.target as HTMLElement | null;
