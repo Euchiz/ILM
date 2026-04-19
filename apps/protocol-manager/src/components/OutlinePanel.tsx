@@ -6,6 +6,7 @@ import {
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -52,6 +53,17 @@ interface OutlinePanelProps {
   onDuplicateStep: (sectionId: string, stepId: string) => void;
   onDeleteStep: (sectionId: string, stepId: string) => void;
 }
+
+const typeAwareCollision: CollisionDetection = (args) => {
+  const activeType = args.active.data.current?.type;
+  const allowed = (t: unknown) => {
+    if (activeType === "section") return t === "section";
+    if (activeType === "step") return t === "step" || t === "section-drop";
+    return true;
+  };
+  const filtered = args.droppableContainers.filter((container) => allowed(container.data.current?.type));
+  return closestCenter({ ...args, droppableContainers: filtered });
+};
 
 const getSectionDragId = (sectionId: string) => `section:${sectionId}`;
 const getStepDragId = (stepId: string) => `step:${stepId}`;
@@ -160,7 +172,7 @@ export const OutlinePanel = ({
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={typeAwareCollision} onDragEnd={handleDragEnd}>
       <div className="outline-tree" onClick={handleBackgroundClick}>
         <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={onSelectProtocol}>
           <span className="outline-marker">Protocol</span>
