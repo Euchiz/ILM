@@ -6,7 +6,6 @@ import type { ValidationMode } from "@ilm/validation";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
 import { normalizeProtocolDocument, validateProtocolDocument } from "@ilm/validation";
 import { createDefaultProtocol } from "./lib/defaultProtocol";
-import { EditorPanel } from "./components/EditorPanel";
 import { ImportExportPanel } from "./components/ImportExportPanel";
 import { OutlinePanel } from "./components/OutlinePanel";
 import { PreviewPanel } from "./components/PreviewPanel";
@@ -76,7 +75,7 @@ export const App = () => {
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
   const [activeTab, setActiveTab] = useState<AppTab>("author");
   const [activeModule, setActiveModule] = useState<ActiveModule>("home");
-  const [stepModalOpen, setStepModalOpen] = useState(false);
+  const [editorModalOpen, setEditorModalOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -149,12 +148,14 @@ export const App = () => {
     setSelection({ type: "protocol" });
     setSelectedStepIds([]);
     clearBlockSelection();
+    setEditorModalOpen(true);
   };
 
   const selectSection = (sectionId: string) => {
     setSelection({ type: "section", sectionId });
     setSelectedStepIds([]);
     clearBlockSelection();
+    setEditorModalOpen(true);
   };
 
   const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
@@ -180,7 +181,7 @@ export const App = () => {
         }
 
         setSelection({ type: "step", sectionId, stepId });
-        setStepModalOpen(true);
+        setEditorModalOpen(true);
         return [...current, stepId];
       });
       return;
@@ -188,7 +189,7 @@ export const App = () => {
 
     setSelection({ type: "step", sectionId, stepId });
     setSelectedStepIds([stepId]);
-    setStepModalOpen(true);
+    setEditorModalOpen(true);
   };
 
   const importParsed = (value: unknown) => {
@@ -428,11 +429,11 @@ export const App = () => {
           </div>
 
           {activeTab === "author" && (
-            <section className="author-layout" aria-label="Authoring workspace">
+            <section className="single-tab" aria-label="Authoring workspace">
               <Panel title="Outline">
                 <div className="panel-content">
                   <p className="section-intro">
-                    Build the protocol hierarchy first. Steps can now move across sections and subsections, and multi-selected steps can travel together.
+                    Build the protocol hierarchy first. Click any item to edit it in a centered floating editor. Steps can move across sections and subsections, and multi-selected steps can travel together.
                   </p>
                   <div className="toolbar">
                     <button onClick={() => updateDoc(addSection(doc, "New top-level section"))}>Add section</button>
@@ -480,37 +481,11 @@ export const App = () => {
                 </div>
               </Panel>
 
-              <Panel title="Details">
-                <div className="panel-content">
-                  <p className="section-intro">
-                    Refine the selected object on the right. Click any step pill to open the step editor. Blocks support multi-selection, copy, cut, and paste.
-                  </p>
-                  <EditorPanel
-                    doc={doc}
-                    selection={selection.type === "step" ? { type: "protocol" } : selection}
-                    selectedBlockIds={[]}
-                    canPasteBlocks={false}
-                    clipboardBlockCount={0}
-                    onDocChange={updateDoc}
-                    onSetSelectedBlockIds={handleSetSelectedBlockIds}
-                    onClearBlockSelection={clearBlockSelection}
-                    onCutBlocks={handleCutBlocks}
-                    onCopyBlocks={handleCopyBlocks}
-                    onPasteBlocks={handlePasteBlocks}
-                  />
-                  {selection.type === "step" && (
-                    <button className="open-step-editor-btn" onClick={() => setStepModalOpen(true)}>
-                      Open step editor
-                    </button>
-                  )}
-                </div>
-              </Panel>
-
-              {stepModalOpen && selection.type === "step" && (
+              {editorModalOpen && (
                 <StepEditorModal
                   doc={doc}
                   selection={selection}
-                  selectedBlockIds={blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
+                  selectedBlockIds={selection.type === "step" && blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
                   canPasteBlocks={blockClipboard.length > 0}
                   clipboardBlockCount={blockClipboard.length}
                   onDocChange={updateDoc}
@@ -519,7 +494,7 @@ export const App = () => {
                   onCutBlocks={handleCutBlocks}
                   onCopyBlocks={handleCopyBlocks}
                   onPasteBlocks={handlePasteBlocks}
-                  onClose={() => setStepModalOpen(false)}
+                  onClose={() => setEditorModalOpen(false)}
                 />
               )}
             </section>

@@ -1,11 +1,9 @@
 import { useEffect, useRef } from "react";
-import type { ProtocolBlock, ProtocolDocument, ProtocolStep } from "@ilm/types";
-import { addBlockToStep, mapStep, type Selection } from "../state/protocolState";
-import { createStableId } from "@ilm/utils";
-import type { BlockType, StepKind } from "@ilm/types";
+import type { ProtocolDocument } from "@ilm/types";
+import type { Selection } from "../state/protocolState";
 import { EditorPanel } from "./EditorPanel";
 
-interface StepEditorModalProps {
+interface EditorModalProps {
   doc: ProtocolDocument;
   selection: Selection;
   selectedBlockIds: string[];
@@ -20,6 +18,12 @@ interface StepEditorModalProps {
   onClose: () => void;
 }
 
+const MODAL_LABELS: Record<Selection["type"], string> = {
+  protocol: "Protocol metadata",
+  section: "Section editor",
+  step: "Step editor"
+};
+
 export const StepEditorModal = ({
   doc,
   selection,
@@ -33,7 +37,7 @@ export const StepEditorModal = ({
   onCopyBlocks,
   onPasteBlocks,
   onClose
-}: StepEditorModalProps) => {
+}: EditorModalProps) => {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,14 +52,12 @@ export const StepEditorModal = ({
     if (event.target === overlayRef.current) onClose();
   };
 
-  if (selection.type !== "step") return null;
-
   return (
     <div className="step-modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
-      <div className="step-modal" role="dialog" aria-modal="true" aria-label="Step editor">
+      <div className="step-modal" role="dialog" aria-modal="true" aria-label={MODAL_LABELS[selection.type]}>
         <div className="step-modal-header">
-          <span className="outline-marker">Step editor</span>
-          <button className="step-modal-close" onClick={onClose} aria-label="Close step editor">
+          <span className="outline-marker">{MODAL_LABELS[selection.type]}</span>
+          <button className="step-modal-close" onClick={onClose} aria-label="Close editor">
             ✕
           </button>
         </div>
