@@ -1,0 +1,7 @@
+- main [ref=e5]:
+  - iframe [ref=e7]:
+    - main [ref=f1e5]:
+      - generic [ref=f1e8]:
+        - heading "此页面不存在，或未与您共享。" [level=1] [ref=f1e9]
+        - heading "404" [level=2] [ref=f1e10]
+        - link "前往首页" [ref=f1e12] [cursor=pointer]

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Panel, Tag } from "@ilm/ui";
 import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
 import { safeJsonParse, nowIso } from "@ilm/utils";
 import type { ValidationMode } from "@ilm/validation";
@@ -126,6 +125,8 @@ export const App = ({ page }: AppProps) => {
   const sectionCount = useMemo(() => countSections(doc.protocol.sections), [doc]);
   const stepCount = useMemo(() => countSteps(doc.protocol.sections), [doc]);
   const allStepIds = useMemo(() => collectStepIds(doc.protocol.sections), [doc]);
+  const liveModuleCount = MODULE_CARDS.filter((module) => module.status === "Available").length;
+  const plannedModuleCount = MODULE_CARDS.length - liveModuleCount;
 
   useEffect(() => {
     const validStepIds = new Set(allStepIds);
@@ -529,102 +530,322 @@ export const App = ({ page }: AppProps) => {
     window.location.href = buildPageUrl("");
   };
 
+  const firstStepRecord = getFirstStepRecord(doc.protocol.sections);
+  const focusedStepLocation = selection.type === "step" ? findStepLocation(doc.protocol.sections, selection.stepId) : null;
+  const focusedSection =
+    selection.type === "section"
+      ? findSectionById(doc.protocol.sections, selection.sectionId)
+      : selection.type === "step"
+        ? findSectionById(doc.protocol.sections, selection.sectionId)
+        : firstStepRecord?.section ?? doc.protocol.sections[0] ?? null;
+  const focusedStep =
+    selection.type === "step"
+      ? focusedStepLocation?.step ?? null
+      : focusedSection?.steps[0] ?? firstStepRecord?.step ?? null;
+  const recipeBlock = getBlockOfType(focusedStep, "recipe");
+  const tableBlock = getBlockOfType(focusedStep, "table");
+  const timelineBlock = getBlockOfType(focusedStep, "timeline");
+  const cautionBlock = getBlockOfType(focusedStep, "caution");
+  const noteBlock = getBlockOfType(focusedStep, "note") ?? getBlockOfType(focusedStep, "paragraph");
+
+  const handleProtocolExport = () => {
+    if (activeTab !== "preview") {
+      setActiveTab("preview");
+      setStatus(["Switched to Preview / Print. Select Export Protocol again to open the print-ready document."]);
+      return;
+    }
+    handlePrintPreview();
+  };
+
+  const handleSaveDraft = () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(doc, null, 2));
+    setStatus(["Draft saved locally. Autosave remains active in this browser session."]);
+  };
+
+  const handleNewProtocol = () => {
+    setDoc(createDefaultProtocol());
+    setSelection({ type: "protocol" });
+    setSelectedStepIds([]);
+    setSelectedSectionIds([]);
+    clearBlockSelection();
+    setEditorModalOpen(false);
+    setStatus(["Started a fresh protocol draft."]);
+  };
+
+  const handleOpenFocusedEditor = () => {
+    if (selection.type === "protocol") {
+      selectProtocol();
+      return;
+    }
+    setEditorModalOpen(true);
+  };
+
   return (
-    <main className="page-shell">
-      <header className="app-header">
-        <div>
-          <p className="hero-kicker">Integrated Lab Manager</p>
-          <h1 className="app-title">{page === "home" ? "Module Home" : "Protocol Manager"}</h1>
-        </div>
-        <p className="hero-subtitle">
-          {page === "home"
-            ? "Enter the live Protocol Manager now, and keep the future ILM modules visible as a clear product map."
-            : "Write structured wet-lab protocols in focused tabs: authoring, print-ready preview, and transfer workflows."}
-        </p>
-      </header>
-
+    <>
       {page === "home" ? (
-        <section className="home-layout" aria-label="Integrated Lab Manager home">
-          <div className="hero-summary">
-            <div className="stat-row">
-              <Tag label="1 live module" tone="success" />
-              <Tag label="3 planned modules" tone="neutral" />
-              <Tag label={`${sectionCount} protocol sections saved`} tone="info" />
-              <Tag label={`${stepCount} protocol steps saved`} tone="neutral" />
+        <main className="dashboard-shell">
+          <header className="dashboard-topbar">
+            <div className="dashboard-brand">
+              <div className="dashboard-brand-mark">ILM</div>
+              <div>
+                <p className="dashboard-brand-title">Rhine Lab</p>
+                <p className="dashboard-brand-subtitle">System operations v4.02</p>
+              </div>
             </div>
-          </div>
 
-          <div className="module-grid">
-            {MODULE_CARDS.map((module) => {
-              const isLive = module.id === "protocol-manager";
-              return (
-                <article className={isLive ? "module-card live" : "module-card"} key={module.id}>
-                  <div className="module-card-header">
-                    <span className="outline-marker">ILM Module</span>
-                    <Tag label={module.status} tone={isLive ? "success" : "neutral"} />
-                  </div>
-                  <h2>{module.title}</h2>
-                  <p>{module.description}</p>
-                  <button onClick={isLive ? openProtocolManager : undefined} disabled={!isLive}>
-                    {module.actionLabel}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+            <nav className="dashboard-nav" aria-label="Dashboard sections">
+              <a className="active" href="#overview">
+                Overview
+              </a>
+              <a href="#overview">Modules</a>
+              <a href="#overview">Analytics</a>
+              <a href="#overview">Logistics</a>
+            </nav>
+
+            <div className="dashboard-actions">
+              <div className="dashboard-connection-badge">
+                <span>SECURE_CONN</span>
+                <strong>TS_782.9</strong>
+              </div>
+              <button className="dashboard-icon-button" type="button" onClick={() => window.print()} aria-label="Print report">
+                ⌕
+              </button>
+              <button className="dashboard-icon-button" type="button" onClick={openProtocolManager} aria-label="Open protocol manager">
+                ◎
+              </button>
+            </div>
+          </header>
+
+          <section className="dashboard-hero" id="overview">
+            <div>
+              <h1>Operations Summary</h1>
+              <div className="dashboard-hero-meta">
+                <span className="dashboard-status-live">Status: nominal</span>
+                <span>Ref_ID: {doc.protocol.id || "RL-DSH-992-B"}</span>
+                <span>Timestamp: {formatDisplayTimestamp(doc.protocol.updatedAt)}</span>
+              </div>
+            </div>
+            <div className="dashboard-hero-actions">
+              <button type="button" onClick={openProtocolManager}>
+                Open Protocol Manager
+              </button>
+              <span>CONFIDENTIAL - INTERNAL USE ONLY</span>
+            </div>
+          </section>
+
+          <section className="dashboard-layout" aria-label="Integrated Lab Manager module dashboard">
+            <div className="dashboard-column">
+              <article className="dashboard-metric-card">
+                <div className="dashboard-card-header">
+                  <h2>Protocol Matrix</h2>
+                  <span>M-01</span>
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Live modules</span>
+                  <strong>{liveModuleCount}</strong>
+                </div>
+                <div className="dashboard-meter">
+                  <span style={{ width: `${(liveModuleCount / MODULE_CARDS.length) * 100}%` }} />
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Planned modules</span>
+                  <strong>{plannedModuleCount}</strong>
+                </div>
+                <div className="dashboard-meter muted">
+                  <span style={{ width: `${(plannedModuleCount / MODULE_CARDS.length) * 100}%` }} />
+                </div>
+                <p className="dashboard-card-footnote">Validation: static deployment ready</p>
+              </article>
+
+              <article className="dashboard-metric-card">
+                <div className="dashboard-card-header">
+                  <h2>Research Projects</h2>
+                  <span>M-03</span>
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Protocol sections</span>
+                  <strong>{sectionCount}</strong>
+                </div>
+                <div className="dashboard-meter">
+                  <span style={{ width: `${Math.min(100, Math.max(18, sectionCount * 9))}%` }} />
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Protocol steps</span>
+                  <strong>{stepCount}</strong>
+                </div>
+                <div className="dashboard-meter muted">
+                  <span style={{ width: `${Math.min(100, Math.max(22, stepCount * 3))}%` }} />
+                </div>
+                <p className="dashboard-card-footnote">Status: deployment ready</p>
+              </article>
+            </div>
+
+            <article className="dashboard-schematic">
+              <div className="dashboard-schematic-label">FIG_01: CORE_LIFECYCLE_SCHEMA</div>
+              <div className="dashboard-grid-background" />
+              <button className="dashboard-node dashboard-node-top" type="button" onClick={openProtocolManager}>
+                Protocol
+              </button>
+              <button className="dashboard-node dashboard-node-left" type="button">
+                Projects
+              </button>
+              <button className="dashboard-node dashboard-node-right" type="button">
+                Supply
+              </button>
+              <button className="dashboard-node dashboard-node-bottom" type="button">
+                Funding
+              </button>
+              <div className="dashboard-core-node">
+                <span className="dashboard-core-mark">◎</span>
+                <p>Matrix Flow</p>
+                <strong>Integrated Lab Manager</strong>
+              </div>
+              <div className="dashboard-schematic-foot">
+                <span>Scale: 1:1.024</span>
+                <span>Auth: Level_5</span>
+              </div>
+            </article>
+
+            <div className="dashboard-column">
+              <article className="dashboard-metric-card">
+                <div className="dashboard-card-header">
+                  <h2>Supply Chain</h2>
+                  <span>M-02</span>
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Reagents</span>
+                  <strong>{doc.protocol.reagents.length}</strong>
+                </div>
+                <div className="dashboard-meter">
+                  <span style={{ width: `${Math.min(100, Math.max(12, doc.protocol.reagents.length * 15))}%` }} />
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Equipment</span>
+                  <strong>{doc.protocol.equipment.length}</strong>
+                </div>
+                <div className="dashboard-meter muted">
+                  <span style={{ width: `${Math.min(100, Math.max(16, doc.protocol.equipment.length * 16))}%` }} />
+                </div>
+                <p className="dashboard-card-footnote dashboard-warning">Warning: low inventory telemetry</p>
+              </article>
+
+              <article className="dashboard-metric-card">
+                <div className="dashboard-card-header">
+                  <h2>Fund Allocation</h2>
+                  <span>M-04</span>
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Authors</span>
+                  <strong>{doc.protocol.authors.length}</strong>
+                </div>
+                <div className="dashboard-meter">
+                  <span style={{ width: `${Math.min(100, Math.max(10, doc.protocol.authors.length * 18))}%` }} />
+                </div>
+                <div className="dashboard-metric-row">
+                  <span>Tagged workflows</span>
+                  <strong>{doc.protocol.tags.length}</strong>
+                </div>
+                <div className="dashboard-meter muted">
+                  <span style={{ width: `${Math.min(100, Math.max(10, doc.protocol.tags.length * 18))}%` }} />
+                </div>
+                <p className="dashboard-card-footnote">Burn rate: stable</p>
+              </article>
+            </div>
+          </section>
+
+          <footer className="dashboard-footer">
+            <span>Proprietary &amp; schematic data © Rhine Lab Biological Research</span>
+            <span>
+              SYSTEM_NODE: 0X8FA2 // PROTOCOL_REV: {doc.protocol.id || "S-99"}
+            </span>
+          </footer>
+        </main>
       ) : (
-        <>
-          <div className="module-toolbar">
-            <button onClick={openModuleHome}>Back to module home</button>
-            <div className="stat-row">
-              <Tag label={`${sectionCount} sections`} tone="neutral" />
-              <Tag label={`${stepCount} steps`} tone="info" />
-              <Tag label={`${doc.protocol.reagents.length} reagents`} tone="success" />
-              <Tag label={`${doc.protocol.equipment.length} equipment`} tone="neutral" />
+        <main className="protocol-shell">
+          <header className="protocol-topbar">
+            <button className="protocol-wordmark" type="button" onClick={openModuleHome}>
+              RHINE_PROTOCOL_V4
+            </button>
+
+            <div className="protocol-topbar-controls">
+              <div className="protocol-tab-nav" role="tablist" aria-label="Protocol manager views">
+                <button className={activeTab === "author" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" role="tab" aria-selected={activeTab === "author"} onClick={() => setActiveTab("author")}>
+                  Editor
+                </button>
+                <button className={activeTab === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" role="tab" aria-selected={activeTab === "preview"} onClick={() => setActiveTab("preview")}>
+                  Preview
+                </button>
+                <button className={activeTab === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" role="tab" aria-selected={activeTab === "transfer"} onClick={() => setActiveTab("transfer")}>
+                  Transfer
+                </button>
+              </div>
+
+              <button className="protocol-utility-link" type="button" onClick={() => setStatus(["Version history UI is not wired yet. Protocol autosave is active."])}>
+                History
+              </button>
+              <button className="protocol-utility-link" type="button" onClick={() => setStatus(["Settings panel is not wired yet. Edit document metadata from the focused editor for now."])}>
+                Settings
+              </button>
+              <button className="protocol-primary-action" type="button" onClick={handleProtocolExport}>
+                Export_Protocol
+              </button>
+              <button className="protocol-secondary-action" type="button" onClick={handleSaveDraft}>
+                Save_Draft
+              </button>
             </div>
-          </div>
+          </header>
 
-          <div className="tab-strip" role="tablist" aria-label="Protocol manager views">
-            <button className={activeTab === "author" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("author")} role="tab" aria-selected={activeTab === "author"}>
-              Author
-            </button>
-            <button className={activeTab === "preview" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("preview")} role="tab" aria-selected={activeTab === "preview"}>
-              Preview / Print
-            </button>
-            <button className={activeTab === "transfer" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("transfer")} role="tab" aria-selected={activeTab === "transfer"}>
-              Import / Export
-            </button>
-          </div>
+          <div className="protocol-body">
+            <aside className="protocol-side-rail" aria-label="Protocol manager navigation">
+              <button className="protocol-rail-item" type="button" onClick={openModuleHome}>
+                <span className="protocol-rail-glyph">⌂</span>
+                <span>Module Home</span>
+              </button>
+              <button className={activeTab === "author" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("author")}>
+                <span className="protocol-rail-glyph">⚗</span>
+                <span>Sequencing</span>
+              </button>
+              <button className={activeTab === "preview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("preview")}>
+                <span className="protocol-rail-glyph">◫</span>
+                <span>Preview</span>
+              </button>
+              <button className={activeTab === "transfer" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("transfer")}>
+                <span className="protocol-rail-glyph">⇅</span>
+                <span>Transfer</span>
+              </button>
+              <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={handleNewProtocol}>
+                <span>New_Protocol</span>
+              </button>
+            </aside>
 
-          {activeTab === "author" && (
-            <section className="single-tab" aria-label="Authoring workspace">
-              <Panel title="Outline">
-                <div className="panel-content">
-                  <p className="section-intro">
-                    Build the protocol hierarchy first. Click any item to edit it in a centered floating editor. Steps can move across sections and subsections, and multi-selected steps can travel together.
-                  </p>
-                  <div className="toolbar">
-                    <button onClick={() => updateDoc(addSection(doc, "New top-level section"))}>Add section</button>
-                    <button onClick={() => selection.type === "section" && updateDoc(addSection(doc, "New subsection", selection.sectionId))} disabled={selection.type !== "section"}>
-                      Add subsection
-                    </button>
-                    <button onClick={() => selection.type === "section" && updateDoc(addStep(doc, selection.sectionId, "New step"))} disabled={selection.type !== "section"}>
-                      Add step
-                    </button>
-                    <button onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
-                      Duplicate
-                    </button>
-                    <button onClick={() => handleMoveSelection("up")} disabled={selection.type === "protocol" || (selection.type === "step" && selectedStepIds.length > 1)}>
-                      Move up
-                    </button>
-                    <button onClick={() => handleMoveSelection("down")} disabled={selection.type === "protocol" || (selection.type === "step" && selectedStepIds.length > 1)}>
-                      Move down
-                    </button>
-                    <button onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
-                      Delete
-                    </button>
-                  </div>
+            <div className="protocol-main-grid">
+              <aside className="protocol-outline-pane">
+                <div className="protocol-outline-header">
+                  <h2>Protocol Outline</h2>
+                  <button type="button" onClick={resetSelection} aria-label="Clear selection">
+                    ≡
+                  </button>
+                </div>
+
+                <div className="protocol-outline-toolbar">
+                  <button type="button" onClick={() => updateDoc(addSection(doc, "New top-level section"))}>
+                    Add section
+                  </button>
+                  <button type="button" onClick={() => selection.type === "section" && updateDoc(addSection(doc, "New subsection", selection.sectionId))} disabled={selection.type !== "section"}>
+                    Add subsection
+                  </button>
+                  <button type="button" onClick={() => selection.type === "section" && updateDoc(addStep(doc, selection.sectionId, "New step"))} disabled={selection.type !== "section"}>
+                    Add step
+                  </button>
+                  <button type="button" onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
+                    Duplicate
+                  </button>
+                  <button type="button" onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
+                    Delete
+                  </button>
+                </div>
+
+                <div className="protocol-outline-scroll">
                   <OutlinePanel
                     sections={doc.protocol.sections}
                     selection={selection}
@@ -649,91 +870,259 @@ export const App = ({ page }: AppProps) => {
                     onDeleteStep={handleDeleteSingleStep}
                   />
                 </div>
-              </Panel>
+              </aside>
 
-              {editorModalOpen && (
-                <StepEditorModal
-                  doc={doc}
-                  selection={selection}
-                  selectedBlockIds={selection.type === "step" && blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
-                  canPasteBlocks={blockClipboard.length > 0}
-                  clipboardBlockCount={blockClipboard.length}
-                  onDocChange={updateDoc}
-                  onSetSelectedBlockIds={handleSetSelectedBlockIds}
-                  onClearBlockSelection={clearBlockSelection}
-                  onCutBlocks={handleCutBlocks}
-                  onCopyBlocks={handleCopyBlocks}
-                  onPasteBlocks={handlePasteBlocks}
-                  onClose={() => setEditorModalOpen(false)}
-                />
-              )}
-            </section>
-          )}
-
-          {activeTab === "preview" && (
-            <section className="single-tab" aria-label="Preview and print workspace">
-              <Panel title="Render Preview">
-                <div className="panel-content">
-                  <div className="toolbar">
-                    <button onClick={handlePrintPreview}>Export PDF / Print</button>
+              <section className="protocol-workspace">
+                <header className="protocol-workspace-header">
+                  <div>
+                    <h1>
+                      {activeTab === "author"
+                        ? focusedStep?.title ?? focusedSection?.title ?? doc.protocol.title
+                        : activeTab === "preview"
+                          ? "Protocol Preview / Print"
+                          : "Import / Export Transfer Desk"}
+                    </h1>
+                    <div className="protocol-workspace-meta">
+                      {activeTab === "author" ? (
+                        <>
+                          <span className="protocol-status-badge">{getStepStatusLabel(focusedStep)}</span>
+                          <span>ID: {doc.protocol.id || "PROT-99-AXIS-02"}</span>
+                          <span>Section: {focusedSection?.title ?? "Protocol Overview"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="protocol-status-badge">{activeTab === "preview" ? "PRINT_READY" : "SYNC_READY"}</span>
+                          <span>Sections: {sectionCount}</span>
+                          <span>Steps: {stepCount}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <p className="section-intro">
-                    The export now opens a dedicated print-ready document so the PDF renderer only sees the protocol content and its print styles.
-                  </p>
-                  <div className="print-surface" ref={previewRef}>
-                    <PreviewPanel doc={doc} />
-                  </div>
-                </div>
-              </Panel>
-            </section>
-          )}
 
-          {activeTab === "transfer" && (
-            <section className="single-tab" aria-label="Import and export workspace">
-              <Panel title="Import / Export">
-                <div className="panel-content">
-                  <ImportExportPanel
-                    importMode={importMode}
-                    setImportMode={setImportMode}
-                    jsonText={jsonText}
-                    setJsonText={setJsonText}
-                    onImportText={() => {
-                      const parsed = safeJsonParse<unknown>(jsonText);
-                      if (!parsed.ok) {
-                        setStatus([`Invalid JSON: ${parsed.error}`]);
-                        return;
-                      }
-                      importParsed(parsed.value);
-                    }}
-                    onFileUpload={async (file) => {
-                      const text = await file.text();
-                      setJsonText(text);
-                      const parsed = safeJsonParse<unknown>(text);
-                      if (!parsed.ok) {
-                        setStatus([`Invalid uploaded JSON: ${parsed.error}`]);
-                        return;
-                      }
-                      importParsed(parsed.value);
-                    }}
-                    onCopyExport={async () => {
-                      await navigator.clipboard.writeText(exportedJson);
-                      setStatus(["Exported JSON copied to clipboard."]);
-                    }}
-                    onDownloadExport={() => downloadTextFile(`${doc.protocol.id || "protocol"}.json`, exportedJson)}
-                    onCopyAiInstructions={async () => {
-                      await navigator.clipboard.writeText(AI_IMPORT_INSTRUCTIONS_TEXT);
-                      setStatus(["AI import instructions copied to clipboard."]);
-                    }}
-                    onDownloadTemplate={() => downloadTextFile("protocol-template-example.json", templateJson)}
-                    status={status}
-                  />
-                </div>
-              </Panel>
-            </section>
+                  <div className="protocol-workspace-actions">
+                    <button type="button" onClick={handleOpenFocusedEditor}>
+                      Open focused editor
+                    </button>
+                    <button type="button" onClick={openModuleHome}>
+                      Back to dashboard
+                    </button>
+                  </div>
+                </header>
+
+                {activeTab === "author" && (
+                  <div className="protocol-editor-canvas">
+                    <article className="protocol-content-card">
+                      <div className="protocol-card-heading">
+                        <h3>Reagent Matrix</h3>
+                        <span>{doc.protocol.reagents.length} loaded</span>
+                      </div>
+                      <table className="protocol-data-table">
+                        <thead>
+                          <tr>
+                            <th>Reagent</th>
+                            <th>Supplier</th>
+                            <th>Catalog</th>
+                            <th>Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {doc.protocol.reagents.slice(0, 5).map((reagent) => (
+                            <tr key={reagent.id}>
+                              <td>{reagent.name}</td>
+                              <td>{reagent.supplier || "Internal"}</td>
+                              <td>{reagent.catalogNumber || "N/A"}</td>
+                              <td>{reagent.notes || "Ready for run"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </article>
+
+                    <article className="protocol-content-card protocol-content-card-accent">
+                      <div className="protocol-card-heading">
+                        <h3>Thermocycling Conditions</h3>
+                        <button className="protocol-inline-link" type="button" onClick={handleOpenFocusedEditor}>
+                          Edit parameters
+                        </button>
+                      </div>
+
+                      {timelineBlock ? (
+                        <div className="protocol-timeline-grid">
+                          {timelineBlock.stages.map((stage) => (
+                            <div className="protocol-timeline-stage" key={`${stage.label}-${stage.duration}`}>
+                              <span>{stage.label}</span>
+                              <strong>{stage.temperature || stage.duration}</strong>
+                              <small>{stage.details || stage.duration}</small>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="protocol-summary-grid">
+                          <div>
+                            <span>Step kind</span>
+                            <strong>{formatStepKind(focusedStep?.stepKind)}</strong>
+                          </div>
+                          <div>
+                            <span>Block count</span>
+                            <strong>{focusedStep?.blocks.length ?? 0}</strong>
+                          </div>
+                          <div>
+                            <span>Equipment</span>
+                            <strong>{doc.protocol.equipment.length}</strong>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+
+                    {cautionBlock && (
+                      <article className="protocol-content-card protocol-callout protocol-callout-warning">
+                        <div className="protocol-card-heading">
+                          <h3>Safety Precaution</h3>
+                          <span>{(cautionBlock.severity || "medium").toUpperCase()}</span>
+                        </div>
+                        <p>{cautionBlock.text}</p>
+                      </article>
+                    )}
+
+                    <article className="protocol-content-card">
+                      <div className="protocol-card-heading">
+                        <h3>Technical Observation</h3>
+                        <span>{formatStepKind(focusedStep?.stepKind)}</span>
+                      </div>
+                      <p className="protocol-observation-copy">
+                        {noteBlock
+                          ? "text" in noteBlock
+                            ? noteBlock.text
+                            : "Review the selected step in the focused editor for the full narrative."
+                          : "Select a section or step from the protocol outline to inspect its narrative blocks, safety notes, and structured content."}
+                      </p>
+                    </article>
+
+                    {(recipeBlock || tableBlock) && (
+                      <article className="protocol-content-card">
+                        <div className="protocol-card-heading">
+                          <h3>{recipeBlock ? recipeBlock.title || "Component Recipe" : "Structured Table"}</h3>
+                          <span>{recipeBlock ? `${recipeBlock.items.length} components` : `${tableBlock?.rows.length ?? 0} rows`}</span>
+                        </div>
+
+                        {recipeBlock ? (
+                          <div className="protocol-summary-grid">
+                            {recipeBlock.items.map((item) => (
+                              <div key={`${item.component}-${item.quantity}`}>
+                                <span>{item.component}</span>
+                                <strong>{item.quantity}</strong>
+                                <small>{item.notes || "No note"}</small>
+                              </div>
+                            ))}
+                          </div>
+                        ) : tableBlock ? (
+                          <table className="protocol-data-table">
+                            <thead>
+                              <tr>
+                                {tableBlock.columns.map((column) => (
+                                  <th key={column}>{column}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tableBlock.rows.map((row, index) => (
+                                <tr key={`${index}-${row.join("-")}`}>
+                                  {row.map((cell, cellIndex) => (
+                                    <td key={`${index}-${cellIndex}`}>{cell}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : null}
+                      </article>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "preview" && (
+                  <section className="protocol-tab-panel" aria-label="Preview and print workspace">
+                    <div className="protocol-panel-header">
+                      <h3>Render Preview</h3>
+                      <button type="button" onClick={handlePrintPreview}>
+                        Export PDF / Print
+                      </button>
+                    </div>
+                    <p className="section-intro">
+                      The export opens a print-ready document so the PDF renderer only sees the protocol content and its print styles.
+                    </p>
+                    <div className="print-surface protocol-preview-surface" ref={previewRef}>
+                      <PreviewPanel doc={doc} />
+                    </div>
+                  </section>
+                )}
+
+                {activeTab === "transfer" && (
+                  <section className="protocol-tab-panel" aria-label="Import and export workspace">
+                    <div className="protocol-panel-header">
+                      <h3>Import / Export</h3>
+                      <span className="protocol-transfer-kicker">JSON pipelines, templates, and assisted AI imports</span>
+                    </div>
+                    <ImportExportPanel
+                      importMode={importMode}
+                      setImportMode={setImportMode}
+                      jsonText={jsonText}
+                      setJsonText={setJsonText}
+                      onImportText={() => {
+                        const parsed = safeJsonParse<unknown>(jsonText);
+                        if (!parsed.ok) {
+                          setStatus([`Invalid JSON: ${parsed.error}`]);
+                          return;
+                        }
+                        importParsed(parsed.value);
+                      }}
+                      onFileUpload={async (file) => {
+                        const text = await file.text();
+                        setJsonText(text);
+                        const parsed = safeJsonParse<unknown>(text);
+                        if (!parsed.ok) {
+                          setStatus([`Invalid uploaded JSON: ${parsed.error}`]);
+                          return;
+                        }
+                        importParsed(parsed.value);
+                      }}
+                      onCopyExport={async () => {
+                        await navigator.clipboard.writeText(exportedJson);
+                        setStatus(["Exported JSON copied to clipboard."]);
+                      }}
+                      onDownloadExport={() => downloadTextFile(`${doc.protocol.id || "protocol"}.json`, exportedJson)}
+                      onCopyAiInstructions={async () => {
+                        await navigator.clipboard.writeText(AI_IMPORT_INSTRUCTIONS_TEXT);
+                        setStatus(["AI import instructions copied to clipboard."]);
+                      }}
+                      onDownloadTemplate={() => downloadTextFile("protocol-template-example.json", templateJson)}
+                      status={status}
+                    />
+                  </section>
+                )}
+              </section>
+            </div>
+          </div>
+
+          {editorModalOpen && (
+            <StepEditorModal
+              doc={doc}
+              selection={selection}
+              selectedBlockIds={selection.type === "step" && blockSelection.stepId === selection.stepId ? blockSelection.blockIds : []}
+              canPasteBlocks={blockClipboard.length > 0}
+              clipboardBlockCount={blockClipboard.length}
+              onDocChange={updateDoc}
+              onSetSelectedBlockIds={handleSetSelectedBlockIds}
+              onClearBlockSelection={clearBlockSelection}
+              onCutBlocks={handleCutBlocks}
+              onCopyBlocks={handleCopyBlocks}
+              onPasteBlocks={handlePasteBlocks}
+              onClose={() => setEditorModalOpen(false)}
+            />
           )}
-        </>
+        </main>
       )}
-    </main>
+    </>
   );
 };
 
@@ -746,6 +1135,57 @@ const countSteps = (sections: ProtocolDocument["protocol"]["sections"]): number 
 const orderStepIdsByDocument = (doc: ProtocolDocument, stepIds: string[]) => {
   const selectedIds = new Set(stepIds);
   return collectStepIds(doc.protocol.sections).filter((stepId) => selectedIds.has(stepId));
+};
+
+const findSectionById = (sections: ProtocolSection[], sectionId: string): ProtocolSection | null => {
+  for (const section of sections) {
+    if (section.id === sectionId) return section;
+    const nested = findSectionById(section.sections, sectionId);
+    if (nested) return nested;
+  }
+  return null;
+};
+
+const getFirstStepRecord = (sections: ProtocolSection[]): { section: ProtocolSection; step: ProtocolStep } | null => {
+  for (const section of sections) {
+    if (section.steps.length > 0) {
+      return { section, step: section.steps[0] };
+    }
+    const nested = getFirstStepRecord(section.sections);
+    if (nested) return nested;
+  }
+  return null;
+};
+
+const getBlockOfType = <T extends ProtocolBlock["type"]>(step: ProtocolStep | null | undefined, type: T): Extract<ProtocolBlock, { type: T }> | null => {
+  if (!step) return null;
+  const block = step.blocks.find((item) => item.type === type);
+  return (block as Extract<ProtocolBlock, { type: T }> | undefined) ?? null;
+};
+
+const formatDisplayTimestamp = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+};
+
+const formatStepKind = (value?: ProtocolStep["stepKind"]) => {
+  if (!value) return "Protocol";
+  return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const getStepStatusLabel = (step: ProtocolStep | null) => {
+  if (!step) return "STANDBY";
+  if (step.optional) return "OPTIONAL";
+  if (step.stepKind === "qc") return "QC_READY";
+  if (step.stepKind === "analysis") return "ANALYSIS";
+  return "IN_PROGRESS";
 };
 
 const cloneBlocks = (blocks: ProtocolBlock[]): ProtocolBlock[] =>
