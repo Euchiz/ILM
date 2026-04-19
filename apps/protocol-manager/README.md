@@ -35,6 +35,8 @@ This app is set up for GitHub Pages deployment at:
 
 `https://euchiz.github.io/ILM/`
 
+The module home now lives at `https://euchiz.github.io/ILM/` and the Protocol Manager itself lives at `https://euchiz.github.io/ILM/protocol-manager/`.
+
 The GitHub Actions workflow builds the app with `VITE_BASE_PATH=/ILM/` so the generated asset URLs work correctly when served from the repository project site path.
 
 ## Data model principles

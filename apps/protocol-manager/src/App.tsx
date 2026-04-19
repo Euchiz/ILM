@@ -70,7 +70,15 @@ const MODULE_CARDS = [
   }
 ] as const;
 
-export const App = () => {
+const APP_BASE_URL = import.meta.env.BASE_URL;
+
+const buildPageUrl = (path: "" | "protocol-manager/") => new URL(path, window.location.origin + APP_BASE_URL).toString();
+
+type AppProps = {
+  page: ActiveModule;
+};
+
+export const App = ({ page }: AppProps) => {
   const [doc, setDoc] = useState<ProtocolDocument>(createDefaultProtocol);
   const [selection, setSelection] = useState<Selection>({ type: "protocol" });
   const [selectedStepIds, setSelectedStepIds] = useState<string[]>([]);
@@ -83,9 +91,9 @@ export const App = () => {
   const [status, setStatus] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
   const [activeTab, setActiveTab] = useState<AppTab>("author");
-  const [activeModule, setActiveModule] = useState<ActiveModule>("home");
   const [editorModalOpen, setEditorModalOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const isProtocolManagerPage = page === "protocol-manager";
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -407,7 +415,7 @@ export const App = () => {
   };
 
   useEffect(() => {
-    if (activeModule !== "protocol-manager" || activeTab !== "author") return;
+    if (!isProtocolManagerPage || activeTab !== "author") return;
     if (selection.type === "protocol") return;
     if (editorModalOpen) return;
 
@@ -426,14 +434,14 @@ export const App = () => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [activeModule, activeTab, selection.type, editorModalOpen]);
+  }, [isProtocolManagerPage, activeTab, selection.type, editorModalOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if (activeModule !== "protocol-manager" || activeTab !== "author") return;
+      if (!isProtocolManagerPage || activeTab !== "author") return;
 
       const key = event.key.toLowerCase();
       if (key === "c") {
@@ -455,7 +463,7 @@ export const App = () => {
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  });
+  }, [activeTab, handleCopyOutline, handleCutOutline, handlePasteOutline, isProtocolManagerPage, selection.type, stepClipboard.length, sectionClipboard.length]);
 
   const downloadTextFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: "application/json" });
@@ -512,8 +520,11 @@ export const App = () => {
   };
 
   const openProtocolManager = () => {
-    setActiveModule("protocol-manager");
-    setActiveTab("author");
+    window.location.href = buildPageUrl("protocol-manager/");
+  };
+
+  const openModuleHome = () => {
+    window.location.href = buildPageUrl("");
   };
 
   return (
@@ -521,16 +532,16 @@ export const App = () => {
       <header className="app-header">
         <div>
           <p className="hero-kicker">Integrated Lab Manager</p>
-          <h1 className="app-title">{activeModule === "home" ? "Module Home" : "Protocol Manager"}</h1>
+          <h1 className="app-title">{page === "home" ? "Module Home" : "Protocol Manager"}</h1>
         </div>
         <p className="hero-subtitle">
-          {activeModule === "home"
+          {page === "home"
             ? "Enter the live Protocol Manager now, and keep the future ILM modules visible as a clear product map."
             : "Write structured wet-lab protocols in focused tabs: authoring, print-ready preview, and transfer workflows."}
         </p>
       </header>
 
-      {activeModule === "home" ? (
+      {page === "home" ? (
         <section className="home-layout" aria-label="Integrated Lab Manager home">
           <div className="hero-summary">
             <div className="stat-row">
@@ -563,7 +574,7 @@ export const App = () => {
       ) : (
         <>
           <div className="module-toolbar">
-            <button onClick={() => setActiveModule("home")}>Back to module home</button>
+            <button onClick={openModuleHome}>Back to module home</button>
             <div className="stat-row">
               <Tag label={`${sectionCount} sections`} tone="neutral" />
               <Tag label={`${stepCount} steps`} tone="info" />
