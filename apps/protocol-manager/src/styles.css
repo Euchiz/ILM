@@ -347,6 +347,11 @@ label {
   box-shadow: 0 14px 34px rgba(83, 73, 56, 0.12);
 }
 
+.outline-card.group-selected {
+  border-color: rgba(48, 70, 50, 0.32);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(221, 231, 216, 0.55) 100%);
+}
+
 .outline-card-header {
   display: grid;
   grid-template-columns: auto auto 1fr auto;
@@ -450,6 +455,13 @@ label {
   padding: 0;
   text-align: left;
   color: inherit;
+}
+
+.outline-step-content:hover:not(:disabled),
+.outline-card-title:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  transform: none;
 }
 
 .outline-step-index {

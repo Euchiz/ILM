@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, Tag } from "@ilm/ui";
-import type { ProtocolBlock, ProtocolDocument } from "@ilm/types";
+import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
 import { safeJsonParse, nowIso } from "@ilm/utils";
 import type { ValidationMode } from "@ilm/validation";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
@@ -13,18 +13,24 @@ import { StepEditorModal } from "./components/StepEditorModal";
 import {
   addSection,
   addStep,
+  collectSectionsByIds,
   collectStepIds,
+  collectStepsByIds,
   deleteSection,
+  deleteSections,
   deleteStep,
   deleteSteps,
   duplicateSection,
   duplicateStep,
+  findSectionParent,
   findStepLocation,
   moveSection,
   moveStep,
   pasteBlocksIntoStep,
+  pasteSections,
+  pasteStepsIntoSection,
   removeBlocksFromStep,
-  reorderSection,
+  reorderSections,
   type Selection,
   moveStepsToSection
 } from "./state/protocolState";
@@ -68,8 +74,11 @@ export const App = () => {
   const [doc, setDoc] = useState<ProtocolDocument>(createDefaultProtocol);
   const [selection, setSelection] = useState<Selection>({ type: "protocol" });
   const [selectedStepIds, setSelectedStepIds] = useState<string[]>([]);
+  const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
   const [blockSelection, setBlockSelection] = useState<{ stepId: string; blockIds: string[] }>({ stepId: "", blockIds: [] });
   const [blockClipboard, setBlockClipboard] = useState<ProtocolBlock[]>([]);
+  const [stepClipboard, setStepClipboard] = useState<ProtocolStep[]>([]);
+  const [sectionClipboard, setSectionClipboard] = useState<ProtocolSection[]>([]);
   const [jsonText, setJsonText] = useState("");
   const [status, setStatus] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
@@ -141,25 +150,47 @@ export const App = () => {
   const resetSelection = () => {
     setSelection({ type: "protocol" });
     setSelectedStepIds([]);
+    setSelectedSectionIds([]);
     clearBlockSelection();
   };
 
   const selectProtocol = () => {
     setSelection({ type: "protocol" });
     setSelectedStepIds([]);
+    setSelectedSectionIds([]);
     clearBlockSelection();
     setEditorModalOpen(true);
   };
 
-  const selectSection = (sectionId: string) => {
-    setSelection({ type: "section", sectionId });
+  const selectSection = (sectionId: string, options?: { toggle: boolean }) => {
     setSelectedStepIds([]);
     clearBlockSelection();
+
+    if (options?.toggle) {
+      setSelectedSectionIds((current) => {
+        if (current.includes(sectionId)) {
+          const next = current.filter((id) => id !== sectionId);
+          if (next.length === 0) {
+            setSelection({ type: "section", sectionId });
+            return [sectionId];
+          }
+          setSelection({ type: "section", sectionId: next[0] });
+          return next;
+        }
+        setSelection({ type: "section", sectionId });
+        return [...current, sectionId];
+      });
+      return;
+    }
+
+    setSelection({ type: "section", sectionId });
+    setSelectedSectionIds([sectionId]);
     setEditorModalOpen(true);
   };
 
   const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
     clearBlockSelection();
+    setSelectedSectionIds([]);
 
     if (options?.toggle) {
       setSelectedStepIds((current) => {
@@ -181,7 +212,6 @@ export const App = () => {
         }
 
         setSelection({ type: "step", sectionId, stepId });
-        setEditorModalOpen(true);
         return [...current, stepId];
       });
       return;
@@ -300,6 +330,110 @@ export const App = () => {
     clearBlockSelection();
     setStatus([`Pasted ${blockClipboard.length} block(s).`]);
   };
+
+  const getActiveStepIds = (): string[] => {
+    if (selection.type !== "step") return [];
+    return selectedStepIds.length > 0 ? selectedStepIds : [selection.stepId];
+  };
+
+  const getActiveSectionIds = (): string[] => {
+    if (selection.type !== "section") return [];
+    return selectedSectionIds.length > 0 ? selectedSectionIds : [selection.sectionId];
+  };
+
+  const handleCopyOutline = () => {
+    if (selection.type === "step") {
+      const ids = getActiveStepIds();
+      const steps = collectStepsByIds(doc.protocol.sections, ids);
+      if (steps.length === 0) return;
+      setStepClipboard(steps);
+      setSectionClipboard([]);
+      setStatus([`Copied ${steps.length} step(s).`, "Paste with Ctrl/Cmd+V."]);
+    } else if (selection.type === "section") {
+      const ids = getActiveSectionIds();
+      const sections = collectSectionsByIds(doc.protocol.sections, ids);
+      if (sections.length === 0) return;
+      setSectionClipboard(sections);
+      setStepClipboard([]);
+      setStatus([`Copied ${sections.length} section(s).`, "Paste with Ctrl/Cmd+V."]);
+    }
+  };
+
+  const handleCutOutline = () => {
+    if (selection.type === "step") {
+      const ids = getActiveStepIds();
+      const steps = collectStepsByIds(doc.protocol.sections, ids);
+      if (steps.length === 0) return;
+      setStepClipboard(steps);
+      setSectionClipboard([]);
+      updateDoc(deleteSteps(doc, ids));
+      resetSelection();
+      setStatus([`Cut ${steps.length} step(s).`, "Paste with Ctrl/Cmd+V."]);
+    } else if (selection.type === "section") {
+      const ids = getActiveSectionIds();
+      const sections = collectSectionsByIds(doc.protocol.sections, ids);
+      if (sections.length === 0) return;
+      setSectionClipboard(sections);
+      setStepClipboard([]);
+      updateDoc(deleteSections(doc, ids));
+      resetSelection();
+      setStatus([`Cut ${sections.length} section(s).`, "Paste with Ctrl/Cmd+V."]);
+    }
+  };
+
+  const handlePasteOutline = () => {
+    if (stepClipboard.length > 0) {
+      if (selection.type === "step") {
+        updateDoc(pasteStepsIntoSection(doc, selection.sectionId, stepClipboard, selection.stepId));
+      } else if (selection.type === "section") {
+        updateDoc(pasteStepsIntoSection(doc, selection.sectionId, stepClipboard));
+      } else {
+        return;
+      }
+      setStatus([`Pasted ${stepClipboard.length} step(s).`]);
+      return;
+    }
+
+    if (sectionClipboard.length > 0) {
+      if (selection.type === "section") {
+        const parent = findSectionParent(doc.protocol.sections, selection.sectionId);
+        const parentId = parent ? parent.parentId : null;
+        updateDoc(pasteSections(doc, parentId, sectionClipboard, selection.sectionId));
+      } else {
+        updateDoc(pasteSections(doc, null, sectionClipboard));
+      }
+      setStatus([`Pasted ${sectionClipboard.length} section(s).`]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (activeModule !== "protocol-manager" || activeTab !== "author") return;
+
+      const key = event.key.toLowerCase();
+      if (key === "c") {
+        if (selection.type === "step" || selection.type === "section") {
+          event.preventDefault();
+          handleCopyOutline();
+        }
+      } else if (key === "x") {
+        if (selection.type === "step" || selection.type === "section") {
+          event.preventDefault();
+          handleCutOutline();
+        }
+      } else if (key === "v") {
+        if (stepClipboard.length > 0 || sectionClipboard.length > 0) {
+          event.preventDefault();
+          handlePasteOutline();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
 
   const downloadTextFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: "application/json" });
@@ -460,12 +594,14 @@ export const App = () => {
                     sections={doc.protocol.sections}
                     selection={selection}
                     selectedStepIds={selectedStepIds}
+                    selectedSectionIds={selectedSectionIds}
                     onSelectProtocol={selectProtocol}
                     onSelectSection={selectSection}
                     onSelectStep={selectStep}
                     onClearStepSelection={() => setSelectedStepIds(selection.type === "step" ? [selection.stepId] : [])}
-                    onReorderSection={(parentSectionId, sectionId, targetSectionId) =>
-                      updateDoc(reorderSection(doc, parentSectionId, sectionId, targetSectionId))
+                    onClearSectionSelection={() => setSelectedSectionIds(selection.type === "section" ? [selection.sectionId] : [])}
+                    onReorderSection={(parentSectionId, sectionIds, targetSectionId) =>
+                      updateDoc(reorderSections(doc, parentSectionId, sectionIds, targetSectionId))
                     }
                     onMoveSteps={handleMoveSteps}
                     onAddSubsection={(sectionId) => updateDoc(addSection(doc, "New subsection", sectionId))}

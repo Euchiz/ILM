@@ -276,6 +276,134 @@ export const moveStepsToSection = (
   };
 };
 
+export const findSectionParent = (
+  sections: ProtocolSection[],
+  sectionId: string,
+  parentId: string | null = null
+): { parentId: string | null; index: number } | null => {
+  const directIndex = sections.findIndex((section) => section.id === sectionId);
+  if (directIndex >= 0) return { parentId, index: directIndex };
+
+  for (const section of sections) {
+    const found = findSectionParent(section.sections, sectionId, section.id);
+    if (found) return found;
+  }
+  return null;
+};
+
+export const reorderSections = (
+  doc: ProtocolDocument,
+  parentSectionId: string | null,
+  sectionIds: string[],
+  targetSectionId: string
+): ProtocolDocument => {
+  if (sectionIds.includes(targetSectionId)) return doc;
+  return {
+    ...doc,
+    protocol: {
+      ...doc.protocol,
+      sections: mapSectionLists(doc.protocol.sections, parentSectionId, (siblings) => {
+        const moving = sectionIds
+          .map((id) => siblings.find((sibling) => sibling.id === id))
+          .filter((section): section is ProtocolSection => Boolean(section));
+        if (moving.length === 0) return siblings;
+        const remaining = siblings.filter((sibling) => !sectionIds.includes(sibling.id));
+        const targetIndex = remaining.findIndex((sibling) => sibling.id === targetSectionId);
+        if (targetIndex < 0) return siblings;
+        return [...remaining.slice(0, targetIndex), ...moving, ...remaining.slice(targetIndex)];
+      })
+    }
+  };
+};
+
+export const deleteSections = (doc: ProtocolDocument, sectionIds: string[]): ProtocolDocument => {
+  const idSet = new Set(sectionIds);
+  const removeMany = (sections: ProtocolSection[]): ProtocolSection[] =>
+    sections
+      .filter((section) => !idSet.has(section.id))
+      .map((section) => ({ ...section, sections: removeMany(section.sections) }));
+  return { ...doc, protocol: { ...doc.protocol, sections: removeMany(doc.protocol.sections) } };
+};
+
+export const collectSectionsByIds = (
+  sections: ProtocolSection[],
+  sectionIds: string[]
+): ProtocolSection[] => {
+  const idSet = new Set(sectionIds);
+  const result: ProtocolSection[] = [];
+  const visit = (list: ProtocolSection[]) => {
+    list.forEach((section) => {
+      if (idSet.has(section.id)) result.push(section);
+      visit(section.sections);
+    });
+  };
+  visit(sections);
+  return result;
+};
+
+export const collectStepsByIds = (
+  sections: ProtocolSection[],
+  stepIds: string[]
+): ProtocolStep[] => {
+  const idSet = new Set(stepIds);
+  const result: ProtocolStep[] = [];
+  const visit = (list: ProtocolSection[]) => {
+    list.forEach((section) => {
+      section.steps.forEach((step) => {
+        if (idSet.has(step.id)) result.push(step);
+      });
+      visit(section.sections);
+    });
+  };
+  visit(sections);
+  return result;
+};
+
+export const pasteStepsIntoSection = (
+  doc: ProtocolDocument,
+  sectionId: string,
+  steps: ProtocolStep[],
+  afterStepId?: string
+): ProtocolDocument => {
+  if (steps.length === 0) return doc;
+  const cloned = steps.map((step) => cloneStep(step));
+  return {
+    ...doc,
+    protocol: {
+      ...doc.protocol,
+      sections: mapSections(doc.protocol.sections, sectionId, (section) => {
+        const insertIndex = afterStepId ? section.steps.findIndex((s) => s.id === afterStepId) + 1 : section.steps.length;
+        const resolvedIndex = insertIndex > 0 ? insertIndex : section.steps.length;
+        return {
+          ...section,
+          steps: [...section.steps.slice(0, resolvedIndex), ...cloned, ...section.steps.slice(resolvedIndex)]
+        };
+      })
+    }
+  };
+};
+
+export const pasteSections = (
+  doc: ProtocolDocument,
+  parentId: string | null,
+  sections: ProtocolSection[],
+  afterSectionId?: string
+): ProtocolDocument => {
+  if (sections.length === 0) return doc;
+  const cloned = sections.map((section) => cloneSection(section));
+  return {
+    ...doc,
+    protocol: {
+      ...doc.protocol,
+      sections: mapSectionLists(doc.protocol.sections, parentId, (siblings) => {
+        const insertIndex = afterSectionId ? siblings.findIndex((s) => s.id === afterSectionId) + 1 : siblings.length;
+        const resolvedIndex = insertIndex > 0 ? insertIndex : siblings.length;
+        return [...siblings.slice(0, resolvedIndex), ...cloned, ...siblings.slice(resolvedIndex)];
+      })
+    }
+  };
+};
+
 export const addBlockToStep = (doc: ProtocolDocument, sectionId: string, stepId: string, blockType: BlockType): ProtocolDocument => {
   const block = createBlock(blockType);
   return {
