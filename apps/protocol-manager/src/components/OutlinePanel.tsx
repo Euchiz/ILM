@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  closestCorners,
+  closestCenter,
   DndContext,
   PointerSensor,
   useDroppable,
@@ -153,17 +153,14 @@ export const OutlinePanel = ({
 
   const handleBackgroundClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
-    if (
-      target.classList.contains("outline-tree") ||
-      target.classList.contains("outline-subsections") ||
-      target.classList.contains("outline-card-body")
-    ) {
-      onClearOutlineSelection();
+    if (target.closest("button, a, input, textarea, select, .outline-step-pill, .outline-card-header, .section-drop-target, [role='dialog']")) {
+      return;
     }
+    onClearOutlineSelection();
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="outline-tree" onClick={handleBackgroundClick}>
         <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={onSelectProtocol}>
           <span className="outline-marker">Protocol</span>

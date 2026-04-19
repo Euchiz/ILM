@@ -457,6 +457,21 @@ label {
   transform: none;
 }
 
+.outline-step-content:focus,
+.outline-card-title:focus,
+.outline-root:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.outline-step-content:focus-visible,
+.outline-card-title:focus-visible,
+.outline-root:focus-visible {
+  outline: 2px solid rgba(120, 100, 70, 0.55);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .outline-step-index {
   display: inline-flex;
   align-items: center;

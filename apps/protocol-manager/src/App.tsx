@@ -171,8 +171,8 @@ export const App = () => {
         if (current.includes(sectionId)) {
           const next = current.filter((id) => id !== sectionId);
           if (next.length === 0) {
-            setSelection({ type: "section", sectionId });
-            return [sectionId];
+            setSelection({ type: "protocol" });
+            return [];
           }
           setSelection({ type: "section", sectionId: next[0] });
           return next;
@@ -197,8 +197,8 @@ export const App = () => {
         if (current.includes(stepId)) {
           const next = current.filter((id) => id !== stepId);
           if (next.length === 0) {
-            setSelection({ type: "step", sectionId, stepId });
-            return [stepId];
+            setSelection({ type: "protocol" });
+            return [];
           }
 
           const nextPrimary = next[0];
