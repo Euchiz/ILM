@@ -258,11 +258,23 @@ export const moveStepsToSection = (
   const movedSteps = collectStepsInDocumentOrder(doc.protocol.sections).filter((step) => selectedIds.has(step.id));
   if (movedSteps.length === 0) return doc;
 
+  const destinationSection = findSection(doc.protocol.sections, destinationSectionId);
+  const originalDestSteps = destinationSection ? destinationSection.steps : [];
+  const targetOriginalIndex = targetStepId ? originalDestSteps.findIndex((step) => step.id === targetStepId) : -1;
+  const movedFromDestIndices = originalDestSteps
+    .map((step, index) => (selectedIds.has(step.id) ? index : -1))
+    .filter((index) => index >= 0);
+  const insertAfterTarget =
+    targetOriginalIndex >= 0 &&
+    movedFromDestIndices.length > 0 &&
+    Math.min(...movedFromDestIndices) < targetOriginalIndex;
+
   const sectionsWithoutMovedSteps = removeStepsFromSections(doc.protocol.sections, selectedIds);
   const nextSections = mapSections(sectionsWithoutMovedSteps, destinationSectionId, (section) => {
     const existingSteps = [...section.steps];
     const insertIndex = targetStepId ? existingSteps.findIndex((step) => step.id === targetStepId) : -1;
-    const resolvedIndex = insertIndex >= 0 ? insertIndex : existingSteps.length;
+    let resolvedIndex = insertIndex >= 0 ? insertIndex : existingSteps.length;
+    if (insertAfterTarget && insertIndex >= 0) resolvedIndex = insertIndex + 1;
     existingSteps.splice(resolvedIndex, 0, ...movedSteps);
     return { ...section, steps: existingSteps };
   });
