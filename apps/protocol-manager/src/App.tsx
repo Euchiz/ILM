@@ -155,6 +155,9 @@ export const App = ({ page }: AppProps) => {
 
   const clearBlockSelection = () => setBlockSelection({ stepId: "", blockIds: [] });
 
+  const hasOutlineSelection =
+    selection.type !== "protocol" || selectedStepIds.length > 0 || selectedSectionIds.length > 0 || blockSelection.blockIds.length > 0;
+
   const resetSelection = () => {
     setSelection({ type: "protocol" });
     setSelectedStepIds([]);
@@ -301,10 +304,12 @@ export const App = ({ page }: AppProps) => {
   };
 
   const handleMoveSteps = (stepIds: string[], destinationSectionId: string, targetStepId?: string) => {
-    if (selection.type === "step" && stepIds.includes(selection.stepId)) {
-      setSelection({ type: "step", sectionId: destinationSectionId, stepId: selection.stepId });
-    }
+    const primaryStepId = selection.type === "step" && stepIds.includes(selection.stepId) ? selection.stepId : stepIds[0];
+
+    setSelection({ type: "step", sectionId: destinationSectionId, stepId: primaryStepId });
     setSelectedStepIds(stepIds);
+    setSelectedSectionIds([]);
+    clearBlockSelection();
     updateDoc(moveStepsToSection(doc, stepIds, destinationSectionId, targetStepId));
   };
 
@@ -416,7 +421,7 @@ export const App = ({ page }: AppProps) => {
 
   useEffect(() => {
     if (!isProtocolManagerPage || activeTab !== "author") return;
-    if (selection.type === "protocol") return;
+    if (!hasOutlineSelection) return;
     if (editorModalOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -426,15 +431,12 @@ export const App = ({ page }: AppProps) => {
       if (target.closest(".step-modal, [role='dialog'], [role='menu']")) return;
       if (target.closest(".outline-tree button, .outline-tree a, .outline-tree input, .outline-tree textarea, .outline-tree select")) return;
       if (target.closest(".outline-card.selected, .outline-card.group-selected, .outline-step-pill.selected, .outline-step-pill.group-selected")) return;
-      setSelection({ type: "protocol" });
-      setSelectedStepIds([]);
-      setSelectedSectionIds([]);
-      clearBlockSelection();
+      resetSelection();
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isProtocolManagerPage, activeTab, selection.type, editorModalOpen]);
+  }, [isProtocolManagerPage, activeTab, hasOutlineSelection, editorModalOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -631,12 +633,7 @@ export const App = ({ page }: AppProps) => {
                     onSelectProtocol={selectProtocol}
                     onSelectSection={selectSection}
                     onSelectStep={selectStep}
-                    onClearOutlineSelection={() => {
-                      setSelection({ type: "protocol" });
-                      setSelectedStepIds([]);
-                      setSelectedSectionIds([]);
-                      clearBlockSelection();
-                    }}
+                    onClearOutlineSelection={resetSelection}
                     onReorderSection={(parentSectionId, sectionIds, targetSectionId) =>
                       updateDoc(reorderSections(doc, parentSectionId, sectionIds, targetSectionId))
                     }
