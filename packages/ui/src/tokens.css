@@ -1,0 +1,330 @@
+/* ============================================================
+   Rhine Lab ILM — Colors & Type
+   Source of truth: apps/protocol-manager/src/styles.css
+                    + stitch dashboard + protocol editor
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
+
+:root {
+  /* ---------- Surfaces ---------- */
+  --rl-paper:              #f9f8f4;   /* app canvas */
+  --rl-paper-alt:          #fbfbf8;   /* dashboard shell */
+  --rl-surface:            #ffffff;   /* elevated panels */
+  --rl-surface-2:          #f3f3f3;   /* container-low */
+  --rl-surface-3:          #e8e8e8;   /* container-high */
+  --rl-soft:               #f1f2ee;   /* Protocol Manager soft fill */
+  --rl-soft-2:             #e7e9e3;
+  --rl-lab-gray:           #f0f0f0;   /* Stitch lab-gray */
+
+  /* ---------- Ink ---------- */
+  --rl-ink:                #1b1b1b;   /* charcoal */
+  --rl-ink-2:              #171717;
+  --rl-muted:              #6d736a;
+  --rl-muted-2:            #818780;
+  --rl-outline:            #737971;
+  --rl-outline-variant:    #c2c8bf;
+  --rl-line:               #d6d9d2;
+  --rl-hairline:           #cbd1c8;
+
+  /* ---------- Brand greens ---------- */
+  --rl-green:              #37563b;   /* primary (deep) */
+  --rl-green-2:            #4f6f52;   /* primary container / glow color */
+  --rl-green-3:            #466649;   /* surface-tint */
+  --rl-green-soft:         #dbe9d6;
+  --rl-green-sec:          #54633d;   /* secondary */
+  --rl-green-sec-c:        #d5e6b5;   /* secondary-container */
+  --rl-green-fixed:        #c8ecc8;
+  --rl-green-fixed-dim:    #acd0ad;
+
+  /* ---------- Warm accents ---------- */
+  --rl-tertiary:           #794100;   /* tertiary (rust) */
+  --rl-tertiary-c:         #ffe1cb;   /* tertiary-container */
+  --rl-warn:               #8a4900;
+  --rl-warn-bg:            #fbf2e4;
+  --rl-warn-border:        #d7bca1;
+
+  /* ---------- Status ---------- */
+  --rl-error:              #ba1a1a;
+  --rl-error-c:            #ffdad6;
+  --rl-error-deep:         #93000a;
+  --rl-danger-text:        #b42318;
+  --rl-success:            #16a34a;
+  --rl-success-deep:       #304632;
+
+  /* ---------- Type scale roles ---------- */
+  --rl-fg-1:               var(--rl-ink);
+  --rl-fg-2:               #343434;
+  --rl-fg-3:               var(--rl-muted);
+  --rl-fg-4:               #9aa097;
+
+  /* ---------- Families ---------- */
+  --rl-font-serif:         "Noto Serif", Georgia, "Times New Roman", serif;
+  --rl-font-sans:          "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --rl-font-mono:          "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --rl-font-icon:          "Material Symbols Outlined";
+
+  /* ---------- Spacing ---------- */
+  --rl-space-1: 4px;
+  --rl-space-2: 8px;
+  --rl-space-3: 12px;
+  --rl-space-4: 16px;
+  --rl-space-5: 24px;
+  --rl-space-6: 32px;
+  --rl-space-7: 48px;
+  --rl-space-8: 64px;
+
+  /* ---------- Radii (mostly zero — chrome is sharp) ---------- */
+  --rl-radius-sharp: 0;
+  --rl-radius-soft:  14px;   /* Protocol Manager composer cards */
+  --rl-radius-soft-lg: 22px;
+  --rl-radius-pill:  999px;
+
+  /* ---------- Borders ---------- */
+  --rl-border-hairline: 0.5px solid var(--rl-outline-variant);
+  --rl-border-thin:     1px solid var(--rl-hairline);
+  --rl-border-ink:      2px solid var(--rl-ink);
+
+  /* ---------- Shadows ---------- */
+  --rl-shadow-glow-primary: 0 0 8px #4f6f52;
+  --rl-shadow-ambient:      0 0 24px rgba(79, 111, 82, 0.18);
+  --rl-shadow-float:        0 22px 48px rgba(83, 73, 56, 0.18);
+  --rl-shadow-soft:         0 12px 30px rgba(83, 73, 56, 0.08);
+  --rl-shadow-step:         0 0 15px rgba(79, 111, 82, 0.05);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+
+html, body {
+  background: var(--rl-paper);
+  color: var(--rl-fg-1);
+  font-family: var(--rl-font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--rl-ink); color: #fff; }
+
+span.material-symbols-outlined,
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-family: var(--rl-font-icon) !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Semantic type roles
+   ============================================================ */
+
+.rl-display {
+  font-family: var(--rl-font-serif);
+  font-weight: 900;
+  font-size: clamp(3rem, 5.6vw, 4.7rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.rl-display--italic { font-style: italic; font-weight: 900; }
+
+.rl-h1 {
+  font-family: var(--rl-font-serif);
+  font-size: clamp(2.3rem, 4vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.rl-h2 {
+  font-family: var(--rl-font-serif);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--rl-green);
+  margin: 0;
+}
+
+.rl-h3 {
+  font-family: var(--rl-font-serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--rl-green);
+  margin: 0;
+}
+
+.rl-body {
+  font-family: var(--rl-font-sans);
+  font-size: 0.95rem;
+  color: var(--rl-fg-1);
+  line-height: 1.6;
+}
+
+.rl-body-lg {
+  font-family: var(--rl-font-sans);
+  font-size: 1.02rem;
+  color: var(--rl-fg-2);
+  line-height: 1.9;
+}
+
+.rl-label {
+  font-family: var(--rl-font-sans);
+  font-size: 0.78rem;
+  color: var(--rl-fg-2);
+  letter-spacing: 0.02em;
+}
+
+.rl-meta {
+  font-family: var(--rl-font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rl-muted);
+}
+
+.rl-meta--tight {
+  font-family: var(--rl-font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.20em;
+  color: var(--rl-fg-4);
+}
+
+.rl-mono {
+  font-family: var(--rl-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rl-figure {
+  font-family: var(--rl-font-serif);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.rl-code-chip {
+  font-family: var(--rl-font-mono);
+  font-size: 0.75rem;
+  padding: 0.22rem 0.55rem;
+  background: var(--rl-ink);
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ============================================================
+   Bracket corner accent — apply .rl-brackets to any positioned box
+   ============================================================ */
+
+.rl-brackets { position: relative; }
+.rl-brackets::before,
+.rl-brackets::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--rl-ink);
+  border-style: solid;
+  pointer-events: none;
+}
+.rl-brackets::before { top: -1px;    left: -1px;   border-width: 2px 0 0 2px; }
+.rl-brackets::after  { right: -1px;  bottom: -1px; border-width: 0 2px 2px 0; }
+
+.rl-brackets--green::before,
+.rl-brackets--green::after { border-color: var(--rl-green-2); }
+
+.rl-brackets--hairline::before,
+.rl-brackets--hairline::after { border-width: 1px 0 0 1px; }
+.rl-brackets--hairline::after { border-width: 0 1px 1px 0; }
+
+/* ============================================================
+   Primitives
+   ============================================================ */
+
+.rl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--rl-outline);
+  background: transparent;
+  color: var(--rl-fg-1);
+  border-radius: 0;
+  padding: 0.55rem 1rem;
+  font-family: var(--rl-font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: background 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+.rl-btn:hover { background: var(--rl-lab-gray); }
+.rl-btn--primary {
+  background: var(--rl-green-2);
+  border-color: var(--rl-green-2);
+  color: #fff;
+}
+.rl-btn--primary:hover { box-shadow: var(--rl-shadow-glow-primary); background: var(--rl-green-2); }
+.rl-btn--ink {
+  background: var(--rl-ink);
+  border-color: var(--rl-ink);
+  color: #fff;
+}
+
+.rl-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid var(--rl-outline-variant);
+  padding: 0.55rem 0;
+  font-family: var(--rl-font-sans);
+  font-size: 0.9rem;
+  color: var(--rl-fg-1);
+}
+.rl-input:focus {
+  outline: none;
+  border-bottom-color: var(--rl-green-2);
+  box-shadow: 0 2px 0 0 var(--rl-green-2);
+}
+
+.rl-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  background: var(--rl-green-sec-c);
+  color: var(--rl-success-deep);
+  font-family: var(--rl-font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.rl-chip--warn { background: var(--rl-tertiary-c); color: var(--rl-tertiary); }
+.rl-chip--error { background: var(--rl-error-c); color: var(--rl-error-deep); }
+.rl-chip--ink { background: var(--rl-ink); color: #fff; }
+
+.rl-card {
+  position: relative;
+  background: var(--rl-surface);
+  border: 1px solid rgba(27, 27, 27, 0.10);
+  padding: 1.5rem;
+}
+
+.rl-divider { height: 0; border: none; border-top: 0.5px solid var(--rl-outline-variant); }
+
+.rl-paper-grid {
+  background-image:
+    linear-gradient(#e5e7eb 1px, transparent 1px),
+    linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+  background-size: 40px 40px;
+}
