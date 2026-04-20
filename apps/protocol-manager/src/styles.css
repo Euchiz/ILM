@@ -1,20 +1,21 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif:wght@400;700;900&family=Space+Grotesk:wght@400;500;700&display=swap");
+@import "../../../packages/ui/src/tokens.css";
 
 :root {
-  color: #171717;
-  background: #f9f8f4;
-  font-family: "Space Grotesk", Arial, sans-serif;
+  color: var(--rl-ink-2);
+  background: var(--rl-paper);
+  font-family: var(--rl-font-sans);
   line-height: 1.55;
-  --ilm-ink: #1b1b1b;
-  --ilm-muted: #6d736a;
-  --ilm-line: #d6d9d2;
-  --ilm-panel: #ffffff;
-  --ilm-soft: #f1f2ee;
-  --ilm-soft-2: #e7e9e3;
-  --ilm-green: #37563b;
-  --ilm-green-soft: #dbe9d6;
-  --ilm-warn: #8a4900;
-  --ilm-warn-bg: #fbf2e4;
+  --ilm-ink: var(--rl-ink);
+  --ilm-muted: var(--rl-muted);
+  --ilm-line: var(--rl-line);
+  --ilm-panel: var(--rl-surface);
+  --ilm-soft: var(--rl-soft);
+  --ilm-soft-2: var(--rl-soft-2);
+  --ilm-green: var(--rl-green);
+  --ilm-green-2: var(--rl-green-2);
+  --ilm-green-soft: var(--rl-green-soft);
+  --ilm-warn: var(--rl-warn);
+  --ilm-warn-bg: var(--rl-warn-bg);
 }
 
 html {
@@ -1186,14 +1187,35 @@ label {
 }
 
 .protocol-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   border: none;
   background: transparent;
   padding: 0;
-  color: var(--ilm-green);
-  font-family: "Noto Serif", Georgia, serif;
-  font-size: clamp(1.4rem, 2vw, 2rem);
+  color: var(--rl-green);
+  font-family: var(--rl-font-serif);
+  font-weight: 900;
   font-style: italic;
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  letter-spacing: 0.01em;
   transform: none;
+}
+
+.protocol-wordmark-glyph {
+  font-size: 2rem;
+  font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 32;
+  color: var(--rl-green-2);
+}
+
+.protocol-wordmark-text {
+  font-family: var(--rl-font-mono);
+  font-weight: 700;
+  font-style: normal;
+  font-size: 0.92rem;
+  letter-spacing: 0.18em;
+  color: var(--rl-ink);
+  text-transform: uppercase;
 }
 
 .protocol-wordmark:hover:not(:disabled) {
@@ -1223,9 +1245,21 @@ label {
 }
 
 .protocol-primary-action {
-  border-color: var(--ilm-green);
-  background: var(--ilm-green);
-  color: white;
+  border-color: var(--rl-green-2);
+  background: var(--rl-green-2);
+  color: #fff;
+  transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.protocol-primary-action:hover:not(:disabled) {
+  background: var(--rl-green-2);
+  border-color: var(--rl-green-2);
+  box-shadow: var(--rl-shadow-glow-primary);
+  transform: none;
+}
+
+.protocol-primary-action:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .protocol-secondary-action {
@@ -1296,7 +1330,14 @@ label {
 }
 
 .protocol-rail-glyph {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  color: inherit;
+  transition: transform 200ms ease;
+}
+
+.protocol-rail-item:hover .protocol-rail-glyph {
+  transform: scale(1.1);
 }
 
 .protocol-main-grid {

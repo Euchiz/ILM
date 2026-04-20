@@ -763,8 +763,9 @@ export const App = ({ page }: AppProps) => {
       ) : (
         <main className="protocol-shell">
           <header className="protocol-topbar">
-            <button className="protocol-wordmark" type="button" onClick={openModuleHome}>
-              RHINE_PROTOCOL_V4
+            <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to module home">
+              <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">biotech</span>
+              <span className="protocol-wordmark-text">RHINE_PROTOCOL_V4</span>
             </button>
 
             <div className="protocol-topbar-controls">
@@ -798,19 +799,19 @@ export const App = ({ page }: AppProps) => {
           <div className="protocol-body">
             <aside className="protocol-side-rail" aria-label="Protocol manager navigation">
               <button className="protocol-rail-item" type="button" onClick={openModuleHome}>
-                <span className="protocol-rail-glyph">⌂</span>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">dashboard</span>
                 <span>Module Home</span>
               </button>
               <button className={activeTab === "author" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("author")}>
-                <span className="protocol-rail-glyph">⚗</span>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">science</span>
                 <span>Sequencing</span>
               </button>
               <button className={activeTab === "preview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("preview")}>
-                <span className="protocol-rail-glyph">◫</span>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">visibility</span>
                 <span>Preview</span>
               </button>
               <button className={activeTab === "transfer" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("transfer")}>
-                <span className="protocol-rail-glyph">⇅</span>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">swap_vert</span>
                 <span>Transfer</span>
               </button>
               <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={handleNewProtocol}>
