@@ -1286,24 +1286,6 @@ label {
   gap: 1rem;
 }
 
-.protocol-placeholder-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  flex-wrap: wrap;
-}
-
-.protocol-placeholder-link {
-  border: none;
-  background: transparent;
-  padding: 0.3rem 0;
-  color: #6f756d;
-  font-size: 0.82rem;
-  font-family: "JetBrains Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-
 .protocol-tab-link,
 .protocol-utility-link {
   border: none;

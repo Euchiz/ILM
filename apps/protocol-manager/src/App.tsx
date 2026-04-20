@@ -213,7 +213,7 @@ export const App = ({ page }: AppProps) => {
   const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
     setSelectedSectionIds([]);
     clearBlockSelection();
-    openViewMode("summary");
+    openViewMode("step");
 
     if (options?.toggle) {
       setSelectedStepIds((current) => {
@@ -725,29 +725,17 @@ export const App = ({ page }: AppProps) => {
 
             <div className="protocol-topbar-controls">
               <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
-                <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
-                  Summary
-                </button>
                 <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
                   Step
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
+                  Summary
                 </button>
                 <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
                   Preview
                 </button>
                 <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
                   Transfer
-                </button>
-              </div>
-
-              <div className="protocol-placeholder-nav" aria-label="Future module controls">
-                <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Activity feed placeholder reserved for future release."])}>
-                  Activity
-                </button>
-                <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Approvals workspace placeholder reserved for future release."])}>
-                  Approvals
-                </button>
-                <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Template gallery placeholder reserved for future release."])}>
-                  Templates
                 </button>
               </div>
             </div>
