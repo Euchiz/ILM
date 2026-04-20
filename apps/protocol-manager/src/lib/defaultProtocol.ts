@@ -12,6 +12,9 @@ import type {
 import { PROTOCOL_SCHEMA_VERSION } from "@ilm/types";
 import { createStableId, nowIso } from "@ilm/utils";
 
+const createUniqueId = (prefix: string, label: string) =>
+  createStableId(prefix, `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+
 export const createDefaultProtocol = (): ProtocolDocument => {
   const now = nowIso();
 
@@ -88,7 +91,7 @@ export const createDefaultProtocol = (): ProtocolDocument => {
   return {
     schemaVersion: PROTOCOL_SCHEMA_VERSION,
     protocol: {
-      id: "protocol-pcr-basic",
+      id: createUniqueId("protocol", "pcr-basic"),
       title: "Basic PCR Amplification",
       description: "Starter template for Protocol Manager",
       createdAt: now,
@@ -131,6 +134,29 @@ export const createDefaultProtocol = (): ProtocolDocument => {
         }
       ],
       sections: [section],
+      extensions: {}
+    },
+    extensions: {}
+  };
+};
+
+export const createBlankProtocol = (): ProtocolDocument => {
+  const now = nowIso();
+
+  return {
+    schemaVersion: PROTOCOL_SCHEMA_VERSION,
+    protocol: {
+      id: createUniqueId("protocol", "untitled"),
+      title: "Untitled Protocol",
+      description: "",
+      createdAt: now,
+      updatedAt: now,
+      authors: [],
+      tags: [],
+      metadata: { objective: "" },
+      reagents: [],
+      equipment: [],
+      sections: [],
       extensions: {}
     },
     extensions: {}

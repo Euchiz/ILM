@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
-import { safeJsonParse, nowIso } from "@ilm/utils";
-import type { ValidationMode } from "@ilm/validation";
+import { nowIso, safeJsonParse } from "@ilm/utils";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
-import { normalizeProtocolDocument, validateProtocolDocument } from "@ilm/validation";
-import { createDefaultProtocol } from "./lib/defaultProtocol";
+import { normalizeProtocolDocument, validateProtocolDocument, type ValidationMode } from "@ilm/validation";
 import { ImportExportPanel } from "./components/ImportExportPanel";
 import { OutlinePanel } from "./components/OutlinePanel";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { StepEditorModal } from "./components/StepEditorModal";
+import { createInitialLibrary, appendProtocolToLibrary, createProtocolForMode, ensureProtocolMetadata, getProtocolMetadata, LEGACY_STORAGE_KEY, LIBRARY_STORAGE_KEY, normalizeLibraryState, replaceActiveProtocol, type LifecycleStatus, type NewProtocolMode, type ProtocolLibraryState, type ReviewStatus, type SidebarTab, type ValidationStatus, type ViewMode, updateProtocolMetadata } from "./lib/protocolLibrary";
 import {
   addSection,
   addStep,
@@ -21,50 +20,47 @@ import {
   deleteSteps,
   duplicateSection,
   duplicateStep,
+  findSection,
   findSectionParent,
   findStepLocation,
   moveSection,
   moveStep,
+  moveStepsToSection,
   pasteBlocksIntoStep,
   pasteSections,
   pasteStepsIntoSection,
   removeBlocksFromStep,
   reorderSections,
-  type Selection,
-  moveStepsToSection
+  type Selection
 } from "./state/protocolState";
-
-const STORAGE_KEY = "ilm.protocol-manager.document";
-type AppTab = "author" | "preview" | "transfer";
-type ActiveModule = "home" | "protocol-manager";
 
 const MODULE_CARDS = [
   {
     id: "protocol-manager",
     title: "Protocol Manager",
     status: "Available",
-    description: "Structured wet-lab authoring, preview, printing, and import/export workflows.",
+    description: "Portfolio-level protocol visibility, library organization, and structured viewing/editing workflows.",
     actionLabel: "Open module"
   },
   {
     id: "supply-manager",
     title: "Supply Manager",
     status: "Planned",
-    description: "Track reagents, catalog numbers, and stock relationships with future protocol links.",
+    description: "Track reagents, linked vendors, and inventory relationships against upcoming protocol runs.",
     actionLabel: "Coming soon"
   },
   {
     id: "project-manager",
     title: "Project Manager",
     status: "Planned",
-    description: "Coordinate milestones, linked protocols, and experiment planning across research workstreams.",
+    description: "Coordinate project milestones, protocol coverage, and experiment readiness across teams.",
     actionLabel: "Coming soon"
   },
   {
     id: "funding-manager",
     title: "Funding Manager",
     status: "Planned",
-    description: "Organize grants, budgets, and connections between funded work and protocol execution.",
+    description: "Connect grants and budgets to active project portfolios and protocol execution plans.",
     actionLabel: "Coming soon"
   }
 ] as const;
@@ -73,12 +69,14 @@ const APP_BASE_URL = import.meta.env.BASE_URL;
 
 const buildPageUrl = (path: "" | "protocol-manager/") => new URL(path, window.location.origin + APP_BASE_URL).toString();
 
+type ActiveModule = "home" | "protocol-manager";
+
 type AppProps = {
   page: ActiveModule;
 };
 
 export const App = ({ page }: AppProps) => {
-  const [doc, setDoc] = useState<ProtocolDocument>(createDefaultProtocol);
+  const [libraryState, setLibraryState] = useState<ProtocolLibraryState>(() => loadLibraryState());
   const [selection, setSelection] = useState<Selection>({ type: "protocol" });
   const [selectedStepIds, setSelectedStepIds] = useState<string[]>([]);
   const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
@@ -86,47 +84,43 @@ export const App = ({ page }: AppProps) => {
   const [blockClipboard, setBlockClipboard] = useState<ProtocolBlock[]>([]);
   const [stepClipboard, setStepClipboard] = useState<ProtocolStep[]>([]);
   const [sectionClipboard, setSectionClipboard] = useState<ProtocolSection[]>([]);
-  const [jsonText, setJsonText] = useState("");
   const [status, setStatus] = useState<string[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("overview");
+  const [viewMode, setViewMode] = useState<ViewMode>("summary");
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
-  const [activeTab, setActiveTab] = useState<AppTab>("author");
+  const [jsonText, setJsonText] = useState("");
   const [editorModalOpen, setEditorModalOpen] = useState(false);
+  const [newProtocolModalOpen, setNewProtocolModalOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const isProtocolManagerPage = page === "protocol-manager";
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-
-    const parsed = safeJsonParse<unknown>(stored);
-    if (!parsed.ok) {
-      setStatus([`Could not parse autosaved document: ${parsed.error}`]);
-      return;
-    }
-
-    const result = validateProtocolDocument(parsed.value, { mode: "assisted" });
-    if (!result.success || !result.data) {
-      setStatus(["Could not restore autosaved protocol.", ...result.errors, ...result.warnings.map((warning) => `Warning: ${warning}`)]);
-      return;
-    }
-
-    setDoc(normalizeProtocolDocument(result.data));
-    if (result.warnings.length > 0) {
-      setStatus(["Autosaved protocol restored with warnings.", ...result.warnings.map((warning) => `Warning: ${warning}`)]);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(doc, null, 2));
-  }, [doc]);
-
-  const exportedJson = useMemo(() => JSON.stringify(doc, null, 2), [doc]);
-  const templateJson = useMemo(() => JSON.stringify(createDefaultProtocol(), null, 2), []);
+  const doc =
+    libraryState.protocols.find((candidate) => candidate.protocol.id === libraryState.activeProtocolId) ??
+    libraryState.protocols[0];
+  const protocolMeta = getProtocolMetadata(doc);
+  const projectGroups = useMemo(() => groupProtocolsByProject(libraryState.protocols), [libraryState.protocols]);
+  const totalProjects = projectGroups.length;
+  const totalProtocols = libraryState.protocols.length;
+  const totalReviewed = libraryState.protocols.filter((protocol) => getProtocolMetadata(protocol).reviewStatus === "reviewed").length;
+  const totalReviewing = totalProtocols - totalReviewed;
+  const totalArchived = libraryState.protocols.filter((protocol) => getProtocolMetadata(protocol).lifecycleStatus === "archived").length;
+  const totalActive = totalProtocols - totalArchived;
+  const totalValidated = libraryState.protocols.filter((protocol) => getProtocolMetadata(protocol).validationStatus === "validated").length;
+  const totalProposed = totalProtocols - totalValidated;
   const sectionCount = useMemo(() => countSections(doc.protocol.sections), [doc]);
   const stepCount = useMemo(() => countSteps(doc.protocol.sections), [doc]);
   const allStepIds = useMemo(() => collectStepIds(doc.protocol.sections), [doc]);
-  const liveModuleCount = MODULE_CARDS.filter((module) => module.status === "Available").length;
-  const plannedModuleCount = MODULE_CARDS.length - liveModuleCount;
+  const focusedStepLocation = selection.type === "step" ? findStepLocation(doc.protocol.sections, selection.stepId) : null;
+  const focusedSection =
+    selection.type === "protocol"
+      ? null
+      : findSection(doc.protocol.sections, selection.type === "section" ? selection.sectionId : focusedStepLocation?.sectionId ?? selection.sectionId);
+  const focusedStep = focusedStepLocation?.step ?? null;
+  const firstStepRecord = getFirstStepRecord(doc.protocol.sections);
+
+  useEffect(() => {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(libraryState, null, 2));
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(doc, null, 2));
+  }, [doc, libraryState]);
 
   useEffect(() => {
     const validStepIds = new Set(allStepIds);
@@ -150,14 +144,25 @@ export const App = ({ page }: AppProps) => {
     }));
   }, [allStepIds, blockSelection.stepId, doc.protocol.sections]);
 
+  useEffect(() => {
+    setSelection({ type: "protocol" });
+    setSelectedStepIds([]);
+    setSelectedSectionIds([]);
+    setBlockSelection({ stepId: "", blockIds: [] });
+    setEditorModalOpen(false);
+    setJsonText("");
+  }, [libraryState.activeProtocolId]);
+
   const updateDoc = (nextDoc: ProtocolDocument) => {
-    setDoc({ ...nextDoc, protocol: { ...nextDoc.protocol, updatedAt: nowIso() } });
+    const normalizedDoc = ensureProtocolMetadata({
+      ...nextDoc,
+      protocol: { ...nextDoc.protocol, updatedAt: nowIso() }
+    });
+
+    setLibraryState((current) => replaceActiveProtocol(current, normalizedDoc));
   };
 
   const clearBlockSelection = () => setBlockSelection({ stepId: "", blockIds: [] });
-
-  const hasOutlineSelection =
-    selection.type !== "protocol" || selectedStepIds.length > 0 || selectedSectionIds.length > 0 || blockSelection.blockIds.length > 0;
 
   const resetSelection = () => {
     setSelection({ type: "protocol" });
@@ -167,15 +172,15 @@ export const App = ({ page }: AppProps) => {
   };
 
   const selectProtocol = () => {
-    setSelection({ type: "protocol" });
-    setSelectedStepIds([]);
-    setSelectedSectionIds([]);
-    clearBlockSelection();
+    resetSelection();
+    setViewMode("summary");
   };
 
   const selectSection = (sectionId: string, options?: { toggle: boolean }) => {
     setSelectedStepIds([]);
     clearBlockSelection();
+    setSidebarTab("view");
+    setViewMode("summary");
 
     if (options?.toggle) {
       setSelectedSectionIds((current) => {
@@ -188,6 +193,7 @@ export const App = ({ page }: AppProps) => {
           setSelection({ type: "section", sectionId: next[0] });
           return next;
         }
+
         setSelection({ type: "section", sectionId });
         return [...current, sectionId];
       });
@@ -199,8 +205,10 @@ export const App = ({ page }: AppProps) => {
   };
 
   const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
-    clearBlockSelection();
     setSelectedSectionIds([]);
+    clearBlockSelection();
+    setSidebarTab("view");
+    setViewMode("summary");
 
     if (options?.toggle) {
       setSelectedStepIds((current) => {
@@ -213,11 +221,9 @@ export const App = ({ page }: AppProps) => {
 
           const nextPrimary = next[0];
           const nextLocation = findStepLocation(doc.protocol.sections, nextPrimary);
-          setSelection(
-            nextLocation
-              ? { type: "step", sectionId: nextLocation.sectionId, stepId: nextPrimary }
-              : { type: "step", sectionId, stepId }
-          );
+          if (nextLocation) {
+            setSelection({ type: "step", sectionId: nextLocation.sectionId, stepId: nextPrimary });
+          }
           return next;
         }
 
@@ -232,14 +238,15 @@ export const App = ({ page }: AppProps) => {
   };
 
   const openProtocolEditor = () => {
+    setSidebarTab("view");
+    setViewMode("summary");
     setSelection({ type: "protocol" });
-    setSelectedStepIds([]);
-    setSelectedSectionIds([]);
-    clearBlockSelection();
     setEditorModalOpen(true);
   };
 
   const openSectionEditor = (sectionId: string) => {
+    setSidebarTab("view");
+    setViewMode("summary");
     setSelection({ type: "section", sectionId });
     setSelectedSectionIds([sectionId]);
     setSelectedStepIds([]);
@@ -248,6 +255,8 @@ export const App = ({ page }: AppProps) => {
   };
 
   const openStepEditor = (sectionId: string, stepId: string) => {
+    setSidebarTab("view");
+    setViewMode("summary");
     setSelection({ type: "step", sectionId, stepId });
     setSelectedStepIds([stepId]);
     setSelectedSectionIds([]);
@@ -266,9 +275,18 @@ export const App = ({ page }: AppProps) => {
       return;
     }
 
-    const normalized = normalizeProtocolDocument(result.data);
-    setDoc({ ...normalized, protocol: { ...normalized.protocol, updatedAt: nowIso() } });
+    const normalized = ensureProtocolMetadata(
+      updateProtocolMetadata(normalizeProtocolDocument(result.data), {
+        project: protocolMeta.project,
+        reviewStatus: protocolMeta.reviewStatus,
+        lifecycleStatus: protocolMeta.lifecycleStatus,
+        validationStatus: protocolMeta.validationStatus
+      })
+    );
+
+    setLibraryState((current) => replaceActiveProtocol(current, normalized));
     resetSelection();
+    setViewMode("summary");
     setStatus([
       `Import successful (${importMode} mode).`,
       ...result.warnings.map((warning) => `Warning: ${warning}`)
@@ -302,17 +320,6 @@ export const App = ({ page }: AppProps) => {
         return location ? duplicateStep(nextDoc, location.sectionId, stepId) : nextDoc;
       }, doc);
       updateDoc(duplicatedDoc);
-    }
-  };
-
-  const handleMoveSelection = (direction: "up" | "down") => {
-    if (selection.type === "section") {
-      updateDoc(moveSection(doc, selection.sectionId, direction));
-      return;
-    }
-
-    if (selection.type === "step" && selectedStepIds.length <= 1) {
-      updateDoc(moveStep(doc, selection.sectionId, selection.stepId, direction));
     }
   };
 
@@ -442,30 +449,12 @@ export const App = ({ page }: AppProps) => {
   };
 
   useEffect(() => {
-    if (!isProtocolManagerPage || activeTab !== "author") return;
-    if (!hasOutlineSelection) return;
-    if (editorModalOpen) return;
+    if (sidebarTab !== "view" || viewMode !== "summary") return;
 
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-      if (event.shiftKey || event.metaKey || event.ctrlKey) return;
-      if (target.closest(".step-modal, [role='dialog'], [role='menu']")) return;
-      if (target.closest(".outline-tree button, .outline-tree a, .outline-tree input, .outline-tree textarea, .outline-tree select")) return;
-      if (target.closest(".outline-card.selected, .outline-card.group-selected, .outline-step-pill.selected, .outline-step-pill.group-selected")) return;
-      resetSelection();
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isProtocolManagerPage, activeTab, hasOutlineSelection, editorModalOpen]);
-
-  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if (!isProtocolManagerPage || activeTab !== "author") return;
 
       const key = event.key.toLowerCase();
       if (key === "c") {
@@ -485,9 +474,69 @@ export const App = ({ page }: AppProps) => {
         }
       }
     };
+
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [activeTab, handleCopyOutline, handleCutOutline, handlePasteOutline, isProtocolManagerPage, selection.type, stepClipboard.length, sectionClipboard.length]);
+  }, [selection, sidebarTab, stepClipboard.length, sectionClipboard.length, viewMode]);
+
+  const handleProjectChange = (project: string) => {
+    updateDoc(updateProtocolMetadata(doc, { project: project.trim() || "Unassigned Project" }));
+  };
+
+  const handleReviewStatusChange = (reviewStatus: ReviewStatus) => {
+    updateDoc(updateProtocolMetadata(doc, { reviewStatus }));
+  };
+
+  const handleLifecycleStatusChange = (lifecycleStatus: LifecycleStatus) => {
+    updateDoc(updateProtocolMetadata(doc, { lifecycleStatus }));
+  };
+
+  const handleValidationStatusChange = (validationStatus: ValidationStatus) => {
+    updateDoc(updateProtocolMetadata(doc, { validationStatus }));
+  };
+
+  const openProtocolFromLibrary = (protocolId: string) => {
+    setLibraryState((current) => ({ ...current, activeProtocolId: protocolId }));
+    setSidebarTab("view");
+    setViewMode("summary");
+    setStatus(["Protocol loaded into the VIEW workspace."]);
+  };
+
+  const handleProtocolExport = () => {
+    setSidebarTab("view");
+    if (viewMode !== "preview") {
+      setViewMode("preview");
+      setStatus(["Switched to preview mode. Use Export Protocol again to open the print-ready document."]);
+      return;
+    }
+
+    handlePrintPreview();
+  };
+
+  const handleSaveDraft = () => {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(libraryState, null, 2));
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(doc, null, 2));
+    setStatus(["Workspace library saved locally. Autosave remains active in this browser session."]);
+  };
+
+  const handleCreateProtocol = (mode: NewProtocolMode) => {
+    const nextDoc = createProtocolForMode(mode);
+    setLibraryState((current) => appendProtocolToLibrary(current, nextDoc));
+    setNewProtocolModalOpen(false);
+    resetSelection();
+    setEditorModalOpen(false);
+    setSidebarTab("view");
+    setViewMode(mode === "import-files" || mode === "import-json" ? "transfer" : "summary");
+    setJsonText("");
+
+    if (mode === "blank") {
+      setStatus(["Started a blank protocol in the VIEW workspace."]);
+    } else if (mode === "template") {
+      setStatus(["Loaded a template protocol in the VIEW workspace."]);
+    } else {
+      setStatus(["Started a blank protocol and opened Transfer so you can import files or JSON right away."]);
+    }
+  };
 
   const downloadTextFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: "application/json" });
@@ -523,20 +572,12 @@ export const App = ({ page }: AppProps) => {
   </head>
   <body class="print-window-body">
     <main class="print-document">
-      <div class="print-document-header">
-        <p>Integrated Lab Manager</p>
+      <header class="print-document-header">
+        <p>Protocol Manager / View Export</p>
         <h1>${escapeHtml(doc.protocol.title)}</h1>
-      </div>
+      </header>
       ${previewMarkup}
     </main>
-    <script>
-      window.addEventListener('load', function () {
-        setTimeout(function () {
-          window.focus();
-          window.print();
-        }, 250);
-      });
-    </script>
   </body>
 </html>`);
     printWindow.document.close();
@@ -551,66 +592,9 @@ export const App = ({ page }: AppProps) => {
     window.location.href = buildPageUrl("");
   };
 
-  const focusedStepLocation = selection.type === "step" ? findStepLocation(doc.protocol.sections, selection.stepId) : null;
-  const focusedSection =
-    selection.type === "section"
-      ? findSectionById(doc.protocol.sections, selection.sectionId)
-      : selection.type === "step"
-        ? findSectionById(doc.protocol.sections, selection.sectionId)
-        : null;
-  const focusedStep =
-    selection.type === "step"
-      ? focusedStepLocation?.step ?? null
-      : null;
-  const sectionLeadStep =
-    selection.type === "section" && focusedSection
-      ? focusedSection.steps[0] ?? getFirstStepRecord(focusedSection.sections)?.step ?? null
-      : null;
-  const summaryStep = focusedStep ?? sectionLeadStep;
-  const recipeBlock = getBlockOfType(summaryStep, "recipe");
-  const tableBlock = getBlockOfType(summaryStep, "table");
-  const timelineBlock = getBlockOfType(summaryStep, "timeline");
-  const cautionBlock = getBlockOfType(summaryStep, "caution");
-  const qcBlock = getBlockOfType(summaryStep, "qc");
-  const linkBlock = getBlockOfType(summaryStep, "link");
-  const authorWorkspaceTitle =
-    selection.type === "step" ? focusedStep?.title ?? doc.protocol.title : selection.type === "section" ? focusedSection?.title ?? doc.protocol.title : doc.protocol.title;
-  const authorWorkspaceMeta =
-    selection.type === "step"
-      ? `Section: ${focusedSection?.title ?? "Unknown section"}`
-      : selection.type === "section"
-        ? `${countStepsInSection(focusedSection)} total step(s)`
-        : `Updated: ${formatDisplayTimestamp(doc.protocol.updatedAt)}`;
+  const activeProtocolLabel = selection.type === "protocol" ? "Protocol summary" : selection.type === "section" ? "Section summary" : "Step summary";
   const openEditorLabel =
-    selection.type === "step" ? "Open step editor" : selection.type === "section" ? "Open section editor" : "Open protocol editor";
-
-  const handleProtocolExport = () => {
-    if (activeTab !== "preview") {
-      setActiveTab("preview");
-      setStatus(["Switched to Preview / Print. Select Export Protocol again to open the print-ready document."]);
-      return;
-    }
-    handlePrintPreview();
-  };
-
-  const handleSaveDraft = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(doc, null, 2));
-    setStatus(["Draft saved locally. Autosave remains active in this browser session."]);
-  };
-
-  const handleNewProtocol = () => {
-    setDoc(createDefaultProtocol());
-    setSelection({ type: "protocol" });
-    setSelectedStepIds([]);
-    setSelectedSectionIds([]);
-    clearBlockSelection();
-    setEditorModalOpen(false);
-    setStatus(["Started a fresh protocol draft."]);
-  };
-
-  const handleOpenFocusedEditor = () => {
-    setEditorModalOpen(true);
-  };
+    selection.type === "protocol" ? "Edit protocol" : selection.type === "section" ? "Edit section" : "Edit step";
 
   return (
     <>
@@ -620,714 +604,731 @@ export const App = ({ page }: AppProps) => {
             <div className="dashboard-brand">
               <div className="dashboard-brand-mark">ILM</div>
               <div>
-                <p className="dashboard-brand-title">Rhine Lab</p>
-                <p className="dashboard-brand-subtitle">System operations v4.02</p>
+                <p className="dashboard-brand-subtitle">Integrated Lab Manager</p>
+                <h1 className="dashboard-brand-title">Control Surface</h1>
               </div>
             </div>
 
-            <nav className="dashboard-nav" aria-label="Dashboard sections">
-              <a className="active" href="#overview">
-                Overview
+            <nav className="dashboard-nav" aria-label="Primary module navigation">
+              <a className="active" href={buildPageUrl("")}>
+                Modules
               </a>
-              <a href="#overview">Modules</a>
-              <a href="#overview">Analytics</a>
-              <a href="#overview">Logistics</a>
+              <a href={buildPageUrl("protocol-manager/")}>Protocol Manager</a>
+              <a href="#roadmap">Roadmap</a>
             </nav>
 
             <div className="dashboard-actions">
               <div className="dashboard-connection-badge">
-                <span>SECURE_CONN</span>
-                <strong>TS_782.9</strong>
+                <span>Workspace</span>
+                <strong>{MODULE_CARDS.filter((module) => module.status === "Available").length} active module(s)</strong>
               </div>
-              <button className="dashboard-icon-button" type="button" onClick={() => window.print()} aria-label="Print report">
-                ⌕
-              </button>
-              <button className="dashboard-icon-button" type="button" onClick={openProtocolManager} aria-label="Open protocol manager">
-                ◎
-              </button>
             </div>
           </header>
 
-          <section className="dashboard-hero" id="overview">
+          <section className="dashboard-hero">
             <div>
-              <h1>Operations Summary</h1>
+              <h1>Protocol Operations Reframed Around Portfolio Visibility.</h1>
               <div className="dashboard-hero-meta">
-                <span className="dashboard-status-live">Status: nominal</span>
-                <span>Ref_ID: {doc.protocol.id || "RL-DSH-992-B"}</span>
-                <span>Timestamp: {formatDisplayTimestamp(doc.protocol.updatedAt)}</span>
+                <span className="dashboard-status-live">1 live module</span>
+                <span>Library-centric navigation</span>
+                <span>Structured protocol editing</span>
               </div>
             </div>
+
             <div className="dashboard-hero-actions">
-              <button type="button" onClick={openProtocolManager}>
+              <span>Protocol workspace ready</span>
+              <button className="protocol-primary-action" type="button" onClick={openProtocolManager}>
                 Open Protocol Manager
               </button>
-              <span>CONFIDENTIAL - INTERNAL USE ONLY</span>
             </div>
           </section>
 
-          <section className="dashboard-layout" aria-label="Integrated Lab Manager module dashboard">
-            <div className="dashboard-column">
-              <article className="dashboard-metric-card">
-                <div className="dashboard-card-header">
-                  <h2>Protocol Matrix</h2>
-                  <span>M-01</span>
+          <section className="module-grid">
+            {MODULE_CARDS.map((module) => (
+              <article className={`module-card ${module.status === "Available" ? "live" : ""}`} key={module.id}>
+                <div className="module-card-header">
+                  <h2>{module.title}</h2>
+                  <span className={module.status === "Available" ? "ilm-tag ilm-tag-success" : "ilm-tag ilm-tag-neutral"}>{module.status}</span>
                 </div>
-                <div className="dashboard-metric-row">
-                  <span>Live modules</span>
-                  <strong>{liveModuleCount}</strong>
+                <p>{module.description}</p>
+                <div className="module-toolbar">
+                  <button type="button" onClick={module.id === "protocol-manager" ? openProtocolManager : undefined} disabled={module.id !== "protocol-manager"}>
+                    {module.actionLabel}
+                  </button>
                 </div>
-                <div className="dashboard-meter">
-                  <span style={{ width: `${(liveModuleCount / MODULE_CARDS.length) * 100}%` }} />
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Planned modules</span>
-                  <strong>{plannedModuleCount}</strong>
-                </div>
-                <div className="dashboard-meter muted">
-                  <span style={{ width: `${(plannedModuleCount / MODULE_CARDS.length) * 100}%` }} />
-                </div>
-                <p className="dashboard-card-footnote">Validation: static deployment ready</p>
               </article>
-
-              <article className="dashboard-metric-card">
-                <div className="dashboard-card-header">
-                  <h2>Research Projects</h2>
-                  <span>M-03</span>
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Protocol sections</span>
-                  <strong>{sectionCount}</strong>
-                </div>
-                <div className="dashboard-meter">
-                  <span style={{ width: `${Math.min(100, Math.max(18, sectionCount * 9))}%` }} />
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Protocol steps</span>
-                  <strong>{stepCount}</strong>
-                </div>
-                <div className="dashboard-meter muted">
-                  <span style={{ width: `${Math.min(100, Math.max(22, stepCount * 3))}%` }} />
-                </div>
-                <p className="dashboard-card-footnote">Status: deployment ready</p>
-              </article>
-            </div>
-
-            <article className="dashboard-schematic">
-              <div className="dashboard-schematic-label">FIG_01: CORE_LIFECYCLE_SCHEMA</div>
-              <div className="dashboard-grid-background" />
-              <button className="dashboard-node dashboard-node-top" type="button" onClick={openProtocolManager}>
-                Protocol
-              </button>
-              <button className="dashboard-node dashboard-node-left" type="button">
-                Projects
-              </button>
-              <button className="dashboard-node dashboard-node-right" type="button">
-                Supply
-              </button>
-              <button className="dashboard-node dashboard-node-bottom" type="button">
-                Funding
-              </button>
-              <div className="dashboard-core-node">
-                <span className="dashboard-core-mark">◎</span>
-                <p>Matrix Flow</p>
-                <strong>Integrated Lab Manager</strong>
-              </div>
-              <div className="dashboard-schematic-foot">
-                <span>Scale: 1:1.024</span>
-                <span>Auth: Level_5</span>
-              </div>
-            </article>
-
-            <div className="dashboard-column">
-              <article className="dashboard-metric-card">
-                <div className="dashboard-card-header">
-                  <h2>Supply Chain</h2>
-                  <span>M-02</span>
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Reagents</span>
-                  <strong>{doc.protocol.reagents.length}</strong>
-                </div>
-                <div className="dashboard-meter">
-                  <span style={{ width: `${Math.min(100, Math.max(12, doc.protocol.reagents.length * 15))}%` }} />
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Equipment</span>
-                  <strong>{doc.protocol.equipment.length}</strong>
-                </div>
-                <div className="dashboard-meter muted">
-                  <span style={{ width: `${Math.min(100, Math.max(16, doc.protocol.equipment.length * 16))}%` }} />
-                </div>
-                <p className="dashboard-card-footnote dashboard-warning">Warning: low inventory telemetry</p>
-              </article>
-
-              <article className="dashboard-metric-card">
-                <div className="dashboard-card-header">
-                  <h2>Fund Allocation</h2>
-                  <span>M-04</span>
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Authors</span>
-                  <strong>{doc.protocol.authors.length}</strong>
-                </div>
-                <div className="dashboard-meter">
-                  <span style={{ width: `${Math.min(100, Math.max(10, doc.protocol.authors.length * 18))}%` }} />
-                </div>
-                <div className="dashboard-metric-row">
-                  <span>Tagged workflows</span>
-                  <strong>{doc.protocol.tags.length}</strong>
-                </div>
-                <div className="dashboard-meter muted">
-                  <span style={{ width: `${Math.min(100, Math.max(10, doc.protocol.tags.length * 18))}%` }} />
-                </div>
-                <p className="dashboard-card-footnote">Burn rate: stable</p>
-              </article>
-            </div>
+            ))}
           </section>
-
-          <footer className="dashboard-footer">
-            <span>Proprietary &amp; schematic data © Rhine Lab Biological Research</span>
-            <span>
-              SYSTEM_NODE: 0X8FA2 // PROTOCOL_REV: {doc.protocol.id || "S-99"}
-            </span>
-          </footer>
         </main>
       ) : (
         <main className="protocol-shell">
           <header className="protocol-topbar">
             <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to module home">
-              <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">biotech</span>
+              <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
+                biotech
+              </span>
               <span className="protocol-wordmark-text">RHINE_PROTOCOL_V4</span>
             </button>
 
             <div className="protocol-topbar-controls">
-              <div className="protocol-tab-nav" role="tablist" aria-label="Protocol manager views">
-                <button className={activeTab === "author" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" role="tab" aria-selected={activeTab === "author"} onClick={() => setActiveTab("author")}>
-                  Editor
+              <div className="protocol-placeholder-nav" aria-label="Future module controls">
+                <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Activity feed placeholder reserved for future release."])}>
+                  Activity
                 </button>
-                <button className={activeTab === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" role="tab" aria-selected={activeTab === "preview"} onClick={() => setActiveTab("preview")}>
-                  Preview
+                <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Approvals workspace placeholder reserved for future release."])}>
+                  Approvals
                 </button>
-                <button className={activeTab === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" role="tab" aria-selected={activeTab === "transfer"} onClick={() => setActiveTab("transfer")}>
-                  Transfer
+                <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Template gallery placeholder reserved for future release."])}>
+                  Templates
                 </button>
               </div>
 
-              <button className="protocol-utility-link" type="button" onClick={() => setStatus(["Version history UI is not wired yet. Protocol autosave is active."])}>
-                History
-              </button>
-              <button className="protocol-utility-link" type="button" onClick={() => setStatus(["Settings panel is not wired yet. Edit document metadata from the focused editor for now."])}>
-                Settings
-              </button>
               <button className="protocol-primary-action" type="button" onClick={handleProtocolExport}>
-                Export_Protocol
+                Export Protocol
               </button>
               <button className="protocol-secondary-action" type="button" onClick={handleSaveDraft}>
-                Save_Draft
+                Save Library
               </button>
             </div>
           </header>
 
           <div className="protocol-body">
             <aside className="protocol-side-rail" aria-label="Protocol manager navigation">
-              <button className="protocol-rail-item" type="button" onClick={openModuleHome}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">dashboard</span>
-                <span>Module Home</span>
+              <button className={sidebarTab === "overview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("overview")}>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                  analytics
+                </span>
+                <span>Overview</span>
               </button>
-              <button className={activeTab === "author" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("author")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">science</span>
-                <span>Sequencing</span>
+              <button className={sidebarTab === "library" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("library")}>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                  folder_open
+                </span>
+                <span>Library</span>
               </button>
-              <button className={activeTab === "preview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("preview")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">visibility</span>
-                <span>Preview</span>
+              <button className={sidebarTab === "view" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("view")}>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                  visibility
+                </span>
+                <span>View</span>
               </button>
-              <button className={activeTab === "transfer" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setActiveTab("transfer")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">swap_vert</span>
-                <span>Transfer</span>
-              </button>
-              <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={handleNewProtocol}>
-                <span>New_Protocol</span>
+              <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={() => setNewProtocolModalOpen(true)}>
+                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                  add_box
+                </span>
+                <span>New Protocol</span>
               </button>
             </aside>
 
-            <div className="protocol-main-grid">
-              <aside className="protocol-outline-pane">
-                <div className="protocol-outline-header">
-                  <h2>Protocol Outline</h2>
-                  <button type="button" onClick={resetSelection} aria-label="Clear selection">
-                    ≡
-                  </button>
-                </div>
+            {sidebarTab === "view" ? (
+              <div className="protocol-main-grid">
+                <aside className="protocol-outline-pane">
+                  <div className="protocol-outline-header">
+                    <div>
+                      <h2>{doc.protocol.title}</h2>
+                      <p className="helper-text">Project: {protocolMeta.project}</p>
+                    </div>
+                    <button type="button" onClick={resetSelection}>
+                      Clear
+                    </button>
+                  </div>
 
-                <div className="protocol-outline-toolbar">
-                  <button type="button" onClick={() => updateDoc(addSection(doc, "New top-level section"))}>
-                    Add section
-                  </button>
-                  <button type="button" onClick={() => selection.type === "section" && updateDoc(addSection(doc, "New subsection", selection.sectionId))} disabled={selection.type !== "section"}>
-                    Add subsection
-                  </button>
-                  <button type="button" onClick={() => selection.type === "section" && updateDoc(addStep(doc, selection.sectionId, "New step"))} disabled={selection.type !== "section"}>
-                    Add step
-                  </button>
-                  <button type="button" onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
-                    Duplicate
-                  </button>
-                  <button type="button" onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
-                    Delete
-                  </button>
-                </div>
+                  <div className="protocol-outline-toolbar">
+                    <button type="button" onClick={() => updateDoc(addSection(doc, "New top-level section"))}>
+                      Add section
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selection.type === "section" && updateDoc(addSection(doc, "New subsection", selection.sectionId))}
+                      disabled={selection.type !== "section"}
+                    >
+                      Add subsection
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selection.type === "section" && updateDoc(addStep(doc, selection.sectionId, "New step"))}
+                      disabled={selection.type !== "section"}
+                    >
+                      Add step
+                    </button>
+                    <button type="button" onClick={handleDuplicateSelection} disabled={selection.type === "protocol"}>
+                      Duplicate
+                    </button>
+                    <button type="button" onClick={handleDeleteSelection} disabled={selection.type === "protocol"}>
+                      Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selection.type !== "protocol" && updateDoc(selection.type === "section" ? moveSection(doc, selection.sectionId, "up") : moveStep(doc, selection.sectionId, selection.stepId, "up"))}
+                      disabled={selection.type === "protocol"}
+                    >
+                      Move up
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selection.type !== "protocol" && updateDoc(selection.type === "section" ? moveSection(doc, selection.sectionId, "down") : moveStep(doc, selection.sectionId, selection.stepId, "down"))}
+                      disabled={selection.type === "protocol"}
+                    >
+                      Move down
+                    </button>
+                  </div>
 
-                <div className="protocol-outline-scroll">
-                  <OutlinePanel
-                    sections={doc.protocol.sections}
-                    selection={selection}
-                    selectedStepIds={selectedStepIds}
-                    selectedSectionIds={selectedSectionIds}
-                    onSelectProtocol={selectProtocol}
-                    onOpenProtocol={openProtocolEditor}
-                    onSelectSection={selectSection}
-                    onOpenSection={openSectionEditor}
-                    onSelectStep={selectStep}
-                    onOpenStep={openStepEditor}
-                    onClearOutlineSelection={resetSelection}
-                    onReorderSection={(parentSectionId, sectionIds, targetSectionId) =>
-                      updateDoc(reorderSections(doc, parentSectionId, sectionIds, targetSectionId))
-                    }
-                    onMoveSteps={handleMoveSteps}
-                    onAddSubsection={(sectionId) => updateDoc(addSection(doc, "New subsection", sectionId))}
-                    onAddStep={(sectionId) => updateDoc(addStep(doc, sectionId, "New step"))}
-                    onDuplicateSection={(sectionId) => updateDoc(duplicateSection(doc, sectionId))}
-                    onDeleteSection={(sectionId) => {
-                      updateDoc(deleteSection(doc, sectionId));
-                      resetSelection();
-                    }}
-                    onDuplicateStep={(sectionId, stepId) => updateDoc(duplicateStep(doc, sectionId, stepId))}
-                    onDeleteStep={handleDeleteSingleStep}
-                  />
-                </div>
-              </aside>
+                  <div className="protocol-outline-scroll">
+                    <OutlinePanel
+                      sections={doc.protocol.sections}
+                      selection={selection}
+                      selectedStepIds={selectedStepIds}
+                      selectedSectionIds={selectedSectionIds}
+                      onSelectProtocol={selectProtocol}
+                      onOpenProtocol={openProtocolEditor}
+                      onSelectSection={selectSection}
+                      onOpenSection={openSectionEditor}
+                      onSelectStep={selectStep}
+                      onOpenStep={openStepEditor}
+                      onClearOutlineSelection={resetSelection}
+                      onReorderSection={(parentSectionId, sectionIds, targetSectionId) =>
+                        updateDoc(reorderSections(doc, parentSectionId, sectionIds, targetSectionId))
+                      }
+                      onMoveSteps={handleMoveSteps}
+                      onAddSubsection={(sectionId) => updateDoc(addSection(doc, "New subsection", sectionId))}
+                      onAddStep={(sectionId) => updateDoc(addStep(doc, sectionId, "New step"))}
+                      onDuplicateSection={(sectionId) => updateDoc(duplicateSection(doc, sectionId))}
+                      onDeleteSection={(sectionId) => {
+                        updateDoc(deleteSection(doc, sectionId));
+                        resetSelection();
+                      }}
+                      onDuplicateStep={(sectionId, stepId) => updateDoc(duplicateStep(doc, sectionId, stepId))}
+                      onDeleteStep={handleDeleteSingleStep}
+                    />
+                  </div>
+                </aside>
 
-              <section className="protocol-workspace">
-                <header className="protocol-workspace-header">
-                  <div>
-                    <h1>
-                      {activeTab === "author"
-                        ? authorWorkspaceTitle
-                        : activeTab === "preview"
-                          ? "Protocol Preview / Print"
-                          : "Import / Export Transfer Desk"}
-                    </h1>
-                    <div className="protocol-workspace-meta">
-                      {activeTab === "author" ? (
+                <section className="protocol-workspace">
+                  <header className="protocol-workspace-header">
+                    <div>
+                      <h1>{doc.protocol.title}</h1>
+                      <div className="protocol-workspace-meta">
+                        <span className="protocol-status-badge">{protocolMeta.lifecycleStatus.toUpperCase()}</span>
+                        <span>{protocolMeta.project}</span>
+                        <span>{sectionCount} sections</span>
+                        <span>{stepCount} steps</span>
+                        <span>{activeProtocolLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="protocol-workspace-actions">
+                      <div className="protocol-workspace-switcher" role="tablist" aria-label="View workspace modes">
+                        <button className={viewMode === "summary" ? "protocol-view-toggle active" : "protocol-view-toggle"} type="button" onClick={() => setViewMode("summary")}>
+                          Summary
+                        </button>
+                        <button className={viewMode === "preview" ? "protocol-view-toggle active" : "protocol-view-toggle"} type="button" onClick={() => setViewMode("preview")}>
+                          Preview
+                        </button>
+                        <button className={viewMode === "transfer" ? "protocol-view-toggle active" : "protocol-view-toggle"} type="button" onClick={() => setViewMode("transfer")}>
+                          Transfer
+                        </button>
+                      </div>
+
+                      <button type="button" onClick={() => setEditorModalOpen(true)}>
+                        {openEditorLabel}
+                      </button>
+                      <button type="button" onClick={openModuleHome}>
+                        Back to dashboard
+                      </button>
+                    </div>
+                  </header>
+
+                  {viewMode === "summary" && (
+                    <div className="protocol-summary-view">
+                      <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
+                        <div className="protocol-card-heading">
+                          <h3>Protocol Status</h3>
+                          <span>Project assignment and workflow state</span>
+                        </div>
+
+                        <div className="protocol-form-grid">
+                          <label>
+                            Project
+                            <input className="field" value={protocolMeta.project} onChange={(event) => handleProjectChange(event.target.value)} />
+                          </label>
+                          <label>
+                            Review
+                            <select className="field" value={protocolMeta.reviewStatus} onChange={(event) => handleReviewStatusChange(event.target.value as ReviewStatus)}>
+                              <option value="reviewing">Reviewing</option>
+                              <option value="reviewed">Reviewed</option>
+                            </select>
+                          </label>
+                          <label>
+                            Lifecycle
+                            <select className="field" value={protocolMeta.lifecycleStatus} onChange={(event) => handleLifecycleStatusChange(event.target.value as LifecycleStatus)}>
+                              <option value="active">Active</option>
+                              <option value="archived">Archived</option>
+                            </select>
+                          </label>
+                          <label>
+                            Validation
+                            <select className="field" value={protocolMeta.validationStatus} onChange={(event) => handleValidationStatusChange(event.target.value as ValidationStatus)}>
+                              <option value="proposed">Proposed</option>
+                              <option value="validated">Validated</option>
+                            </select>
+                          </label>
+                        </div>
+                      </article>
+
+                      <article className="protocol-content-card">
+                        <div className="protocol-card-heading">
+                          <h3>Portfolio Snapshot</h3>
+                          <span>{libraryState.protocols.length} protocol(s) in workspace</span>
+                        </div>
+                        <div className="protocol-summary-grid">
+                          <div>
+                            <span>Project</span>
+                            <strong>{protocolMeta.project}</strong>
+                            <small>Current project grouping</small>
+                          </div>
+                          <div>
+                            <span>Reviewed</span>
+                            <strong>{protocolMeta.reviewStatus === "reviewed" ? "Yes" : "No"}</strong>
+                            <small>{protocolMeta.reviewStatus === "reviewed" ? "Ready for reuse" : "Still in review cycle"}</small>
+                          </div>
+                          <div>
+                            <span>Archived</span>
+                            <strong>{protocolMeta.lifecycleStatus === "archived" ? "Yes" : "No"}</strong>
+                            <small>{protocolMeta.lifecycleStatus === "archived" ? "Hidden from active queue" : "Shown in active queue"}</small>
+                          </div>
+                          <div>
+                            <span>Validated</span>
+                            <strong>{protocolMeta.validationStatus === "validated" ? "Yes" : "No"}</strong>
+                            <small>{protocolMeta.validationStatus === "validated" ? "Validation complete" : "Still proposed"}</small>
+                          </div>
+                        </div>
+                      </article>
+
+                      <article className="protocol-content-card">
+                        <div className="protocol-card-heading">
+                          <h3>Current Protocol</h3>
+                          <span>{doc.protocol.id}</span>
+                        </div>
+                        <p className="protocol-observation-copy">
+                          {doc.protocol.description || "Use the editor to add a protocol description, then organize sections and steps from the outline."}
+                        </p>
+                        <div className="protocol-summary-grid">
+                          <div>
+                            <span>Sections</span>
+                            <strong>{sectionCount}</strong>
+                            <small>All nested sections included</small>
+                          </div>
+                          <div>
+                            <span>Steps</span>
+                            <strong>{stepCount}</strong>
+                            <small>Procedural steps in this protocol</small>
+                          </div>
+                          <div>
+                            <span>Reagents</span>
+                            <strong>{doc.protocol.reagents.length}</strong>
+                            <small>Tracked reagent records</small>
+                          </div>
+                          <div>
+                            <span>Equipment</span>
+                            <strong>{doc.protocol.equipment.length}</strong>
+                            <small>Tracked equipment records</small>
+                          </div>
+                        </div>
+                      </article>
+
+                      {selection.type === "protocol" && (
                         <>
-                          <span className="protocol-status-badge">{getSelectionStatusLabel(selection, focusedStep)}</span>
-                          <span>ID: {doc.protocol.id || "PROT-99-AXIS-02"}</span>
-                          <span>{authorWorkspaceMeta}</span>
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Section Library</h3>
+                              <span>{doc.protocol.sections.length} top-level section(s)</span>
+                            </div>
+                            {doc.protocol.sections.length === 0 ? (
+                              <p className="helper-text">No sections yet. Use the outline toolbar to add the first section.</p>
+                            ) : (
+                              <div className="protocol-compact-list">
+                                {doc.protocol.sections.map((section) => (
+                                  <button className="protocol-library-link" type="button" key={section.id} onClick={() => selectSection(section.id)}>
+                                    <span>{section.title}</span>
+                                    <strong>{countStepsInSection(section)} step(s)</strong>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </article>
+
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Lead Step</h3>
+                              <span>{firstStepRecord ? firstStepRecord.section.title : "No step selected yet"}</span>
+                            </div>
+                            <p className="protocol-observation-copy">
+                              {firstStepRecord
+                                ? getQuickSummaryText(firstStepRecord.step)
+                                : "Add a step to the outline to start building the procedural body of this protocol."}
+                            </p>
+                          </article>
                         </>
-                      ) : (
+                      )}
+
+                      {selection.type === "section" && focusedSection && (
                         <>
-                          <span className="protocol-status-badge">{activeTab === "preview" ? "PRINT_READY" : "SYNC_READY"}</span>
-                          <span>Sections: {sectionCount}</span>
-                          <span>Steps: {stepCount}</span>
+                          <article className="protocol-content-card protocol-content-card-accent">
+                            <div className="protocol-card-heading">
+                              <h3>{focusedSection.title}</h3>
+                              <span>Section</span>
+                            </div>
+                            <p className="protocol-observation-copy">
+                              {focusedSection.description || "No section description yet. Open the editor if you want to add context for this section."}
+                            </p>
+                            <div className="protocol-summary-grid">
+                              <div>
+                                <span>Direct steps</span>
+                                <strong>{focusedSection.steps.length}</strong>
+                                <small>Immediate steps inside this section</small>
+                              </div>
+                              <div>
+                                <span>Total steps</span>
+                                <strong>{countStepsInSection(focusedSection)}</strong>
+                                <small>Includes nested subsections</small>
+                              </div>
+                              <div>
+                                <span>Subsections</span>
+                                <strong>{focusedSection.sections.length}</strong>
+                                <small>Immediate nested groups</small>
+                              </div>
+                              <div>
+                                <span>Selection</span>
+                                <strong>Section</strong>
+                                <small>Editing scope for the modal editor</small>
+                              </div>
+                            </div>
+                          </article>
+
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Contained Steps</h3>
+                              <span>{focusedSection.steps.length} step(s)</span>
+                            </div>
+                            {focusedSection.steps.length === 0 ? (
+                              <p className="helper-text">No steps in this section yet.</p>
+                            ) : (
+                              <div className="protocol-compact-list">
+                                {focusedSection.steps.map((step) => (
+                                  <button className="protocol-library-link" type="button" key={step.id} onClick={() => selectStep(focusedSection.id, step.id)}>
+                                    <span>{step.title}</span>
+                                    <strong>{formatStepKind(step.stepKind)}</strong>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </article>
+                        </>
+                      )}
+
+                      {selection.type === "step" && focusedStep && (
+                        <>
+                          <article className="protocol-content-card protocol-content-card-accent">
+                            <div className="protocol-card-heading">
+                              <h3>{focusedStep.title}</h3>
+                              <span>{formatStepKind(focusedStep.stepKind)}</span>
+                            </div>
+                            <p className="protocol-observation-copy">{getQuickSummaryText(focusedStep)}</p>
+                            <div className="protocol-summary-grid">
+                              <div>
+                                <span>Section</span>
+                                <strong>{focusedSection?.title ?? "Unknown section"}</strong>
+                                <small>Current parent section</small>
+                              </div>
+                              <div>
+                                <span>Blocks</span>
+                                <strong>{focusedStep.blocks.length}</strong>
+                                <small>Structured content blocks</small>
+                              </div>
+                              <div>
+                                <span>Special blocks</span>
+                                <strong>{countSpecialBlocks(focusedStep)}</strong>
+                                <small>Non-paragraph support blocks</small>
+                              </div>
+                              <div>
+                                <span>Optional</span>
+                                <strong>{focusedStep.optional ? "Yes" : "No"}</strong>
+                                <small>{focusedStep.optional ? "Can be skipped" : "Required in standard workflow"}</small>
+                              </div>
+                            </div>
+                          </article>
+
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Block Outline</h3>
+                              <span>{focusedStep.blocks.length} block(s)</span>
+                            </div>
+                            <div className="protocol-compact-list">
+                              {focusedStep.blocks.map((block, index) => (
+                                <div className="protocol-compact-row" key={block.id}>
+                                  <div>
+                                    <strong>
+                                      {index + 1}. {formatBlockType(block.type)}
+                                    </strong>
+                                    <span>{getBlockSummary(block)}</span>
+                                  </div>
+                                  <div className="protocol-compact-meta">
+                                    <span>{block.type}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </article>
                         </>
                       )}
                     </div>
+                  )}
+
+                  {viewMode === "preview" && (
+                    <section className="protocol-tab-panel" aria-label="Preview and print workspace">
+                      <div className="protocol-panel-header">
+                        <h3>Render Preview</h3>
+                        <button type="button" onClick={handlePrintPreview}>
+                          Export PDF / Print
+                        </button>
+                      </div>
+                      <p className="section-intro">
+                        The export opens a print-ready document so the PDF renderer only sees the protocol content and its print styles.
+                      </p>
+                      <div className="print-surface protocol-preview-surface" ref={previewRef}>
+                        <PreviewPanel doc={doc} />
+                      </div>
+                    </section>
+                  )}
+
+                  {viewMode === "transfer" && (
+                    <section className="protocol-tab-panel" aria-label="Import and export workspace">
+                      <div className="protocol-panel-header">
+                        <h3>Import / Export</h3>
+                        <span className="protocol-transfer-kicker">JSON pipelines, templates, and assisted AI imports</span>
+                      </div>
+                      <ImportExportPanel
+                        importMode={importMode}
+                        setImportMode={setImportMode}
+                        jsonText={jsonText}
+                        setJsonText={setJsonText}
+                        onImportText={() => {
+                          const parsed = safeJsonParse<unknown>(jsonText);
+                          if (!parsed.ok) {
+                            setStatus([`Invalid JSON: ${parsed.error}`]);
+                            return;
+                          }
+                          importParsed(parsed.value);
+                        }}
+                        onFileUpload={async (file) => {
+                          const text = await file.text();
+                          setJsonText(text);
+                          const parsed = safeJsonParse<unknown>(text);
+                          if (!parsed.ok) {
+                            setStatus([`Invalid uploaded JSON: ${parsed.error}`]);
+                            return;
+                          }
+                          importParsed(parsed.value);
+                        }}
+                        onCopyExport={async () => {
+                          await navigator.clipboard.writeText(JSON.stringify(doc, null, 2));
+                          setStatus(["Exported JSON copied to clipboard."]);
+                        }}
+                        onDownloadExport={() => downloadTextFile(`${doc.protocol.id || "protocol"}.json`, JSON.stringify(doc, null, 2))}
+                        onCopyAiInstructions={async () => {
+                          await navigator.clipboard.writeText(AI_IMPORT_INSTRUCTIONS_TEXT);
+                          setStatus(["AI import instructions copied to clipboard."]);
+                        }}
+                        onDownloadTemplate={() => downloadTextFile("protocol-template-example.json", JSON.stringify(createProtocolForMode("template"), null, 2))}
+                        status={status}
+                      />
+                    </section>
+                  )}
+                </section>
+              </div>
+            ) : (
+              <section className="protocol-main-panel">
+                <header className="protocol-page-header">
+                  <div>
+                    <p className="protocol-page-kicker">{sidebarTab === "overview" ? "Portfolio overview" : "Protocol library"}</p>
+                    <h1>{sidebarTab === "overview" ? "OVERVIEW" : "LIBRARY"}</h1>
+                    <p className="hero-subtitle">
+                      {sidebarTab === "overview"
+                        ? "Track every current protocol by project, review state, archive state, and validation state."
+                        : "Browse the full protocol inventory, grouped by project, then jump any protocol straight into VIEW."}
+                    </p>
                   </div>
 
-                  <div className="protocol-workspace-actions">
-                    <button type="button" onClick={handleOpenFocusedEditor}>
-                      {openEditorLabel}
-                    </button>
-                    <button type="button" onClick={openModuleHome}>
-                      Back to dashboard
-                    </button>
+                  <div className="protocol-workspace-meta">
+                    <span>{totalProjects} project(s)</span>
+                    <span>{totalProtocols} protocol(s)</span>
+                    <span>{totalActive} active</span>
                   </div>
                 </header>
 
-                {activeTab === "author" && (
+                {sidebarTab === "overview" ? (
                   <div className="protocol-summary-view">
-                    {selection.type === "protocol" && (
-                      <>
-                        <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
-                          <div className="protocol-card-heading">
-                            <h3>Protocol Overview</h3>
-                            <span>Read-only workspace summary</span>
-                          </div>
-                          <p className="protocol-observation-copy">
-                            {doc.protocol.description || "Select a section or step from the outline to inspect it here. Double-click any item when you want to open the full editor modal."}
-                          </p>
-                          <div className="protocol-summary-grid">
-                            <div>
-                              <span>Sections</span>
-                              <strong>{sectionCount}</strong>
-                              <small>Nested structure included</small>
-                            </div>
-                            <div>
-                              <span>Steps</span>
-                              <strong>{stepCount}</strong>
-                              <small>Total procedural actions</small>
-                            </div>
-                            <div>
-                              <span>Reagents</span>
-                              <strong>{doc.protocol.reagents.length}</strong>
-                              <small>Tracked materials</small>
-                            </div>
-                            <div>
-                              <span>Equipment</span>
-                              <strong>{doc.protocol.equipment.length}</strong>
-                              <small>Referenced instruments</small>
-                            </div>
-                          </div>
-                        </article>
+                    <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
+                      <div className="protocol-card-heading">
+                        <h3>Workspace Totals</h3>
+                        <span>Across every current protocol</span>
+                      </div>
+                      <div className="protocol-summary-grid">
+                        <div>
+                          <span>Projects</span>
+                          <strong>{totalProjects}</strong>
+                          <small>Distinct project buckets</small>
+                        </div>
+                        <div>
+                          <span>Protocols</span>
+                          <strong>{totalProtocols}</strong>
+                          <small>Current library size</small>
+                        </div>
+                        <div>
+                          <span>Reviewed / reviewing</span>
+                          <strong>
+                            {totalReviewed} / {totalReviewing}
+                          </strong>
+                          <small>Quality-review split</small>
+                        </div>
+                        <div>
+                          <span>Validated / proposed</span>
+                          <strong>
+                            {totalValidated} / {totalProposed}
+                          </strong>
+                          <small>Validation maturity</small>
+                        </div>
+                      </div>
+                    </article>
 
-                        <article className="protocol-content-card">
-                          <div className="protocol-card-heading">
-                            <h3>Section Map</h3>
-                            <span>{doc.protocol.sections.length} top-level section(s)</span>
+                    {projectGroups.map((group) => (
+                      <article className="protocol-content-card" key={group.project}>
+                        <div className="protocol-card-heading">
+                          <h3>{group.project}</h3>
+                          <span>{group.protocols.length} protocol(s)</span>
+                        </div>
+                        <div className="protocol-summary-grid">
+                          <div>
+                            <span>Reviewed / reviewing</span>
+                            <strong>
+                              {group.reviewed} / {group.reviewing}
+                            </strong>
+                            <small>Review queue split</small>
                           </div>
-                          <div className="protocol-compact-list">
-                            {doc.protocol.sections.map((section, index) => (
-                              <div className="protocol-compact-row" key={section.id}>
+                          <div>
+                            <span>Active / archived</span>
+                            <strong>
+                              {group.active} / {group.archived}
+                            </strong>
+                            <small>Lifecycle split</small>
+                          </div>
+                          <div>
+                            <span>Validated / proposed</span>
+                            <strong>
+                              {group.validated} / {group.proposed}
+                            </strong>
+                            <small>Validation split</small>
+                          </div>
+                          <div>
+                            <span>Lead protocol</span>
+                            <strong>{group.protocols[0]?.protocol.title ?? "None"}</strong>
+                            <small>First available protocol in this project</small>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="protocol-library-grid">
+                    {projectGroups.map((group) => (
+                      <article className="protocol-content-card" key={group.project}>
+                        <div className="protocol-card-heading">
+                          <h3>{group.project}</h3>
+                          <span>{group.protocols.length} protocol(s)</span>
+                        </div>
+                        <div className="protocol-summary-grid">
+                          <div>
+                            <span>Reviewed / reviewing</span>
+                            <strong>
+                              {group.reviewed} / {group.reviewing}
+                            </strong>
+                            <small>Status across this project</small>
+                          </div>
+                          <div>
+                            <span>Active / archived</span>
+                            <strong>
+                              {group.active} / {group.archived}
+                            </strong>
+                            <small>Lifecycle balance</small>
+                          </div>
+                          <div>
+                            <span>Validated / proposed</span>
+                            <strong>
+                              {group.validated} / {group.proposed}
+                            </strong>
+                            <small>Validation mix</small>
+                          </div>
+                        </div>
+
+                        <div className="protocol-compact-list">
+                          {group.protocols.map((protocol) => {
+                            const metadata = getProtocolMetadata(protocol);
+                            return (
+                              <button className="protocol-library-card" type="button" key={protocol.protocol.id} onClick={() => openProtocolFromLibrary(protocol.protocol.id)}>
                                 <div>
-                                  <strong>{index + 1}. {section.title}</strong>
-                                  <span>{section.description || "No section description yet."}</span>
+                                  <strong>{protocol.protocol.title}</strong>
+                                  <span>{protocol.protocol.description || "No description yet."}</span>
                                 </div>
-                                <div className="protocol-compact-meta">
-                                  <span>{countStepsInSection(section)} step(s)</span>
-                                  <span>{countNestedSections(section.sections)} subsection(s)</span>
+                                <div className="protocol-library-statuses">
+                                  <span>{metadata.reviewStatus}</span>
+                                  <span>{metadata.lifecycleStatus}</span>
+                                  <span>{metadata.validationStatus}</span>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        </article>
-
-                        <article className="protocol-content-card">
-                          <div className="protocol-card-heading">
-                            <h3>Reagent Snapshot</h3>
-                            <span>{doc.protocol.reagents.length} loaded</span>
-                          </div>
-                          {doc.protocol.reagents.length > 0 ? (
-                            <table className="protocol-data-table">
-                              <thead>
-                                <tr>
-                                  <th>Reagent</th>
-                                  <th>Supplier</th>
-                                  <th>Catalog</th>
-                                  <th>Notes</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {doc.protocol.reagents.slice(0, 6).map((reagent) => (
-                                  <tr key={reagent.id}>
-                                    <td>{reagent.name}</td>
-                                    <td>{reagent.supplier || "Internal"}</td>
-                                    <td>{reagent.catalogNumber || "N/A"}</td>
-                                    <td>{reagent.notes || "Ready for run"}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <p className="section-intro">No reagents have been added to this protocol yet.</p>
-                          )}
-                        </article>
-                      </>
-                    )}
-
-                    {selection.type === "section" && focusedSection && (
-                      <>
-                        <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
-                          <div className="protocol-card-heading">
-                            <h3>Section Summary</h3>
-                            <span>{focusedSection.title}</span>
-                          </div>
-                          <p className="protocol-observation-copy">
-                            {focusedSection.description || "This section does not have a description yet. Open the section editor to add more context or restructure its contents."}
-                          </p>
-                          <div className="protocol-summary-grid">
-                            <div>
-                              <span>Direct steps</span>
-                              <strong>{focusedSection.steps.length}</strong>
-                              <small>Immediate children</small>
-                            </div>
-                            <div>
-                              <span>Total steps</span>
-                              <strong>{countStepsInSection(focusedSection)}</strong>
-                              <small>Including nested subsections</small>
-                            </div>
-                            <div>
-                              <span>Subsections</span>
-                              <strong>{countNestedSections(focusedSection.sections)}</strong>
-                              <small>Nested under this section</small>
-                            </div>
-                            <div>
-                              <span>Lead step</span>
-                              <strong>{sectionLeadStep?.title ?? "None yet"}</strong>
-                              <small>{sectionLeadStep ? formatStepKind(sectionLeadStep.stepKind) : "Add a step to begin"}</small>
-                            </div>
-                          </div>
-                        </article>
-
-                        <article className="protocol-content-card">
-                          <div className="protocol-card-heading">
-                            <h3>Section Steps</h3>
-                            <span>{focusedSection.steps.length} direct step(s)</span>
-                          </div>
-                          {focusedSection.steps.length > 0 ? (
-                            <div className="protocol-compact-list">
-                              {focusedSection.steps.map((step, index) => (
-                                <div className="protocol-compact-row" key={step.id}>
-                                  <div>
-                                    <strong>{index + 1}. {step.title}</strong>
-                                    <span>{formatStepKind(step.stepKind)}</span>
-                                  </div>
-                                  <div className="protocol-compact-meta">
-                                    <span>{step.blocks.length} block(s)</span>
-                                    <span>{step.optional ? "Optional" : "Required"}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="section-intro">No direct steps are attached to this section yet.</p>
-                          )}
-                        </article>
-
-                        {focusedSection.sections.length > 0 && (
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>Nested Subsections</h3>
-                              <span>{focusedSection.sections.length} child subsection(s)</span>
-                            </div>
-                            <div className="protocol-compact-list">
-                              {focusedSection.sections.map((section) => (
-                                <div className="protocol-compact-row" key={section.id}>
-                                  <div>
-                                    <strong>{section.title}</strong>
-                                    <span>{section.description || "No subsection description yet."}</span>
-                                  </div>
-                                  <div className="protocol-compact-meta">
-                                    <span>{countStepsInSection(section)} step(s)</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </article>
-                        )}
-
-                        {summaryStep && (
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>Lead Step Snapshot</h3>
-                              <span>{formatStepKind(summaryStep.stepKind)}</span>
-                            </div>
-                            <p className="protocol-observation-copy">{getQuickSummaryText(summaryStep)}</p>
-                          </article>
-                        )}
-                      </>
-                    )}
-
-                    {selection.type === "step" && focusedStep && (
-                      <>
-                        <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
-                          <div className="protocol-card-heading">
-                            <h3>Step Summary</h3>
-                            <span>{formatStepKind(focusedStep.stepKind)}</span>
-                          </div>
-                          <p className="protocol-observation-copy">{getQuickSummaryText(focusedStep)}</p>
-                          <div className="protocol-summary-grid">
-                            <div>
-                              <span>Section</span>
-                              <strong>{focusedSection?.title ?? "Unknown section"}</strong>
-                              <small>Current parent section</small>
-                            </div>
-                            <div>
-                              <span>Blocks</span>
-                              <strong>{focusedStep.blocks.length}</strong>
-                              <small>Structured content in this step</small>
-                            </div>
-                            <div>
-                              <span>Special blocks</span>
-                              <strong>{countSpecialBlocks(focusedStep)}</strong>
-                              <small>Caution, QC, tables, links, and more</small>
-                            </div>
-                            <div>
-                              <span>Optional</span>
-                              <strong>{focusedStep.optional ? "Yes" : "No"}</strong>
-                              <small>{focusedStep.optional ? "Skipped when conditions allow" : "Required in standard run"}</small>
-                            </div>
-                          </div>
-                        </article>
-
-                        {timelineBlock ? (
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>Timeline Snapshot</h3>
-                              <span>{timelineBlock.stages.length} stage(s)</span>
-                            </div>
-                            <div className="protocol-timeline-grid">
-                              {timelineBlock.stages.map((stage) => (
-                                <div className="protocol-timeline-stage" key={`${stage.label}-${stage.duration}`}>
-                                  <span>{stage.label}</span>
-                                  <strong>{stage.temperature || stage.duration}</strong>
-                                  <small>{stage.details || stage.duration}</small>
-                                </div>
-                              ))}
-                            </div>
-                          </article>
-                        ) : null}
-
-                        {(recipeBlock || tableBlock) && (
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>{recipeBlock ? recipeBlock.title || "Component Recipe" : "Structured Table"}</h3>
-                              <span>{recipeBlock ? `${recipeBlock.items.length} component(s)` : `${tableBlock?.rows.length ?? 0} row(s)`}</span>
-                            </div>
-
-                            {recipeBlock ? (
-                              <div className="protocol-summary-grid">
-                                {recipeBlock.items.map((item) => (
-                                  <div key={`${item.component}-${item.quantity}`}>
-                                    <span>{item.component}</span>
-                                    <strong>{item.quantity}</strong>
-                                    <small>{item.notes || "No note"}</small>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : tableBlock ? (
-                              <table className="protocol-data-table">
-                                <thead>
-                                  <tr>
-                                    {tableBlock.columns.map((column) => (
-                                      <th key={column}>{column}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {tableBlock.rows.map((row, index) => (
-                                    <tr key={`${index}-${row.join("-")}`}>
-                                      {row.map((cell, cellIndex) => (
-                                        <td key={`${index}-${cellIndex}`}>{cell}</td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            ) : null}
-                          </article>
-                        )}
-
-                        {(cautionBlock || qcBlock || linkBlock) && (
-                          <article className={`protocol-content-card ${cautionBlock ? "protocol-callout protocol-callout-warning" : ""}`}>
-                            <div className="protocol-card-heading">
-                              <h3>{cautionBlock ? "Safety Precaution" : qcBlock ? "QC / Reference" : "Reference Link"}</h3>
-                              <span>{cautionBlock ? (cautionBlock.severity || "medium").toUpperCase() : qcBlock ? "QC_READY" : "LINK"}</span>
-                            </div>
-                            {cautionBlock ? <p>{cautionBlock.text}</p> : null}
-                            {qcBlock ? (
-                              <p className="protocol-observation-copy">
-                                <strong>{qcBlock.checkpoint}</strong>
-                                {qcBlock.acceptanceCriteria ? ` - ${qcBlock.acceptanceCriteria}` : ""}
-                              </p>
-                            ) : null}
-                            {linkBlock ? (
-                              <p className="protocol-observation-copy">
-                                <a href={linkBlock.url} target="_blank" rel="noreferrer">
-                                  {linkBlock.label}
-                                </a>
-                              </p>
-                            ) : null}
-                          </article>
-                        )}
-
-                        <article className="protocol-content-card">
-                          <div className="protocol-card-heading">
-                            <h3>Block Outline</h3>
-                            <span>{focusedStep.blocks.length} ordered block(s)</span>
-                          </div>
-                          <div className="protocol-compact-list">
-                            {focusedStep.blocks.map((block, index) => (
-                              <div className="protocol-compact-row" key={block.id}>
-                                <div>
-                                  <strong>{index + 1}. {formatBlockType(block.type)}</strong>
-                                  <span>{getBlockSummary(block)}</span>
-                                </div>
-                                <div className="protocol-compact-meta">
-                                  <span>{block.type}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </article>
-                      </>
-                    )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 )}
-
-                {activeTab === "preview" && (
-                  <section className="protocol-tab-panel" aria-label="Preview and print workspace">
-                    <div className="protocol-panel-header">
-                      <h3>Render Preview</h3>
-                      <button type="button" onClick={handlePrintPreview}>
-                        Export PDF / Print
-                      </button>
-                    </div>
-                    <p className="section-intro">
-                      The export opens a print-ready document so the PDF renderer only sees the protocol content and its print styles.
-                    </p>
-                    <div className="print-surface protocol-preview-surface" ref={previewRef}>
-                      <PreviewPanel doc={doc} />
-                    </div>
-                  </section>
-                )}
-
-                {activeTab === "transfer" && (
-                  <section className="protocol-tab-panel" aria-label="Import and export workspace">
-                    <div className="protocol-panel-header">
-                      <h3>Import / Export</h3>
-                      <span className="protocol-transfer-kicker">JSON pipelines, templates, and assisted AI imports</span>
-                    </div>
-                    <ImportExportPanel
-                      importMode={importMode}
-                      setImportMode={setImportMode}
-                      jsonText={jsonText}
-                      setJsonText={setJsonText}
-                      onImportText={() => {
-                        const parsed = safeJsonParse<unknown>(jsonText);
-                        if (!parsed.ok) {
-                          setStatus([`Invalid JSON: ${parsed.error}`]);
-                          return;
-                        }
-                        importParsed(parsed.value);
-                      }}
-                      onFileUpload={async (file) => {
-                        const text = await file.text();
-                        setJsonText(text);
-                        const parsed = safeJsonParse<unknown>(text);
-                        if (!parsed.ok) {
-                          setStatus([`Invalid uploaded JSON: ${parsed.error}`]);
-                          return;
-                        }
-                        importParsed(parsed.value);
-                      }}
-                      onCopyExport={async () => {
-                        await navigator.clipboard.writeText(exportedJson);
-                        setStatus(["Exported JSON copied to clipboard."]);
-                      }}
-                      onDownloadExport={() => downloadTextFile(`${doc.protocol.id || "protocol"}.json`, exportedJson)}
-                      onCopyAiInstructions={async () => {
-                        await navigator.clipboard.writeText(AI_IMPORT_INSTRUCTIONS_TEXT);
-                        setStatus(["AI import instructions copied to clipboard."]);
-                      }}
-                      onDownloadTemplate={() => downloadTextFile("protocol-template-example.json", templateJson)}
-                      status={status}
-                    />
-                  </section>
-                )}
               </section>
-            </div>
+            )}
           </div>
+
+          {newProtocolModalOpen && (
+            <div className="step-modal-overlay" onClick={() => setNewProtocolModalOpen(false)}>
+              <div className="step-modal protocol-new-modal" role="dialog" aria-modal="true" aria-label="Create a new protocol" onClick={(event) => event.stopPropagation()}>
+                <div className="step-modal-header">
+                  <span className="outline-marker">Create Protocol</span>
+                  <button className="step-modal-close" onClick={() => setNewProtocolModalOpen(false)} aria-label="Close create protocol dialog">
+                    X
+                  </button>
+                </div>
+                <div className="step-modal-body protocol-new-modal-body">
+                  <p className="protocol-observation-copy">Choose how the next protocol should start.</p>
+                  <div className="protocol-new-grid">
+                    <button className="protocol-new-choice" type="button" onClick={() => handleCreateProtocol("blank")}>
+                      <strong>Blank</strong>
+                      <span>Open VIEW with a clean protocol shell.</span>
+                    </button>
+                    <button className="protocol-new-choice" type="button" onClick={() => handleCreateProtocol("template")}>
+                      <strong>Template</strong>
+                      <span>Open VIEW with the starter protocol template loaded.</span>
+                    </button>
+                    <button className="protocol-new-choice" type="button" onClick={() => handleCreateProtocol("import-files")}>
+                      <strong>Import files</strong>
+                      <span>Start blank, jump to Transfer, then upload an existing file.</span>
+                    </button>
+                    <button className="protocol-new-choice" type="button" onClick={() => handleCreateProtocol("import-json")}>
+                      <strong>Import JSON</strong>
+                      <span>Start blank, jump to Transfer, then paste or upload JSON.</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {editorModalOpen && (
             <StepEditorModal
@@ -1351,6 +1352,48 @@ export const App = ({ page }: AppProps) => {
   );
 };
 
+const loadLibraryState = (): ProtocolLibraryState => {
+  const storedLibrary = localStorage.getItem(LIBRARY_STORAGE_KEY);
+  if (storedLibrary) {
+    const parsed = safeJsonParse<unknown>(storedLibrary);
+    if (parsed.ok && isLibraryPayload(parsed.value)) {
+      const protocols = parsed.value.protocols
+        .map((candidate) => validateStoredProtocol(candidate))
+        .filter((candidate): candidate is ProtocolDocument => Boolean(candidate));
+
+      if (protocols.length > 0) {
+        return normalizeLibraryState(protocols, parsed.value.activeProtocolId);
+      }
+    }
+  }
+
+  const storedLegacyDocument = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (storedLegacyDocument) {
+    const parsed = safeJsonParse<unknown>(storedLegacyDocument);
+    if (parsed.ok) {
+      const doc = validateStoredProtocol(parsed.value);
+      if (doc) {
+        return normalizeLibraryState([doc], doc.protocol.id);
+      }
+    }
+  }
+
+  return createInitialLibrary();
+};
+
+const validateStoredProtocol = (value: unknown): ProtocolDocument | null => {
+  const result = validateProtocolDocument(value, { mode: "assisted" });
+  if (!result.success || !result.data) return null;
+  return ensureProtocolMetadata(normalizeProtocolDocument(result.data));
+};
+
+const isLibraryPayload = (
+  value: unknown
+): value is { activeProtocolId?: string; protocols: unknown[] } =>
+  typeof value === "object" &&
+  value !== null &&
+  Array.isArray((value as { protocols?: unknown[] }).protocols);
+
 const countSections = (sections: ProtocolDocument["protocol"]["sections"]): number =>
   sections.reduce((total, section) => total + 1 + countSections(section.sections), 0);
 
@@ -1360,21 +1403,9 @@ const countSteps = (sections: ProtocolDocument["protocol"]["sections"]): number 
 const countStepsInSection = (section: ProtocolSection | null): number =>
   section ? section.steps.length + countSteps(section.sections) : 0;
 
-const countNestedSections = (sections: ProtocolSection[]): number =>
-  sections.reduce((total, section) => total + 1 + countNestedSections(section.sections), 0);
-
 const orderStepIdsByDocument = (doc: ProtocolDocument, stepIds: string[]) => {
   const selectedIds = new Set(stepIds);
   return collectStepIds(doc.protocol.sections).filter((stepId) => selectedIds.has(stepId));
-};
-
-const findSectionById = (sections: ProtocolSection[], sectionId: string): ProtocolSection | null => {
-  for (const section of sections) {
-    if (section.id === sectionId) return section;
-    const nested = findSectionById(section.sections, sectionId);
-    if (nested) return nested;
-  }
-  return null;
 };
 
 const getFirstStepRecord = (sections: ProtocolSection[]): { section: ProtocolSection; step: ProtocolStep } | null => {
@@ -1382,29 +1413,59 @@ const getFirstStepRecord = (sections: ProtocolSection[]): { section: ProtocolSec
     if (section.steps.length > 0) {
       return { section, step: section.steps[0] };
     }
+
     const nested = getFirstStepRecord(section.sections);
     if (nested) return nested;
   }
+
   return null;
 };
 
-const getBlockOfType = <T extends ProtocolBlock["type"]>(step: ProtocolStep | null | undefined, type: T): Extract<ProtocolBlock, { type: T }> | null => {
-  if (!step) return null;
-  const block = step.blocks.find((item) => item.type === type);
-  return (block as Extract<ProtocolBlock, { type: T }> | undefined) ?? null;
+const groupProtocolsByProject = (protocols: ProtocolDocument[]) => {
+  const groups = new Map<
+    string,
+    {
+      project: string;
+      protocols: ProtocolDocument[];
+      reviewed: number;
+      reviewing: number;
+      active: number;
+      archived: number;
+      validated: number;
+      proposed: number;
+    }
+  >();
+
+  protocols.forEach((protocol) => {
+    const metadata = getProtocolMetadata(protocol);
+    const current =
+      groups.get(metadata.project) ??
+      {
+        project: metadata.project,
+        protocols: [],
+        reviewed: 0,
+        reviewing: 0,
+        active: 0,
+        archived: 0,
+        validated: 0,
+        proposed: 0
+      };
+
+    current.protocols.push(protocol);
+    current.reviewed += metadata.reviewStatus === "reviewed" ? 1 : 0;
+    current.reviewing += metadata.reviewStatus === "reviewing" ? 1 : 0;
+    current.active += metadata.lifecycleStatus === "active" ? 1 : 0;
+    current.archived += metadata.lifecycleStatus === "archived" ? 1 : 0;
+    current.validated += metadata.validationStatus === "validated" ? 1 : 0;
+    current.proposed += metadata.validationStatus === "proposed" ? 1 : 0;
+    groups.set(metadata.project, current);
+  });
+
+  return Array.from(groups.values()).sort((left, right) => left.project.localeCompare(right.project));
 };
 
-const formatDisplayTimestamp = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-};
+const cloneBlocks = (blocks: ProtocolBlock[]): ProtocolBlock[] =>
+  JSON.parse(JSON.stringify(blocks)) as ProtocolBlock[];
 
 const formatStepKind = (value?: ProtocolStep["stepKind"]) => {
   if (!value) return "Protocol";
@@ -1430,25 +1491,8 @@ const getQuickSummaryText = (step: ProtocolStep) => {
   return getBlockSummary(block);
 };
 
-const getStepStatusLabel = (step: ProtocolStep | null) => {
-  if (!step) return "STANDBY";
-  if (step.optional) return "OPTIONAL";
-  if (step.stepKind === "qc") return "QC_READY";
-  if (step.stepKind === "analysis") return "ANALYSIS";
-  return "IN_PROGRESS";
-};
-
-const getSelectionStatusLabel = (selection: Selection, step: ProtocolStep | null) => {
-  if (selection.type === "protocol") return "PROTOCOL";
-  if (selection.type === "section") return "SECTION";
-  return getStepStatusLabel(step);
-};
-
 const countSpecialBlocks = (step: ProtocolStep) =>
   step.blocks.filter((block) => block.type !== "paragraph" && block.type !== "note").length;
-
-const cloneBlocks = (blocks: ProtocolBlock[]): ProtocolBlock[] =>
-  JSON.parse(JSON.stringify(blocks)) as ProtocolBlock[];
 
 const escapeHtml = (value: string) =>
   value
@@ -1525,10 +1569,6 @@ const PRINT_WINDOW_STYLES = `
   .preview-qc {
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-
-  .preview-section {
-    gap: 14px;
   }
 
   .preview-step {
