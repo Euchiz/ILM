@@ -9,6 +9,15 @@ export type Selection =
 const createUniqueId = (prefix: string, label: string) =>
   createStableId(prefix, `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
 
+const createSectionRecord = (title: string): ProtocolSection => ({
+  id: createUniqueId("section", title || "section"),
+  title: title || "New section",
+  description: "",
+  sections: [],
+  steps: [],
+  extensions: {}
+});
+
 export const findSection = (sections: ProtocolSection[], id: string): ProtocolSection | null => {
   for (const section of sections) {
     if (section.id === id) return section;
@@ -79,14 +88,7 @@ export const updateStep = (
 });
 
 export const addSection = (doc: ProtocolDocument, title: string, parentId?: string): ProtocolDocument => {
-  const section: ProtocolSection = {
-    id: createUniqueId("section", title || "section"),
-    title: title || "New section",
-    description: "",
-    sections: [],
-    steps: [],
-    extensions: {}
-  };
+  const section = createSectionRecord(title);
 
   if (!parentId) return { ...doc, protocol: { ...doc.protocol, sections: [...doc.protocol.sections, section] } };
 
@@ -95,6 +97,28 @@ export const addSection = (doc: ProtocolDocument, title: string, parentId?: stri
     protocol: {
       ...doc.protocol,
       sections: mapSections(doc.protocol.sections, parentId, (parent) => ({ ...parent, sections: [...parent.sections, section] }))
+    }
+  };
+};
+
+export const insertSectionAfter = (
+  doc: ProtocolDocument,
+  targetSectionId: string,
+  title: string
+): ProtocolDocument => {
+  const section = createSectionRecord(title);
+  const parent = findSectionParent(doc.protocol.sections, targetSectionId);
+  if (!parent) return addSection(doc, title);
+
+  return {
+    ...doc,
+    protocol: {
+      ...doc.protocol,
+      sections: mapSectionLists(doc.protocol.sections, parent.parentId, (siblings) => {
+        const index = siblings.findIndex((candidate) => candidate.id === targetSectionId);
+        if (index === -1) return siblings;
+        return [...siblings.slice(0, index + 1), section, ...siblings.slice(index + 1)];
+      })
     }
   };
 };

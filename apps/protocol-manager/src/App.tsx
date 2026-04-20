@@ -7,7 +7,7 @@ import { ImportExportPanel } from "./components/ImportExportPanel";
 import { OutlinePanel } from "./components/OutlinePanel";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { StepEditorModal } from "./components/StepEditorModal";
-import { createInitialLibrary, appendProtocolToLibrary, createProtocolForMode, ensureProtocolMetadata, getProtocolMetadata, LEGACY_STORAGE_KEY, LIBRARY_STORAGE_KEY, normalizeLibraryState, replaceActiveProtocol, type LifecycleStatus, type NewProtocolMode, type ProtocolLibraryState, type ReviewStatus, type SidebarTab, type ValidationStatus, type ViewMode, updateProtocolMetadata } from "./lib/protocolLibrary";
+import { createInitialLibrary, appendProtocolToLibrary, createProtocolForMode, duplicateProtocolDocument, ensureProtocolMetadata, getProtocolMetadata, LEGACY_STORAGE_KEY, LIBRARY_STORAGE_KEY, normalizeLibraryState, replaceActiveProtocol, type LifecycleStatus, type NewProtocolMode, type ProtocolLibraryState, type ReviewStatus, type SidebarTab, type ValidationStatus, type ViewMode, updateProtocolMetadata } from "./lib/protocolLibrary";
 import {
   addSection,
   addStep,
@@ -23,6 +23,7 @@ import {
   findSection,
   findSectionParent,
   findStepLocation,
+  insertSectionAfter,
   moveSection,
   moveStep,
   moveStepsToSection,
@@ -116,6 +117,8 @@ export const App = ({ page }: AppProps) => {
       : findSection(doc.protocol.sections, selection.type === "section" ? selection.sectionId : focusedStepLocation?.sectionId ?? selection.sectionId);
   const focusedStep = focusedStepLocation?.step ?? null;
   const firstStepRecord = getFirstStepRecord(doc.protocol.sections);
+  const selectedStepCount = selection.type === "step" ? (selectedStepIds.length > 0 ? selectedStepIds.length : 1) : 0;
+  const singleStepSelected = selection.type === "step" && selectedStepCount === 1 && Boolean(focusedStep);
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(libraryState, null, 2));
@@ -163,6 +166,10 @@ export const App = ({ page }: AppProps) => {
   };
 
   const clearBlockSelection = () => setBlockSelection({ stepId: "", blockIds: [] });
+  const openViewMode = (mode: ViewMode) => {
+    setSidebarTab("view");
+    setViewMode(mode);
+  };
 
   const resetSelection = () => {
     setSelection({ type: "protocol" });
@@ -173,14 +180,13 @@ export const App = ({ page }: AppProps) => {
 
   const selectProtocol = () => {
     resetSelection();
-    setViewMode("summary");
+    openViewMode("summary");
   };
 
   const selectSection = (sectionId: string, options?: { toggle: boolean }) => {
     setSelectedStepIds([]);
     clearBlockSelection();
-    setSidebarTab("view");
-    setViewMode("summary");
+    openViewMode("summary");
 
     if (options?.toggle) {
       setSelectedSectionIds((current) => {
@@ -207,8 +213,7 @@ export const App = ({ page }: AppProps) => {
   const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
     setSelectedSectionIds([]);
     clearBlockSelection();
-    setSidebarTab("view");
-    setViewMode("summary");
+    openViewMode("summary");
 
     if (options?.toggle) {
       setSelectedStepIds((current) => {
@@ -238,15 +243,13 @@ export const App = ({ page }: AppProps) => {
   };
 
   const openProtocolEditor = () => {
-    setSidebarTab("view");
-    setViewMode("summary");
+    openViewMode("summary");
     setSelection({ type: "protocol" });
     setEditorModalOpen(true);
   };
 
   const openSectionEditor = (sectionId: string) => {
-    setSidebarTab("view");
-    setViewMode("summary");
+    openViewMode("summary");
     setSelection({ type: "section", sectionId });
     setSelectedSectionIds([sectionId]);
     setSelectedStepIds([]);
@@ -255,8 +258,7 @@ export const App = ({ page }: AppProps) => {
   };
 
   const openStepEditor = (sectionId: string, stepId: string) => {
-    setSidebarTab("view");
-    setViewMode("summary");
+    openViewMode("summary");
     setSelection({ type: "step", sectionId, stepId });
     setSelectedStepIds([stepId]);
     setSelectedSectionIds([]);
@@ -286,7 +288,7 @@ export const App = ({ page }: AppProps) => {
 
     setLibraryState((current) => replaceActiveProtocol(current, normalized));
     resetSelection();
-    setViewMode("summary");
+    openViewMode("summary");
     setStatus([
       `Import successful (${importMode} mode).`,
       ...result.warnings.map((warning) => `Warning: ${warning}`)
@@ -497,26 +499,8 @@ export const App = ({ page }: AppProps) => {
 
   const openProtocolFromLibrary = (protocolId: string) => {
     setLibraryState((current) => ({ ...current, activeProtocolId: protocolId }));
-    setSidebarTab("view");
-    setViewMode("summary");
+    openViewMode("summary");
     setStatus(["Protocol loaded into the VIEW workspace."]);
-  };
-
-  const handleProtocolExport = () => {
-    setSidebarTab("view");
-    if (viewMode !== "preview") {
-      setViewMode("preview");
-      setStatus(["Switched to preview mode. Use Export Protocol again to open the print-ready document."]);
-      return;
-    }
-
-    handlePrintPreview();
-  };
-
-  const handleSaveDraft = () => {
-    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(libraryState, null, 2));
-    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(doc, null, 2));
-    setStatus(["Workspace library saved locally. Autosave remains active in this browser session."]);
   };
 
   const handleCreateProtocol = (mode: NewProtocolMode) => {
@@ -525,8 +509,7 @@ export const App = ({ page }: AppProps) => {
     setNewProtocolModalOpen(false);
     resetSelection();
     setEditorModalOpen(false);
-    setSidebarTab("view");
-    setViewMode(mode === "import-files" || mode === "import-json" ? "transfer" : "summary");
+    openViewMode(mode === "import-files" || mode === "import-json" ? "transfer" : "summary");
     setJsonText("");
 
     if (mode === "blank") {
@@ -536,6 +519,75 @@ export const App = ({ page }: AppProps) => {
     } else {
       setStatus(["Started a blank protocol and opened Transfer so you can import files or JSON right away."]);
     }
+  };
+
+  const handleAddSection = () => {
+    if (selection.type === "protocol") {
+      updateDoc(addSection(doc, "New section"));
+      return;
+    }
+
+    updateDoc(insertSectionAfter(doc, selection.sectionId, "New section"));
+  };
+
+  const handleDuplicateProtocol = (protocolId: string) => {
+    const source = libraryState.protocols.find((protocol) => protocol.protocol.id === protocolId);
+    if (!source) return;
+
+    const duplicated = duplicateProtocolDocument(source);
+    setLibraryState((current) => {
+      const index = current.protocols.findIndex((protocol) => protocol.protocol.id === protocolId);
+      const protocols = [...current.protocols];
+      protocols.splice(index + 1, 0, duplicated);
+      return { ...current, protocols };
+    });
+    setStatus([`Duplicated ${source.protocol.title}.`]);
+  };
+
+  const handleDeleteProtocol = (protocolId: string, options?: { fromView?: boolean }) => {
+    const target = libraryState.protocols.find((protocol) => protocol.protocol.id === protocolId);
+    if (!target) return;
+
+    const confirmed = window.confirm(`Delete "${target.protocol.title}" from the library? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const wasLastProtocol = libraryState.protocols.length === 1;
+    setLibraryState((current) => {
+      const index = current.protocols.findIndex((protocol) => protocol.protocol.id === protocolId);
+      const remaining = current.protocols.filter((protocol) => protocol.protocol.id !== protocolId);
+
+      if (remaining.length === 0) {
+        const fallback = createProtocolForMode("blank");
+        return {
+          activeProtocolId: fallback.protocol.id,
+          protocols: [fallback]
+        };
+      }
+
+      const nextActiveProtocolId =
+        current.activeProtocolId === protocolId
+          ? remaining[Math.max(0, index - 1)]?.protocol.id ?? remaining[0].protocol.id
+          : current.activeProtocolId;
+
+      return {
+        activeProtocolId: nextActiveProtocolId,
+        protocols: remaining
+      };
+    });
+
+    if (options?.fromView) {
+      if (wasLastProtocol) {
+        openViewMode("summary");
+        resetSelection();
+        setStatus([`Deleted ${target.protocol.title}. A blank replacement protocol was opened so the workspace stays available.`]);
+      } else {
+        setSidebarTab("library");
+        setStatus([`Deleted ${target.protocol.title} from the library.`]);
+      }
+      return;
+    }
+
+    setStatus([`Deleted ${target.protocol.title} from the library.`]);
   };
 
   const downloadTextFile = (filename: string, content: string) => {
@@ -592,7 +644,8 @@ export const App = ({ page }: AppProps) => {
     window.location.href = buildPageUrl("");
   };
 
-  const activeProtocolLabel = selection.type === "protocol" ? "Protocol summary" : selection.type === "section" ? "Section summary" : "Step summary";
+  const activeProtocolLabel =
+    viewMode === "summary" ? "Protocol summary" : viewMode === "step" ? "Single-step focus" : viewMode === "preview" ? "Rendered preview" : "Transfer desk";
   const openEditorLabel =
     selection.type === "protocol" ? "Edit protocol" : selection.type === "section" ? "Edit section" : "Edit step";
 
@@ -671,6 +724,21 @@ export const App = ({ page }: AppProps) => {
             </button>
 
             <div className="protocol-topbar-controls">
+              <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
+                <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
+                  Summary
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
+                  Step
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
+                  Preview
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
+                  Transfer
+                </button>
+              </div>
+
               <div className="protocol-placeholder-nav" aria-label="Future module controls">
                 <button className="protocol-placeholder-link" type="button" onClick={() => setStatus(["Activity feed placeholder reserved for future release."])}>
                   Activity
@@ -682,13 +750,6 @@ export const App = ({ page }: AppProps) => {
                   Templates
                 </button>
               </div>
-
-              <button className="protocol-primary-action" type="button" onClick={handleProtocolExport}>
-                Export Protocol
-              </button>
-              <button className="protocol-secondary-action" type="button" onClick={handleSaveDraft}>
-                Save Library
-              </button>
             </div>
           </header>
 
@@ -734,7 +795,7 @@ export const App = ({ page }: AppProps) => {
                   </div>
 
                   <div className="protocol-outline-toolbar">
-                    <button type="button" onClick={() => updateDoc(addSection(doc, "New top-level section"))}>
+                    <button type="button" onClick={handleAddSection}>
                       Add section
                     </button>
                     <button
@@ -817,20 +878,11 @@ export const App = ({ page }: AppProps) => {
                     </div>
 
                     <div className="protocol-workspace-actions">
-                      <div className="protocol-workspace-switcher" role="tablist" aria-label="View workspace modes">
-                        <button className={viewMode === "summary" ? "protocol-view-toggle active" : "protocol-view-toggle"} type="button" onClick={() => setViewMode("summary")}>
-                          Summary
-                        </button>
-                        <button className={viewMode === "preview" ? "protocol-view-toggle active" : "protocol-view-toggle"} type="button" onClick={() => setViewMode("preview")}>
-                          Preview
-                        </button>
-                        <button className={viewMode === "transfer" ? "protocol-view-toggle active" : "protocol-view-toggle"} type="button" onClick={() => setViewMode("transfer")}>
-                          Transfer
-                        </button>
-                      </div>
-
                       <button type="button" onClick={() => setEditorModalOpen(true)}>
                         {openEditorLabel}
+                      </button>
+                      <button className="protocol-danger-action" type="button" onClick={() => handleDeleteProtocol(doc.protocol.id, { fromView: true })}>
+                        Abort protocol
                       </button>
                       <button type="button" onClick={openModuleHome}>
                         Back to dashboard
@@ -846,31 +898,55 @@ export const App = ({ page }: AppProps) => {
                           <span>Project assignment and workflow state</span>
                         </div>
 
-                        <div className="protocol-form-grid">
-                          <label>
+                        <div className="protocol-form-grid protocol-form-grid-wide">
+                          <label className="protocol-project-field">
                             Project
                             <input className="field" value={protocolMeta.project} onChange={(event) => handleProjectChange(event.target.value)} />
                           </label>
-                          <label>
-                            Review
-                            <select className="field" value={protocolMeta.reviewStatus} onChange={(event) => handleReviewStatusChange(event.target.value as ReviewStatus)}>
-                              <option value="reviewing">Reviewing</option>
-                              <option value="reviewed">Reviewed</option>
-                            </select>
+
+                          <label className="protocol-switch-row">
+                            <div>
+                              <strong>Reviewed</strong>
+                              <span>{protocolMeta.reviewStatus === "reviewed" ? "This protocol is marked as reviewed." : "This protocol is still reviewing."}</span>
+                            </div>
+                            <span className="protocol-switch-control">
+                              <input
+                                type="checkbox"
+                                checked={protocolMeta.reviewStatus === "reviewed"}
+                                onChange={(event) => handleReviewStatusChange(event.target.checked ? "reviewed" : "reviewing")}
+                              />
+                              <span className="protocol-switch-slider" aria-hidden="true" />
+                            </span>
                           </label>
-                          <label>
-                            Lifecycle
-                            <select className="field" value={protocolMeta.lifecycleStatus} onChange={(event) => handleLifecycleStatusChange(event.target.value as LifecycleStatus)}>
-                              <option value="active">Active</option>
-                              <option value="archived">Archived</option>
-                            </select>
+
+                          <label className="protocol-switch-row">
+                            <div>
+                              <strong>Archived</strong>
+                              <span>{protocolMeta.lifecycleStatus === "archived" ? "Hidden from active operations." : "Included in active operations."}</span>
+                            </div>
+                            <span className="protocol-switch-control">
+                              <input
+                                type="checkbox"
+                                checked={protocolMeta.lifecycleStatus === "archived"}
+                                onChange={(event) => handleLifecycleStatusChange(event.target.checked ? "archived" : "active")}
+                              />
+                              <span className="protocol-switch-slider" aria-hidden="true" />
+                            </span>
                           </label>
-                          <label>
-                            Validation
-                            <select className="field" value={protocolMeta.validationStatus} onChange={(event) => handleValidationStatusChange(event.target.value as ValidationStatus)}>
-                              <option value="proposed">Proposed</option>
-                              <option value="validated">Validated</option>
-                            </select>
+
+                          <label className="protocol-switch-row">
+                            <div>
+                              <strong>Validated</strong>
+                              <span>{protocolMeta.validationStatus === "validated" ? "Validation is complete." : "Validation is still proposed."}</span>
+                            </div>
+                            <span className="protocol-switch-control">
+                              <input
+                                type="checkbox"
+                                checked={protocolMeta.validationStatus === "validated"}
+                                onChange={(event) => handleValidationStatusChange(event.target.checked ? "validated" : "proposed")}
+                              />
+                              <span className="protocol-switch-slider" aria-hidden="true" />
+                            </span>
                           </label>
                         </div>
                       </article>
@@ -887,19 +963,25 @@ export const App = ({ page }: AppProps) => {
                             <small>Current project grouping</small>
                           </div>
                           <div>
-                            <span>Reviewed</span>
-                            <strong>{protocolMeta.reviewStatus === "reviewed" ? "Yes" : "No"}</strong>
-                            <small>{protocolMeta.reviewStatus === "reviewed" ? "Ready for reuse" : "Still in review cycle"}</small>
+                            <span>Reviewed / reviewing</span>
+                            <strong>
+                              {totalReviewed} / {totalReviewing}
+                            </strong>
+                            <small>Workspace review split</small>
                           </div>
                           <div>
-                            <span>Archived</span>
-                            <strong>{protocolMeta.lifecycleStatus === "archived" ? "Yes" : "No"}</strong>
-                            <small>{protocolMeta.lifecycleStatus === "archived" ? "Hidden from active queue" : "Shown in active queue"}</small>
+                            <span>Active / archived</span>
+                            <strong>
+                              {totalActive} / {totalArchived}
+                            </strong>
+                            <small>Workspace lifecycle split</small>
                           </div>
                           <div>
-                            <span>Validated</span>
-                            <strong>{protocolMeta.validationStatus === "validated" ? "Yes" : "No"}</strong>
-                            <small>{protocolMeta.validationStatus === "validated" ? "Validation complete" : "Still proposed"}</small>
+                            <span>Validated / proposed</span>
+                            <strong>
+                              {totalValidated} / {totalProposed}
+                            </strong>
+                            <small>Workspace validation split</small>
                           </div>
                         </div>
                       </article>
@@ -936,99 +1018,44 @@ export const App = ({ page }: AppProps) => {
                         </div>
                       </article>
 
-                      {selection.type === "protocol" && (
+                      <article className="protocol-content-card">
+                        <div className="protocol-card-heading">
+                          <h3>Section Library</h3>
+                          <span>{doc.protocol.sections.length} top-level section(s)</span>
+                        </div>
+                        {doc.protocol.sections.length === 0 ? (
+                          <p className="helper-text">No sections yet. Use the outline toolbar to add the first section.</p>
+                        ) : (
+                          <div className="protocol-compact-list">
+                            {doc.protocol.sections.map((section) => (
+                              <button className="protocol-library-link" type="button" key={section.id} onClick={() => selectSection(section.id)}>
+                                <span>{section.title}</span>
+                                <strong>{countStepsInSection(section)} step(s)</strong>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+
+                      <article className="protocol-content-card">
+                        <div className="protocol-card-heading">
+                          <h3>Lead Step</h3>
+                          <span>{firstStepRecord ? firstStepRecord.section.title : "No step selected yet"}</span>
+                        </div>
+                        <p className="protocol-observation-copy">
+                          {firstStepRecord
+                            ? getQuickSummaryText(firstStepRecord.step)
+                            : "Add a step to the outline to start building the procedural body of this protocol."}
+                        </p>
+                      </article>
+                    </div>
+                  )}
+
+                  {viewMode === "step" && (
+                    <div className="protocol-summary-view">
+                      {singleStepSelected && focusedStep ? (
                         <>
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>Section Library</h3>
-                              <span>{doc.protocol.sections.length} top-level section(s)</span>
-                            </div>
-                            {doc.protocol.sections.length === 0 ? (
-                              <p className="helper-text">No sections yet. Use the outline toolbar to add the first section.</p>
-                            ) : (
-                              <div className="protocol-compact-list">
-                                {doc.protocol.sections.map((section) => (
-                                  <button className="protocol-library-link" type="button" key={section.id} onClick={() => selectSection(section.id)}>
-                                    <span>{section.title}</span>
-                                    <strong>{countStepsInSection(section)} step(s)</strong>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </article>
-
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>Lead Step</h3>
-                              <span>{firstStepRecord ? firstStepRecord.section.title : "No step selected yet"}</span>
-                            </div>
-                            <p className="protocol-observation-copy">
-                              {firstStepRecord
-                                ? getQuickSummaryText(firstStepRecord.step)
-                                : "Add a step to the outline to start building the procedural body of this protocol."}
-                            </p>
-                          </article>
-                        </>
-                      )}
-
-                      {selection.type === "section" && focusedSection && (
-                        <>
-                          <article className="protocol-content-card protocol-content-card-accent">
-                            <div className="protocol-card-heading">
-                              <h3>{focusedSection.title}</h3>
-                              <span>Section</span>
-                            </div>
-                            <p className="protocol-observation-copy">
-                              {focusedSection.description || "No section description yet. Open the editor if you want to add context for this section."}
-                            </p>
-                            <div className="protocol-summary-grid">
-                              <div>
-                                <span>Direct steps</span>
-                                <strong>{focusedSection.steps.length}</strong>
-                                <small>Immediate steps inside this section</small>
-                              </div>
-                              <div>
-                                <span>Total steps</span>
-                                <strong>{countStepsInSection(focusedSection)}</strong>
-                                <small>Includes nested subsections</small>
-                              </div>
-                              <div>
-                                <span>Subsections</span>
-                                <strong>{focusedSection.sections.length}</strong>
-                                <small>Immediate nested groups</small>
-                              </div>
-                              <div>
-                                <span>Selection</span>
-                                <strong>Section</strong>
-                                <small>Editing scope for the modal editor</small>
-                              </div>
-                            </div>
-                          </article>
-
-                          <article className="protocol-content-card">
-                            <div className="protocol-card-heading">
-                              <h3>Contained Steps</h3>
-                              <span>{focusedSection.steps.length} step(s)</span>
-                            </div>
-                            {focusedSection.steps.length === 0 ? (
-                              <p className="helper-text">No steps in this section yet.</p>
-                            ) : (
-                              <div className="protocol-compact-list">
-                                {focusedSection.steps.map((step) => (
-                                  <button className="protocol-library-link" type="button" key={step.id} onClick={() => selectStep(focusedSection.id, step.id)}>
-                                    <span>{step.title}</span>
-                                    <strong>{formatStepKind(step.stepKind)}</strong>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </article>
-                        </>
-                      )}
-
-                      {selection.type === "step" && focusedStep && (
-                        <>
-                          <article className="protocol-content-card protocol-content-card-accent">
+                          <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
                             <div className="protocol-card-heading">
                               <h3>{focusedStep.title}</h3>
                               <span>{formatStepKind(focusedStep.stepKind)}</span>
@@ -1056,6 +1083,11 @@ export const App = ({ page }: AppProps) => {
                                 <small>{focusedStep.optional ? "Can be skipped" : "Required in standard workflow"}</small>
                               </div>
                             </div>
+                            <div className="protocol-inline-actions">
+                              <button type="button" onClick={() => setEditorModalOpen(true)}>
+                                Open step editor
+                              </button>
+                            </div>
                           </article>
 
                           <article className="protocol-content-card">
@@ -1080,6 +1112,23 @@ export const App = ({ page }: AppProps) => {
                             </div>
                           </article>
                         </>
+                      ) : (
+                        <article className="protocol-content-card protocol-content-card-hero">
+                          <div className="protocol-card-heading">
+                            <h3>Single Step View</h3>
+                            <span>Selection required</span>
+                          </div>
+                          <p className="protocol-observation-copy">
+                            {selection.type === "step" && selectedStepCount > 1
+                              ? "Select a single step to view. Multi-step selections stay available for outline operations, but this tab only renders one step at a time."
+                              : "Select a single step to view."}
+                          </p>
+                          <div className="protocol-inline-actions">
+                            <button type="button" onClick={() => openViewMode("summary")}>
+                              Return to summary
+                            </button>
+                          </div>
+                        </article>
                       )}
                     </div>
                   )}
@@ -1274,17 +1323,27 @@ export const App = ({ page }: AppProps) => {
                           {group.protocols.map((protocol) => {
                             const metadata = getProtocolMetadata(protocol);
                             return (
-                              <button className="protocol-library-card" type="button" key={protocol.protocol.id} onClick={() => openProtocolFromLibrary(protocol.protocol.id)}>
-                                <div>
-                                  <strong>{protocol.protocol.title}</strong>
-                                  <span>{protocol.protocol.description || "No description yet."}</span>
+                              <article className="protocol-library-card" key={protocol.protocol.id}>
+                                <button className="protocol-library-card-main" type="button" onClick={() => openProtocolFromLibrary(protocol.protocol.id)}>
+                                  <div>
+                                    <strong>{protocol.protocol.title}</strong>
+                                    <span>{protocol.protocol.description || "No description yet."}</span>
+                                  </div>
+                                  <div className="protocol-library-statuses">
+                                    <span>{metadata.reviewStatus}</span>
+                                    <span>{metadata.lifecycleStatus}</span>
+                                    <span>{metadata.validationStatus}</span>
+                                  </div>
+                                </button>
+                                <div className="protocol-library-card-actions">
+                                  <button className="protocol-inline-action" type="button" onClick={() => handleDuplicateProtocol(protocol.protocol.id)}>
+                                    Duplicate
+                                  </button>
+                                  <button className="protocol-inline-action protocol-danger-action" type="button" onClick={() => handleDeleteProtocol(protocol.protocol.id)}>
+                                    Delete
+                                  </button>
                                 </div>
-                                <div className="protocol-library-statuses">
-                                  <span>{metadata.reviewStatus}</span>
-                                  <span>{metadata.lifecycleStatus}</span>
-                                  <span>{metadata.validationStatus}</span>
-                                </div>
-                              </button>
+                              </article>
                             );
                           })}
                         </div>

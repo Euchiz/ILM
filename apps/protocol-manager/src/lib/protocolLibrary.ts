@@ -1,12 +1,12 @@
 import type { ProtocolDocument } from "@ilm/types";
-import { nowIso } from "@ilm/utils";
+import { createStableId, nowIso } from "@ilm/utils";
 import { createBlankProtocol, createDefaultProtocol } from "./defaultProtocol";
 
 export const LIBRARY_STORAGE_KEY = "ilm.protocol-manager.library.v2";
 export const LEGACY_STORAGE_KEY = "ilm.protocol-manager.document";
 
 export type SidebarTab = "overview" | "library" | "view";
-export type ViewMode = "summary" | "preview" | "transfer";
+export type ViewMode = "summary" | "step" | "preview" | "transfer";
 export type ReviewStatus = "reviewed" | "reviewing";
 export type LifecycleStatus = "active" | "archived";
 export type ValidationStatus = "validated" | "proposed";
@@ -30,6 +30,9 @@ const DEFAULT_PROTOCOL_METADATA: ProtocolMetadataState = {
   lifecycleStatus: "active",
   validationStatus: "proposed"
 };
+
+const createUniqueProtocolId = (label: string) =>
+  createStableId("protocol", `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
 
 export const getProtocolMetadata = (doc: ProtocolDocument): ProtocolMetadataState => {
   const metadata = doc.protocol.metadata ?? {};
@@ -84,6 +87,22 @@ export const updateProtocolMetadata = (
 
 export const createProtocolForMode = (mode: NewProtocolMode): ProtocolDocument =>
   ensureProtocolMetadata(mode === "template" ? createDefaultProtocol() : createBlankProtocol());
+
+export const duplicateProtocolDocument = (doc: ProtocolDocument): ProtocolDocument => {
+  const cloned = JSON.parse(JSON.stringify(doc)) as ProtocolDocument;
+  const now = nowIso();
+
+  return ensureProtocolMetadata({
+    ...cloned,
+    protocol: {
+      ...cloned.protocol,
+      id: createUniqueProtocolId(cloned.protocol.title || "protocol-copy"),
+      title: `${cloned.protocol.title} Copy`,
+      createdAt: now,
+      updatedAt: now
+    }
+  });
+};
 
 export const createInitialLibrary = (): ProtocolLibraryState => {
   const initialProtocol = ensureProtocolMetadata(createDefaultProtocol());
