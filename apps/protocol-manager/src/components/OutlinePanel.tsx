@@ -12,7 +12,6 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ProtocolSection, ProtocolStep, StepKind } from "@ilm/types";
-import { Tag } from "@ilm/ui";
 import {
   Play,
   FlaskConical,
@@ -20,7 +19,11 @@ import {
   EyeOff,
   PauseCircle,
   Trash2,
-  BarChart2
+  BarChart2,
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
+  GripVertical
 } from "lucide-react";
 import type { Selection } from "../state/protocolState";
 import { ActionMenu } from "./ActionMenu";
@@ -41,8 +44,11 @@ interface OutlinePanelProps {
   selectedStepIds: string[];
   selectedSectionIds: string[];
   onSelectProtocol: () => void;
+  onOpenProtocol: () => void;
   onSelectSection: (sectionId: string, options?: { toggle: boolean }) => void;
+  onOpenSection: (sectionId: string) => void;
   onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
+  onOpenStep: (sectionId: string, stepId: string) => void;
   onClearOutlineSelection: () => void;
   onReorderSection: (parentSectionId: string | null, sectionIds: string[], targetSectionId: string) => void;
   onMoveSteps: (stepIds: string[], destinationSectionId: string, targetStepId?: string) => void;
@@ -75,8 +81,11 @@ export const OutlinePanel = ({
   selectedStepIds,
   selectedSectionIds,
   onSelectProtocol,
+  onOpenProtocol,
   onSelectSection,
+  onOpenSection,
   onSelectStep,
+  onOpenStep,
   onClearOutlineSelection,
   onReorderSection,
   onMoveSteps,
@@ -147,6 +156,8 @@ export const OutlinePanel = ({
             onDeleteStep={onDeleteStep}
             onDuplicateSection={onDuplicateSection}
             onDuplicateStep={onDuplicateStep}
+            onOpenSection={onOpenSection}
+            onOpenStep={onOpenStep}
             onSelectSection={onSelectSection}
             onSelectStep={onSelectStep}
             parentSectionId={parentSectionId}
@@ -174,12 +185,16 @@ export const OutlinePanel = ({
   return (
     <DndContext sensors={sensors} collisionDetection={typeAwareCollision} onDragEnd={handleDragEnd}>
       <div className="outline-tree" onClick={handleBackgroundClick}>
-        <button className={selection.type === "protocol" ? "outline-root active" : "outline-root"} onClick={onSelectProtocol}>
+        <button
+          className={selection.type === "protocol" ? "outline-root active" : "outline-root"}
+          onClick={onSelectProtocol}
+          onDoubleClick={onOpenProtocol}
+        >
           <span className="outline-marker">Protocol</span>
-          <strong>{selection.type === "protocol" ? "Editing metadata" : "Open protocol metadata"}</strong>
+          <strong>{selection.type === "protocol" ? "Protocol overview selected" : "Select protocol overview"}</strong>
         </button>
         <p className="helper-text">
-          Drag steps or sections to reorganize the protocol. Use Shift/Ctrl/Cmd-click on titles to build a multi-selection. Click empty space to clear it. Use Ctrl/Cmd + C/X/V to copy, cut, paste.
+          Single-click to review in the workspace, double-click to open the editor. Drag steps or sections to reorganize. Use Shift/Ctrl/Cmd-click to build a multi-selection, then use Ctrl/Cmd + C/X/V to copy, cut, paste.
         </p>
         {renderSectionList(sections, null)}
       </div>
@@ -197,7 +212,9 @@ interface SortableSectionCardProps {
   collapsedIds: string[];
   level: number;
   onSelectSection: (sectionId: string, options?: { toggle: boolean }) => void;
+  onOpenSection: (sectionId: string) => void;
   onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
+  onOpenStep: (sectionId: string, stepId: string) => void;
   onAddSubsection: (sectionId: string) => void;
   onAddStep: (sectionId: string) => void;
   onDuplicateSection: (sectionId: string) => void;
@@ -218,7 +235,9 @@ const SortableSectionCard = ({
   collapsedIds,
   level,
   onSelectSection,
+  onOpenSection,
   onSelectStep,
+  onOpenStep,
   onAddSubsection,
   onAddStep,
   onDuplicateSection,
@@ -248,21 +267,38 @@ const SortableSectionCard = ({
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <div className="outline-card-header">
-        <button className="drag-handle" ref={setActivatorNodeRef} type="button" {...attributes} {...listeners}>
-          ::
-        </button>
-        <button className="collapse-toggle" onClick={() => toggleCollapsed(section.id)}>
-          {isCollapsed ? "+" : "-"}
-        </button>
-        <button
-          className="outline-card-title"
-          onClick={(event) => onSelectSection(section.id, { toggle: event.shiftKey || event.metaKey || event.ctrlKey })}
-          aria-pressed={isGroupSelected}
-        >
-          <span className="outline-marker">Section {sectionPath}</span>
-          <strong>{section.title}</strong>
-          {section.description ? <small>{section.description}</small> : null}
-        </button>
+        <div className="outline-card-main">
+          <button className="drag-handle compact" ref={setActivatorNodeRef} type="button" {...attributes} {...listeners} aria-label={`Drag section ${section.title}`}>
+            <GripVertical size={14} />
+          </button>
+          <button className="collapse-toggle" type="button" onClick={() => toggleCollapsed(section.id)} aria-label={isCollapsed ? `Expand ${section.title}` : `Collapse ${section.title}`}>
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          </button>
+          <button
+            className="outline-card-title"
+            onClick={(event) => onSelectSection(section.id, { toggle: event.shiftKey || event.metaKey || event.ctrlKey })}
+            onDoubleClick={() => onOpenSection(section.id)}
+            aria-pressed={isGroupSelected}
+          >
+            <span className="outline-card-title-row">
+              <span className="outline-node-icon" aria-hidden="true">
+                <FolderTree size={14} />
+              </span>
+              <span className="outline-marker">Section {sectionPath}</span>
+              <strong>{section.title}</strong>
+            </span>
+          </button>
+        </div>
+        <div className="outline-card-actions">
+          <span className="outline-inline-meta">
+            {section.steps.length} step{section.steps.length === 1 ? "" : "s"}
+          </span>
+          {section.sections.length > 0 ? (
+            <span className="outline-inline-meta">
+              {section.sections.length} sub{section.sections.length === 1 ? "section" : "sections"}
+            </span>
+          ) : null}
+        </div>
         <ActionMenu
           buttonClassName="menu-trigger"
           label="..."
@@ -273,11 +309,6 @@ const SortableSectionCard = ({
             { label: "Delete section", onSelect: () => onDeleteSection(section.id), tone: "danger" }
           ]}
         />
-      </div>
-
-      <div className="outline-card-tags">
-        <Tag label={`${section.steps.length} steps`} tone="neutral" />
-        {section.sections.length > 0 ? <Tag label={`${section.sections.length} subsections`} tone="info" /> : null}
       </div>
 
       {!isCollapsed ? (
@@ -295,6 +326,7 @@ const SortableSectionCard = ({
                     key={step.id}
                     onDeleteStep={onDeleteStep}
                     onDuplicateStep={onDuplicateStep}
+                    onOpenStep={onOpenStep}
                     onSelectStep={onSelectStep}
                     sectionId={section.id}
                     sectionPath={sectionPath}
@@ -324,6 +356,7 @@ interface SortableStepPillProps {
   selection: Selection;
   selectedStepIds: string[];
   onSelectStep: (sectionId: string, stepId: string, options?: { toggle: boolean }) => void;
+  onOpenStep: (sectionId: string, stepId: string) => void;
   onDuplicateStep: (sectionId: string, stepId: string) => void;
   onDeleteStep: (sectionId: string, stepId: string) => void;
 }
@@ -336,6 +369,7 @@ const SortableStepPill = ({
   selection,
   selectedStepIds,
   onSelectStep,
+  onOpenStep,
   onDuplicateStep,
   onDeleteStep
 }: SortableStepPillProps) => {
@@ -352,21 +386,22 @@ const SortableStepPill = ({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.7 : 1 }}
     >
-      <button className="drag-handle step" ref={setActivatorNodeRef} type="button" {...attributes} {...listeners}>
-        ::
+      <button className="drag-handle step compact" ref={setActivatorNodeRef} type="button" {...attributes} {...listeners} aria-label={`Drag step ${step.title}`}>
+        <GripVertical size={13} />
       </button>
       <button
         className="outline-step-content"
         onClick={(event) => onSelectStep(sectionId, step.id, { toggle: event.shiftKey || event.metaKey || event.ctrlKey })}
+        onDoubleClick={() => onOpenStep(sectionId, step.id)}
         aria-pressed={isGroupSelected}
       >
         <span className="outline-step-index">{sectionPath}.{index + 1}</span>
         <span className="outline-step-copy">
-          <strong>{step.title}</strong>
           <span className="outline-step-kind">
             {STEP_KIND_ICONS[step.stepKind]}
             {step.stepKind}
           </span>
+          <strong>{step.title}</strong>
         </span>
       </button>
       <ActionMenu

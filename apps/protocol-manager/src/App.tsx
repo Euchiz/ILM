@@ -171,7 +171,6 @@ export const App = ({ page }: AppProps) => {
     setSelectedStepIds([]);
     setSelectedSectionIds([]);
     clearBlockSelection();
-    setEditorModalOpen(true);
   };
 
   const selectSection = (sectionId: string, options?: { toggle: boolean }) => {
@@ -197,7 +196,6 @@ export const App = ({ page }: AppProps) => {
 
     setSelection({ type: "section", sectionId });
     setSelectedSectionIds([sectionId]);
-    setEditorModalOpen(true);
   };
 
   const selectStep = (sectionId: string, stepId: string, options?: { toggle: boolean }) => {
@@ -231,6 +229,29 @@ export const App = ({ page }: AppProps) => {
 
     setSelection({ type: "step", sectionId, stepId });
     setSelectedStepIds([stepId]);
+  };
+
+  const openProtocolEditor = () => {
+    setSelection({ type: "protocol" });
+    setSelectedStepIds([]);
+    setSelectedSectionIds([]);
+    clearBlockSelection();
+    setEditorModalOpen(true);
+  };
+
+  const openSectionEditor = (sectionId: string) => {
+    setSelection({ type: "section", sectionId });
+    setSelectedSectionIds([sectionId]);
+    setSelectedStepIds([]);
+    clearBlockSelection();
+    setEditorModalOpen(true);
+  };
+
+  const openStepEditor = (sectionId: string, stepId: string) => {
+    setSelection({ type: "step", sectionId, stepId });
+    setSelectedStepIds([stepId]);
+    setSelectedSectionIds([]);
+    clearBlockSelection();
     setEditorModalOpen(true);
   };
 
@@ -530,23 +551,38 @@ export const App = ({ page }: AppProps) => {
     window.location.href = buildPageUrl("");
   };
 
-  const firstStepRecord = getFirstStepRecord(doc.protocol.sections);
   const focusedStepLocation = selection.type === "step" ? findStepLocation(doc.protocol.sections, selection.stepId) : null;
   const focusedSection =
     selection.type === "section"
       ? findSectionById(doc.protocol.sections, selection.sectionId)
       : selection.type === "step"
         ? findSectionById(doc.protocol.sections, selection.sectionId)
-        : firstStepRecord?.section ?? doc.protocol.sections[0] ?? null;
+        : null;
   const focusedStep =
     selection.type === "step"
       ? focusedStepLocation?.step ?? null
-      : focusedSection?.steps[0] ?? firstStepRecord?.step ?? null;
-  const recipeBlock = getBlockOfType(focusedStep, "recipe");
-  const tableBlock = getBlockOfType(focusedStep, "table");
-  const timelineBlock = getBlockOfType(focusedStep, "timeline");
-  const cautionBlock = getBlockOfType(focusedStep, "caution");
-  const noteBlock = getBlockOfType(focusedStep, "note") ?? getBlockOfType(focusedStep, "paragraph");
+      : null;
+  const sectionLeadStep =
+    selection.type === "section" && focusedSection
+      ? focusedSection.steps[0] ?? getFirstStepRecord(focusedSection.sections)?.step ?? null
+      : null;
+  const summaryStep = focusedStep ?? sectionLeadStep;
+  const recipeBlock = getBlockOfType(summaryStep, "recipe");
+  const tableBlock = getBlockOfType(summaryStep, "table");
+  const timelineBlock = getBlockOfType(summaryStep, "timeline");
+  const cautionBlock = getBlockOfType(summaryStep, "caution");
+  const qcBlock = getBlockOfType(summaryStep, "qc");
+  const linkBlock = getBlockOfType(summaryStep, "link");
+  const authorWorkspaceTitle =
+    selection.type === "step" ? focusedStep?.title ?? doc.protocol.title : selection.type === "section" ? focusedSection?.title ?? doc.protocol.title : doc.protocol.title;
+  const authorWorkspaceMeta =
+    selection.type === "step"
+      ? `Section: ${focusedSection?.title ?? "Unknown section"}`
+      : selection.type === "section"
+        ? `${countStepsInSection(focusedSection)} total step(s)`
+        : `Updated: ${formatDisplayTimestamp(doc.protocol.updatedAt)}`;
+  const openEditorLabel =
+    selection.type === "step" ? "Open step editor" : selection.type === "section" ? "Open section editor" : "Open protocol editor";
 
   const handleProtocolExport = () => {
     if (activeTab !== "preview") {
@@ -573,10 +609,6 @@ export const App = ({ page }: AppProps) => {
   };
 
   const handleOpenFocusedEditor = () => {
-    if (selection.type === "protocol") {
-      selectProtocol();
-      return;
-    }
     setEditorModalOpen(true);
   };
 
@@ -853,8 +885,11 @@ export const App = ({ page }: AppProps) => {
                     selectedStepIds={selectedStepIds}
                     selectedSectionIds={selectedSectionIds}
                     onSelectProtocol={selectProtocol}
+                    onOpenProtocol={openProtocolEditor}
                     onSelectSection={selectSection}
+                    onOpenSection={openSectionEditor}
                     onSelectStep={selectStep}
+                    onOpenStep={openStepEditor}
                     onClearOutlineSelection={resetSelection}
                     onReorderSection={(parentSectionId, sectionIds, targetSectionId) =>
                       updateDoc(reorderSections(doc, parentSectionId, sectionIds, targetSectionId))
@@ -878,7 +913,7 @@ export const App = ({ page }: AppProps) => {
                   <div>
                     <h1>
                       {activeTab === "author"
-                        ? focusedStep?.title ?? focusedSection?.title ?? doc.protocol.title
+                        ? authorWorkspaceTitle
                         : activeTab === "preview"
                           ? "Protocol Preview / Print"
                           : "Import / Export Transfer Desk"}
@@ -886,9 +921,9 @@ export const App = ({ page }: AppProps) => {
                     <div className="protocol-workspace-meta">
                       {activeTab === "author" ? (
                         <>
-                          <span className="protocol-status-badge">{getStepStatusLabel(focusedStep)}</span>
+                          <span className="protocol-status-badge">{getSelectionStatusLabel(selection, focusedStep)}</span>
                           <span>ID: {doc.protocol.id || "PROT-99-AXIS-02"}</span>
-                          <span>Section: {focusedSection?.title ?? "Protocol Overview"}</span>
+                          <span>{authorWorkspaceMeta}</span>
                         </>
                       ) : (
                         <>
@@ -902,7 +937,7 @@ export const App = ({ page }: AppProps) => {
 
                   <div className="protocol-workspace-actions">
                     <button type="button" onClick={handleOpenFocusedEditor}>
-                      Open focused editor
+                      {openEditorLabel}
                     </button>
                     <button type="button" onClick={openModuleHome}>
                       Back to dashboard
@@ -911,132 +946,321 @@ export const App = ({ page }: AppProps) => {
                 </header>
 
                 {activeTab === "author" && (
-                  <div className="protocol-editor-canvas">
-                    <article className="protocol-content-card">
-                      <div className="protocol-card-heading">
-                        <h3>Reagent Matrix</h3>
-                        <span>{doc.protocol.reagents.length} loaded</span>
-                      </div>
-                      <table className="protocol-data-table">
-                        <thead>
-                          <tr>
-                            <th>Reagent</th>
-                            <th>Supplier</th>
-                            <th>Catalog</th>
-                            <th>Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {doc.protocol.reagents.slice(0, 5).map((reagent) => (
-                            <tr key={reagent.id}>
-                              <td>{reagent.name}</td>
-                              <td>{reagent.supplier || "Internal"}</td>
-                              <td>{reagent.catalogNumber || "N/A"}</td>
-                              <td>{reagent.notes || "Ready for run"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </article>
-
-                    <article className="protocol-content-card protocol-content-card-accent">
-                      <div className="protocol-card-heading">
-                        <h3>Thermocycling Conditions</h3>
-                        <button className="protocol-inline-link" type="button" onClick={handleOpenFocusedEditor}>
-                          Edit parameters
-                        </button>
-                      </div>
-
-                      {timelineBlock ? (
-                        <div className="protocol-timeline-grid">
-                          {timelineBlock.stages.map((stage) => (
-                            <div className="protocol-timeline-stage" key={`${stage.label}-${stage.duration}`}>
-                              <span>{stage.label}</span>
-                              <strong>{stage.temperature || stage.duration}</strong>
-                              <small>{stage.details || stage.duration}</small>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="protocol-summary-grid">
-                          <div>
-                            <span>Step kind</span>
-                            <strong>{formatStepKind(focusedStep?.stepKind)}</strong>
+                  <div className="protocol-summary-view">
+                    {selection.type === "protocol" && (
+                      <>
+                        <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
+                          <div className="protocol-card-heading">
+                            <h3>Protocol Overview</h3>
+                            <span>Read-only workspace summary</span>
                           </div>
-                          <div>
-                            <span>Block count</span>
-                            <strong>{focusedStep?.blocks.length ?? 0}</strong>
-                          </div>
-                          <div>
-                            <span>Equipment</span>
-                            <strong>{doc.protocol.equipment.length}</strong>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-
-                    {cautionBlock && (
-                      <article className="protocol-content-card protocol-callout protocol-callout-warning">
-                        <div className="protocol-card-heading">
-                          <h3>Safety Precaution</h3>
-                          <span>{(cautionBlock.severity || "medium").toUpperCase()}</span>
-                        </div>
-                        <p>{cautionBlock.text}</p>
-                      </article>
-                    )}
-
-                    <article className="protocol-content-card">
-                      <div className="protocol-card-heading">
-                        <h3>Technical Observation</h3>
-                        <span>{formatStepKind(focusedStep?.stepKind)}</span>
-                      </div>
-                      <p className="protocol-observation-copy">
-                        {noteBlock
-                          ? "text" in noteBlock
-                            ? noteBlock.text
-                            : "Review the selected step in the focused editor for the full narrative."
-                          : "Select a section or step from the protocol outline to inspect its narrative blocks, safety notes, and structured content."}
-                      </p>
-                    </article>
-
-                    {(recipeBlock || tableBlock) && (
-                      <article className="protocol-content-card">
-                        <div className="protocol-card-heading">
-                          <h3>{recipeBlock ? recipeBlock.title || "Component Recipe" : "Structured Table"}</h3>
-                          <span>{recipeBlock ? `${recipeBlock.items.length} components` : `${tableBlock?.rows.length ?? 0} rows`}</span>
-                        </div>
-
-                        {recipeBlock ? (
+                          <p className="protocol-observation-copy">
+                            {doc.protocol.description || "Select a section or step from the outline to inspect it here. Double-click any item when you want to open the full editor modal."}
+                          </p>
                           <div className="protocol-summary-grid">
-                            {recipeBlock.items.map((item) => (
-                              <div key={`${item.component}-${item.quantity}`}>
-                                <span>{item.component}</span>
-                                <strong>{item.quantity}</strong>
-                                <small>{item.notes || "No note"}</small>
+                            <div>
+                              <span>Sections</span>
+                              <strong>{sectionCount}</strong>
+                              <small>Nested structure included</small>
+                            </div>
+                            <div>
+                              <span>Steps</span>
+                              <strong>{stepCount}</strong>
+                              <small>Total procedural actions</small>
+                            </div>
+                            <div>
+                              <span>Reagents</span>
+                              <strong>{doc.protocol.reagents.length}</strong>
+                              <small>Tracked materials</small>
+                            </div>
+                            <div>
+                              <span>Equipment</span>
+                              <strong>{doc.protocol.equipment.length}</strong>
+                              <small>Referenced instruments</small>
+                            </div>
+                          </div>
+                        </article>
+
+                        <article className="protocol-content-card">
+                          <div className="protocol-card-heading">
+                            <h3>Section Map</h3>
+                            <span>{doc.protocol.sections.length} top-level section(s)</span>
+                          </div>
+                          <div className="protocol-compact-list">
+                            {doc.protocol.sections.map((section, index) => (
+                              <div className="protocol-compact-row" key={section.id}>
+                                <div>
+                                  <strong>{index + 1}. {section.title}</strong>
+                                  <span>{section.description || "No section description yet."}</span>
+                                </div>
+                                <div className="protocol-compact-meta">
+                                  <span>{countStepsInSection(section)} step(s)</span>
+                                  <span>{countNestedSections(section.sections)} subsection(s)</span>
+                                </div>
                               </div>
                             ))}
                           </div>
-                        ) : tableBlock ? (
-                          <table className="protocol-data-table">
-                            <thead>
-                              <tr>
-                                {tableBlock.columns.map((column) => (
-                                  <th key={column}>{column}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {tableBlock.rows.map((row, index) => (
-                                <tr key={`${index}-${row.join("-")}`}>
-                                  {row.map((cell, cellIndex) => (
-                                    <td key={`${index}-${cellIndex}`}>{cell}</td>
-                                  ))}
+                        </article>
+
+                        <article className="protocol-content-card">
+                          <div className="protocol-card-heading">
+                            <h3>Reagent Snapshot</h3>
+                            <span>{doc.protocol.reagents.length} loaded</span>
+                          </div>
+                          {doc.protocol.reagents.length > 0 ? (
+                            <table className="protocol-data-table">
+                              <thead>
+                                <tr>
+                                  <th>Reagent</th>
+                                  <th>Supplier</th>
+                                  <th>Catalog</th>
+                                  <th>Notes</th>
                                 </tr>
+                              </thead>
+                              <tbody>
+                                {doc.protocol.reagents.slice(0, 6).map((reagent) => (
+                                  <tr key={reagent.id}>
+                                    <td>{reagent.name}</td>
+                                    <td>{reagent.supplier || "Internal"}</td>
+                                    <td>{reagent.catalogNumber || "N/A"}</td>
+                                    <td>{reagent.notes || "Ready for run"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <p className="section-intro">No reagents have been added to this protocol yet.</p>
+                          )}
+                        </article>
+                      </>
+                    )}
+
+                    {selection.type === "section" && focusedSection && (
+                      <>
+                        <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
+                          <div className="protocol-card-heading">
+                            <h3>Section Summary</h3>
+                            <span>{focusedSection.title}</span>
+                          </div>
+                          <p className="protocol-observation-copy">
+                            {focusedSection.description || "This section does not have a description yet. Open the section editor to add more context or restructure its contents."}
+                          </p>
+                          <div className="protocol-summary-grid">
+                            <div>
+                              <span>Direct steps</span>
+                              <strong>{focusedSection.steps.length}</strong>
+                              <small>Immediate children</small>
+                            </div>
+                            <div>
+                              <span>Total steps</span>
+                              <strong>{countStepsInSection(focusedSection)}</strong>
+                              <small>Including nested subsections</small>
+                            </div>
+                            <div>
+                              <span>Subsections</span>
+                              <strong>{countNestedSections(focusedSection.sections)}</strong>
+                              <small>Nested under this section</small>
+                            </div>
+                            <div>
+                              <span>Lead step</span>
+                              <strong>{sectionLeadStep?.title ?? "None yet"}</strong>
+                              <small>{sectionLeadStep ? formatStepKind(sectionLeadStep.stepKind) : "Add a step to begin"}</small>
+                            </div>
+                          </div>
+                        </article>
+
+                        <article className="protocol-content-card">
+                          <div className="protocol-card-heading">
+                            <h3>Section Steps</h3>
+                            <span>{focusedSection.steps.length} direct step(s)</span>
+                          </div>
+                          {focusedSection.steps.length > 0 ? (
+                            <div className="protocol-compact-list">
+                              {focusedSection.steps.map((step, index) => (
+                                <div className="protocol-compact-row" key={step.id}>
+                                  <div>
+                                    <strong>{index + 1}. {step.title}</strong>
+                                    <span>{formatStepKind(step.stepKind)}</span>
+                                  </div>
+                                  <div className="protocol-compact-meta">
+                                    <span>{step.blocks.length} block(s)</span>
+                                    <span>{step.optional ? "Optional" : "Required"}</span>
+                                  </div>
+                                </div>
                               ))}
-                            </tbody>
-                          </table>
+                            </div>
+                          ) : (
+                            <p className="section-intro">No direct steps are attached to this section yet.</p>
+                          )}
+                        </article>
+
+                        {focusedSection.sections.length > 0 && (
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Nested Subsections</h3>
+                              <span>{focusedSection.sections.length} child subsection(s)</span>
+                            </div>
+                            <div className="protocol-compact-list">
+                              {focusedSection.sections.map((section) => (
+                                <div className="protocol-compact-row" key={section.id}>
+                                  <div>
+                                    <strong>{section.title}</strong>
+                                    <span>{section.description || "No subsection description yet."}</span>
+                                  </div>
+                                  <div className="protocol-compact-meta">
+                                    <span>{countStepsInSection(section)} step(s)</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </article>
+                        )}
+
+                        {summaryStep && (
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Lead Step Snapshot</h3>
+                              <span>{formatStepKind(summaryStep.stepKind)}</span>
+                            </div>
+                            <p className="protocol-observation-copy">{getQuickSummaryText(summaryStep)}</p>
+                          </article>
+                        )}
+                      </>
+                    )}
+
+                    {selection.type === "step" && focusedStep && (
+                      <>
+                        <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
+                          <div className="protocol-card-heading">
+                            <h3>Step Summary</h3>
+                            <span>{formatStepKind(focusedStep.stepKind)}</span>
+                          </div>
+                          <p className="protocol-observation-copy">{getQuickSummaryText(focusedStep)}</p>
+                          <div className="protocol-summary-grid">
+                            <div>
+                              <span>Section</span>
+                              <strong>{focusedSection?.title ?? "Unknown section"}</strong>
+                              <small>Current parent section</small>
+                            </div>
+                            <div>
+                              <span>Blocks</span>
+                              <strong>{focusedStep.blocks.length}</strong>
+                              <small>Structured content in this step</small>
+                            </div>
+                            <div>
+                              <span>Special blocks</span>
+                              <strong>{countSpecialBlocks(focusedStep)}</strong>
+                              <small>Caution, QC, tables, links, and more</small>
+                            </div>
+                            <div>
+                              <span>Optional</span>
+                              <strong>{focusedStep.optional ? "Yes" : "No"}</strong>
+                              <small>{focusedStep.optional ? "Skipped when conditions allow" : "Required in standard run"}</small>
+                            </div>
+                          </div>
+                        </article>
+
+                        {timelineBlock ? (
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>Timeline Snapshot</h3>
+                              <span>{timelineBlock.stages.length} stage(s)</span>
+                            </div>
+                            <div className="protocol-timeline-grid">
+                              {timelineBlock.stages.map((stage) => (
+                                <div className="protocol-timeline-stage" key={`${stage.label}-${stage.duration}`}>
+                                  <span>{stage.label}</span>
+                                  <strong>{stage.temperature || stage.duration}</strong>
+                                  <small>{stage.details || stage.duration}</small>
+                                </div>
+                              ))}
+                            </div>
+                          </article>
                         ) : null}
-                      </article>
+
+                        {(recipeBlock || tableBlock) && (
+                          <article className="protocol-content-card">
+                            <div className="protocol-card-heading">
+                              <h3>{recipeBlock ? recipeBlock.title || "Component Recipe" : "Structured Table"}</h3>
+                              <span>{recipeBlock ? `${recipeBlock.items.length} component(s)` : `${tableBlock?.rows.length ?? 0} row(s)`}</span>
+                            </div>
+
+                            {recipeBlock ? (
+                              <div className="protocol-summary-grid">
+                                {recipeBlock.items.map((item) => (
+                                  <div key={`${item.component}-${item.quantity}`}>
+                                    <span>{item.component}</span>
+                                    <strong>{item.quantity}</strong>
+                                    <small>{item.notes || "No note"}</small>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : tableBlock ? (
+                              <table className="protocol-data-table">
+                                <thead>
+                                  <tr>
+                                    {tableBlock.columns.map((column) => (
+                                      <th key={column}>{column}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {tableBlock.rows.map((row, index) => (
+                                    <tr key={`${index}-${row.join("-")}`}>
+                                      {row.map((cell, cellIndex) => (
+                                        <td key={`${index}-${cellIndex}`}>{cell}</td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : null}
+                          </article>
+                        )}
+
+                        {(cautionBlock || qcBlock || linkBlock) && (
+                          <article className={`protocol-content-card ${cautionBlock ? "protocol-callout protocol-callout-warning" : ""}`}>
+                            <div className="protocol-card-heading">
+                              <h3>{cautionBlock ? "Safety Precaution" : qcBlock ? "QC / Reference" : "Reference Link"}</h3>
+                              <span>{cautionBlock ? (cautionBlock.severity || "medium").toUpperCase() : qcBlock ? "QC_READY" : "LINK"}</span>
+                            </div>
+                            {cautionBlock ? <p>{cautionBlock.text}</p> : null}
+                            {qcBlock ? (
+                              <p className="protocol-observation-copy">
+                                <strong>{qcBlock.checkpoint}</strong>
+                                {qcBlock.acceptanceCriteria ? ` - ${qcBlock.acceptanceCriteria}` : ""}
+                              </p>
+                            ) : null}
+                            {linkBlock ? (
+                              <p className="protocol-observation-copy">
+                                <a href={linkBlock.url} target="_blank" rel="noreferrer">
+                                  {linkBlock.label}
+                                </a>
+                              </p>
+                            ) : null}
+                          </article>
+                        )}
+
+                        <article className="protocol-content-card">
+                          <div className="protocol-card-heading">
+                            <h3>Block Outline</h3>
+                            <span>{focusedStep.blocks.length} ordered block(s)</span>
+                          </div>
+                          <div className="protocol-compact-list">
+                            {focusedStep.blocks.map((block, index) => (
+                              <div className="protocol-compact-row" key={block.id}>
+                                <div>
+                                  <strong>{index + 1}. {formatBlockType(block.type)}</strong>
+                                  <span>{getBlockSummary(block)}</span>
+                                </div>
+                                <div className="protocol-compact-meta">
+                                  <span>{block.type}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </article>
+                      </>
                     )}
                   </div>
                 )}
@@ -1133,6 +1357,12 @@ const countSections = (sections: ProtocolDocument["protocol"]["sections"]): numb
 const countSteps = (sections: ProtocolDocument["protocol"]["sections"]): number =>
   sections.reduce((total, section) => total + section.steps.length + countSteps(section.sections), 0);
 
+const countStepsInSection = (section: ProtocolSection | null): number =>
+  section ? section.steps.length + countSteps(section.sections) : 0;
+
+const countNestedSections = (sections: ProtocolSection[]): number =>
+  sections.reduce((total, section) => total + 1 + countNestedSections(section.sections), 0);
+
 const orderStepIdsByDocument = (doc: ProtocolDocument, stepIds: string[]) => {
   const selectedIds = new Set(stepIds);
   return collectStepIds(doc.protocol.sections).filter((stepId) => selectedIds.has(stepId));
@@ -1181,6 +1411,25 @@ const formatStepKind = (value?: ProtocolStep["stepKind"]) => {
   return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
+const formatBlockType = (value: ProtocolBlock["type"]) => value.replace(/([A-Z])/g, " $1").replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const getBlockSummary = (block: ProtocolBlock) => {
+  if (block.type === "paragraph" || block.type === "note" || block.type === "caution") return block.text;
+  if (block.type === "qc") return `${block.checkpoint}${block.acceptanceCriteria ? ` - ${block.acceptanceCriteria}` : ""}`;
+  if (block.type === "recipe") return `${block.items.length} item(s)${block.title ? ` in ${block.title}` : ""}`;
+  if (block.type === "timeline") return `${block.stages.length} stage(s)`;
+  if (block.type === "link") return `${block.label} (${block.url})`;
+  if (block.type === "table") return `${block.columns.length} column(s) x ${block.rows.length} row(s)`;
+  if (block.type === "fileReference") return `${block.label} (${block.path})`;
+  return `If ${block.condition}, then ${block.thenStepIds.join(", ") || "no target step"}`;
+};
+
+const getQuickSummaryText = (step: ProtocolStep) => {
+  const block = step.blocks.find((candidate) => candidate.type === "note" || candidate.type === "paragraph" || candidate.type === "caution");
+  if (!block) return "This step does not have a narrative summary block yet. Open the editor if you want to add descriptive content.";
+  return getBlockSummary(block);
+};
+
 const getStepStatusLabel = (step: ProtocolStep | null) => {
   if (!step) return "STANDBY";
   if (step.optional) return "OPTIONAL";
@@ -1188,6 +1437,15 @@ const getStepStatusLabel = (step: ProtocolStep | null) => {
   if (step.stepKind === "analysis") return "ANALYSIS";
   return "IN_PROGRESS";
 };
+
+const getSelectionStatusLabel = (selection: Selection, step: ProtocolStep | null) => {
+  if (selection.type === "protocol") return "PROTOCOL";
+  if (selection.type === "section") return "SECTION";
+  return getStepStatusLabel(step);
+};
+
+const countSpecialBlocks = (step: ProtocolStep) =>
+  step.blocks.filter((block) => block.type !== "paragraph" && block.type !== "note").length;
 
 const cloneBlocks = (blocks: ProtocolBlock[]): ProtocolBlock[] =>
   JSON.parse(JSON.stringify(blocks)) as ProtocolBlock[];

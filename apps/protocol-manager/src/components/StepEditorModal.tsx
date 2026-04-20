@@ -58,7 +58,7 @@ export const StepEditorModal = ({
         <div className="step-modal-header">
           <span className="outline-marker">{MODAL_LABELS[selection.type]}</span>
           <button className="step-modal-close" onClick={onClose} aria-label="Close editor">
-            ✕
+            X
           </button>
         </div>
         <div className="step-modal-body">
