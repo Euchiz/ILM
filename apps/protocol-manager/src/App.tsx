@@ -76,6 +76,15 @@ type AppProps = {
   page: ActiveModule;
 };
 
+const STATUS_TONE_MAP: Record<string, string> = {
+  active: "active",
+  archived: "archived",
+  reviewed: "reviewed",
+  reviewing: "reviewing",
+  validated: "validated",
+  proposed: "proposed"
+};
+
 export const App = ({ page }: AppProps) => {
   const [libraryState, setLibraryState] = useState<ProtocolLibraryState>(() => loadLibraryState());
   const [selection, setSelection] = useState<Selection>({ type: "protocol" });
@@ -92,7 +101,10 @@ export const App = ({ page }: AppProps) => {
   const [jsonText, setJsonText] = useState("");
   const [editorModalOpen, setEditorModalOpen] = useState(false);
   const [newProtocolModalOpen, setNewProtocolModalOpen] = useState(false);
+  const [outlineWidth, setOutlineWidth] = useState(460);
+  const [isResizingOutline, setIsResizingOutline] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const mainGridRef = useRef<HTMLDivElement | null>(null);
 
   const doc =
     libraryState.protocols.find((candidate) => candidate.protocol.id === libraryState.activeProtocolId) ??
@@ -258,7 +270,7 @@ export const App = ({ page }: AppProps) => {
   };
 
   const openStepEditor = (sectionId: string, stepId: string) => {
-    openViewMode("summary");
+    openViewMode("step");
     setSelection({ type: "step", sectionId, stepId });
     setSelectedStepIds([stepId]);
     setSelectedSectionIds([]);
@@ -451,7 +463,7 @@ export const App = ({ page }: AppProps) => {
   };
 
   useEffect(() => {
-    if (sidebarTab !== "view" || viewMode !== "summary") return;
+    if (sidebarTab !== "view" || editorModalOpen || newProtocolModalOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
@@ -479,7 +491,7 @@ export const App = ({ page }: AppProps) => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [selection, sidebarTab, stepClipboard.length, sectionClipboard.length, viewMode]);
+  }, [editorModalOpen, newProtocolModalOpen, selection, sidebarTab, stepClipboard.length, sectionClipboard.length]);
 
   const handleProjectChange = (project: string) => {
     updateDoc(updateProtocolMetadata(doc, { project: project.trim() || "Unassigned Project" }));
@@ -495,6 +507,16 @@ export const App = ({ page }: AppProps) => {
 
   const handleValidationStatusChange = (validationStatus: ValidationStatus) => {
     updateDoc(updateProtocolMetadata(doc, { validationStatus }));
+  };
+
+  const handleProtocolDescriptionChange = (description: string) => {
+    updateDoc({
+      ...doc,
+      protocol: {
+        ...doc.protocol,
+        description: description.replace(/\r?\n/g, " ")
+      }
+    });
   };
 
   const openProtocolFromLibrary = (protocolId: string) => {
@@ -589,6 +611,35 @@ export const App = ({ page }: AppProps) => {
 
     setStatus([`Deleted ${target.protocol.title} from the library.`]);
   };
+
+  const startOutlineResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsResizingOutline(true);
+  };
+
+  useEffect(() => {
+    if (!isResizingOutline) return;
+
+    const handlePointerMove = (event: MouseEvent) => {
+      const container = mainGridRef.current;
+      if (!container) return;
+
+      const bounds = container.getBoundingClientRect();
+      const nextWidth = Math.min(Math.max(event.clientX - bounds.left, 300), Math.max(300, bounds.width - 420));
+      setOutlineWidth(nextWidth);
+    };
+
+    const stopResize = () => {
+      setIsResizingOutline(false);
+    };
+
+    window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", stopResize);
+    return () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("mouseup", stopResize);
+    };
+  }, [isResizingOutline]);
 
   const downloadTextFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: "application/json" });
@@ -770,7 +821,11 @@ export const App = ({ page }: AppProps) => {
             </aside>
 
             {sidebarTab === "view" ? (
-              <div className="protocol-main-grid">
+              <div
+                className={isResizingOutline ? "protocol-main-grid is-resizing" : "protocol-main-grid"}
+                ref={mainGridRef}
+                style={{ gridTemplateColumns: `${outlineWidth}px 10px minmax(0, 1fr)` }}
+              >
                 <aside className="protocol-outline-pane">
                   <div className="protocol-outline-header">
                     <div>
@@ -852,12 +907,22 @@ export const App = ({ page }: AppProps) => {
                   </div>
                 </aside>
 
+                <div
+                  className="protocol-resize-handle"
+                  onMouseDown={startOutlineResize}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize outline panel"
+                />
+
                 <section className="protocol-workspace">
                   <header className="protocol-workspace-header">
                     <div>
                       <h1>{doc.protocol.title}</h1>
                       <div className="protocol-workspace-meta">
-                        <span className="protocol-status-badge">{protocolMeta.lifecycleStatus.toUpperCase()}</span>
+                        <span className={`protocol-status-badge protocol-status-badge-${getStatusTone(protocolMeta.lifecycleStatus)}`}>{protocolMeta.lifecycleStatus.toUpperCase()}</span>
+                        <span className={`protocol-status-badge protocol-status-badge-${getStatusTone(protocolMeta.reviewStatus)}`}>{protocolMeta.reviewStatus.toUpperCase()}</span>
+                        <span className={`protocol-status-badge protocol-status-badge-${getStatusTone(protocolMeta.validationStatus)}`}>{protocolMeta.validationStatus.toUpperCase()}</span>
                         <span>{protocolMeta.project}</span>
                         <span>{sectionCount} sections</span>
                         <span>{stepCount} steps</span>
@@ -944,27 +1009,27 @@ export const App = ({ page }: AppProps) => {
                           <h3>Portfolio Snapshot</h3>
                           <span>{libraryState.protocols.length} protocol(s) in workspace</span>
                         </div>
-                        <div className="protocol-summary-grid">
-                          <div>
+                        <div className="protocol-summary-grid protocol-portfolio-grid">
+                          <div className="protocol-portfolio-project">
                             <span>Project</span>
                             <strong>{protocolMeta.project}</strong>
                             <small>Current project grouping</small>
                           </div>
-                          <div>
+                          <div className={`protocol-status-panel protocol-status-panel-${getStatusTone(protocolMeta.reviewStatus)}`}>
                             <span>Reviewed / reviewing</span>
                             <strong>
                               {totalReviewed} / {totalReviewing}
                             </strong>
                             <small>Workspace review split</small>
                           </div>
-                          <div>
+                          <div className={`protocol-status-panel protocol-status-panel-${getStatusTone(protocolMeta.lifecycleStatus)}`}>
                             <span>Active / archived</span>
                             <strong>
                               {totalActive} / {totalArchived}
                             </strong>
                             <small>Workspace lifecycle split</small>
                           </div>
-                          <div>
+                          <div className={`protocol-status-panel protocol-status-panel-${getStatusTone(protocolMeta.validationStatus)}`}>
                             <span>Validated / proposed</span>
                             <strong>
                               {totalValidated} / {totalProposed}
@@ -979,9 +1044,16 @@ export const App = ({ page }: AppProps) => {
                           <h3>Current Protocol</h3>
                           <span>{doc.protocol.id}</span>
                         </div>
-                        <p className="protocol-observation-copy">
-                          {doc.protocol.description || "Use the editor to add a protocol description, then organize sections and steps from the outline."}
-                        </p>
+                        <label className="protocol-inline-field">
+                          One-line description
+                          <input
+                            className="field"
+                            value={doc.protocol.description ?? ""}
+                            maxLength={160}
+                            placeholder="Add a short one-line description for this protocol"
+                            onChange={(event) => handleProtocolDescriptionChange(event.target.value)}
+                          />
+                        </label>
                         <div className="protocol-summary-grid">
                           <div>
                             <span>Sections</span>
@@ -1318,9 +1390,9 @@ export const App = ({ page }: AppProps) => {
                                     <span>{protocol.protocol.description || "No description yet."}</span>
                                   </div>
                                   <div className="protocol-library-statuses">
-                                    <span>{metadata.reviewStatus}</span>
-                                    <span>{metadata.lifecycleStatus}</span>
-                                    <span>{metadata.validationStatus}</span>
+                                    <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(metadata.reviewStatus)}`}>{metadata.reviewStatus}</span>
+                                    <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(metadata.lifecycleStatus)}`}>{metadata.lifecycleStatus}</span>
+                                    <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(metadata.validationStatus)}`}>{metadata.validationStatus}</span>
                                   </div>
                                 </button>
                                 <div className="protocol-library-card-actions">
@@ -1510,6 +1582,8 @@ const groupProtocolsByProject = (protocols: ProtocolDocument[]) => {
 
   return Array.from(groups.values()).sort((left, right) => left.project.localeCompare(right.project));
 };
+
+const getStatusTone = (value: string) => STATUS_TONE_MAP[value] ?? "neutral";
 
 const cloneBlocks = (blocks: ProtocolBlock[]): ProtocolBlock[] =>
   JSON.parse(JSON.stringify(blocks)) as ProtocolBlock[];

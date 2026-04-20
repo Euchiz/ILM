@@ -1413,6 +1413,32 @@ label {
   min-height: 100%;
 }
 
+.protocol-main-grid.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.protocol-resize-handle {
+  position: relative;
+  cursor: col-resize;
+  background: linear-gradient(180deg, rgba(203, 209, 200, 0.15) 0%, rgba(203, 209, 200, 0.55) 50%, rgba(203, 209, 200, 0.15) 100%);
+}
+
+.protocol-resize-handle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2px;
+  height: 56px;
+  background: #96a193;
+  border-radius: 999px;
+}
+
+.protocol-resize-handle:hover::before {
+  background: var(--ilm-green);
+}
+
 .protocol-main-panel {
   width: 100%;
   min-width: 0;
@@ -1564,9 +1590,66 @@ label {
 .protocol-status-badge {
   display: inline-flex;
   align-items: center;
+  border-radius: 999px;
   padding: 0.35rem 0.7rem;
-  background: var(--ilm-green-soft);
-  color: var(--ilm-green);
+  border: 1px solid transparent;
+  font-weight: 700;
+}
+
+.protocol-status-badge-active,
+.protocol-status-tag-active,
+.protocol-status-panel-active {
+  background: #e2efe1;
+  color: #24533c;
+  border-color: #b6d1b4;
+}
+
+.protocol-status-badge-archived,
+.protocol-status-tag-archived,
+.protocol-status-panel-archived {
+  background: #efe6db;
+  color: #74563f;
+  border-color: #d7bfa7;
+}
+
+.protocol-status-badge-reviewed,
+.protocol-status-tag-reviewed,
+.protocol-status-panel-reviewed {
+  background: #dfeaf7;
+  color: #335983;
+  border-color: #b5cbe7;
+}
+
+.protocol-status-badge-reviewing,
+.protocol-status-tag-reviewing,
+.protocol-status-panel-reviewing {
+  background: #f8edcf;
+  color: #7c5c16;
+  border-color: #e7d39a;
+}
+
+.protocol-status-badge-validated,
+.protocol-status-tag-validated,
+.protocol-status-panel-validated {
+  background: #dcefe8;
+  color: #24564b;
+  border-color: #b2d8ca;
+}
+
+.protocol-status-badge-proposed,
+.protocol-status-tag-proposed,
+.protocol-status-panel-proposed {
+  background: #f3e4f3;
+  color: #6d4470;
+  border-color: #d9bfdc;
+}
+
+.protocol-status-badge-neutral,
+.protocol-status-tag-neutral,
+.protocol-status-panel-neutral {
+  background: #ece7dc;
+  color: #5b584f;
+  border-color: #d5cfc1;
 }
 
 .protocol-workspace-switcher {
@@ -1712,6 +1795,10 @@ label {
 
 .protocol-project-field {
   grid-column: 1 / -1;
+}
+
+.protocol-inline-field {
+  margin-bottom: 1rem;
 }
 
 .protocol-switch-row {
@@ -1919,9 +2006,47 @@ label {
   gap: 0.6rem;
 }
 
+.protocol-library-card-main span {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .protocol-inline-action {
   padding: 0.45rem 0.8rem;
   font-size: 0.82rem;
+}
+
+.protocol-status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.48rem;
+  border: 1px solid transparent;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.protocol-portfolio-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.protocol-portfolio-project {
+  grid-column: 1 / -1;
+  padding-right: 0 !important;
+  padding-bottom: 1rem;
+  border-right: none !important;
+  border-bottom: 1px solid #dde2da;
+}
+
+.protocol-status-panel {
+  border: 1px solid transparent;
+  border-right: none !important;
+  padding-right: 0 !important;
+  padding: 1rem 1rem 0.9rem;
 }
 
 .protocol-library-statuses {
@@ -2064,10 +2189,18 @@ label {
     display: block;
   }
 
+  .protocol-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .protocol-side-rail {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     border-right: none;
     border-bottom: 1px solid #cbd1c8;
+  }
+
+  .protocol-resize-handle {
+    display: none;
   }
 
   .protocol-rail-item-strong {
@@ -2103,6 +2236,14 @@ label {
   .protocol-workspace,
   .protocol-side-rail {
     min-width: 0;
+  }
+
+  .protocol-portfolio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .protocol-portfolio-project {
+    grid-column: auto;
   }
 }
 
