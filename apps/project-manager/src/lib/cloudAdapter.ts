@@ -1,6 +1,7 @@
 import { getSupabaseClient } from "@ilm/utils";
 
 export type ProjectStatus = "planning" | "active" | "blocked" | "completed" | "archived";
+export type ProjectState = "draft" | "published" | "deleted";
 export type MilestoneStatus = "planned" | "in_progress" | "done" | "cancelled";
 export type ExperimentStatus = "planned" | "running" | "completed" | "failed";
 
@@ -10,6 +11,8 @@ export interface ProjectRecord {
   name: string;
   description: string | null;
   status: string | null;
+  state: ProjectState;
+  deleted_at: string | null;
   approval_required: boolean;
   created_by: string | null;
   updated_by: string | null;
@@ -35,6 +38,7 @@ export interface ExperimentRecord {
   id: string;
   lab_id: string;
   project_id: string;
+  milestone_id: string | null;
   protocol_id: string | null;
   title: string;
   notes: string | null;
@@ -54,69 +58,131 @@ export interface ProtocolOptionRecord {
   updated_at: string;
 }
 
+export interface ProjectLeadLinkRecord {
+  project_id: string;
+  user_id: string;
+}
+
 export interface ProjectWorkspaceSnapshot {
   projects: ProjectRecord[];
   milestones: MilestoneRecord[];
   experiments: ExperimentRecord[];
   protocols: ProtocolOptionRecord[];
+  leads: ProjectLeadLinkRecord[];
 }
 
 const client = () => getSupabaseClient();
 
 const PROJECT_FIELDS =
-  "id, lab_id, name, description, status, approval_required, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, name, description, status, state, deleted_at, approval_required, created_by, updated_by, created_at, updated_at";
 
 const MILESTONE_FIELDS =
   "id, lab_id, project_id, title, description, due_date, status, created_by, updated_by, created_at, updated_at";
 
 const EXPERIMENT_FIELDS =
-  "id, lab_id, project_id, protocol_id, title, notes, status, started_at, completed_at, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, project_id, milestone_id, protocol_id, title, notes, status, started_at, completed_at, created_by, updated_by, created_at, updated_at";
 
 export async function listProjectWorkspace(labId: string): Promise<ProjectWorkspaceSnapshot> {
-  const [projectsResult, milestonesResult, experimentsResult, protocolsResult] = await Promise.all([
+  const [projectsResult, milestonesResult, experimentsResult, protocolsResult, leadsResult] = await Promise.all([
     client().from("projects").select(PROJECT_FIELDS).eq("lab_id", labId).order("name", { ascending: true }),
     client().from("milestones").select(MILESTONE_FIELDS).eq("lab_id", labId).order("due_date", { ascending: true, nullsFirst: false }),
     client().from("experiments").select(EXPERIMENT_FIELDS).eq("lab_id", labId).order("updated_at", { ascending: false }),
     client().from("protocols").select("id, project_id, title, updated_at").eq("lab_id", labId).order("updated_at", { ascending: false }),
+    client().from("project_leads").select("project_id, user_id, projects!inner(lab_id)").eq("projects.lab_id", labId),
   ]);
 
   if (projectsResult.error) throw projectsResult.error;
   if (milestonesResult.error) throw milestonesResult.error;
   if (experimentsResult.error) throw experimentsResult.error;
   if (protocolsResult.error) throw protocolsResult.error;
+  if (leadsResult.error) throw leadsResult.error;
+
+  const leads = ((leadsResult.data ?? []) as Array<{ project_id: string; user_id: string }>).map((row) => ({
+    project_id: row.project_id,
+    user_id: row.user_id,
+  }));
 
   return {
     projects: (projectsResult.data as ProjectRecord[]) ?? [],
     milestones: (milestonesResult.data as MilestoneRecord[]) ?? [],
     experiments: (experimentsResult.data as ExperimentRecord[]) ?? [],
     protocols: (protocolsResult.data as ProtocolOptionRecord[]) ?? [],
+    leads,
   };
 }
 
-export async function createProject(args: {
+export async function listDeletedProjects(labId: string): Promise<ProjectRecord[]> {
+  const { data, error } = await client().rpc("list_deleted_projects", { p_lab_id: labId });
+  if (error) throw error;
+  return (data as ProjectRecord[]) ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Review workflow RPCs
+// ---------------------------------------------------------------------------
+
+export async function createProjectDraft(args: {
   labId: string;
-  userId: string;
   name: string;
   description?: string;
-  status?: string;
+  status?: ProjectStatus | null;
   approvalRequired?: boolean;
 }): Promise<ProjectRecord> {
   const { data, error } = await client()
-    .from("projects")
-    .insert({
-      lab_id: args.labId,
-      name: args.name,
-      description: args.description?.trim() || null,
-      status: args.status?.trim() || "planning",
-      approval_required: args.approvalRequired ?? true,
-      created_by: args.userId,
-      updated_by: args.userId,
+    .rpc("create_project_draft", {
+      p_lab_id: args.labId,
+      p_name: args.name,
+      p_description: args.description?.trim() || null,
+      p_approval_required: args.approvalRequired ?? true,
+      p_status: args.status ?? "planning",
     })
-    .select(PROJECT_FIELDS)
     .single();
   if (error) throw error;
   return data as ProjectRecord;
 }
+
+export async function withdrawProjectDraft(projectId: string): Promise<void> {
+  const { error } = await client().rpc("withdraw_project_draft", { p_project_id: projectId });
+  if (error) throw error;
+}
+
+export async function approveProject(projectId: string): Promise<ProjectRecord> {
+  const { data, error } = await client()
+    .rpc("approve_project", { p_project_id: projectId })
+    .single();
+  if (error) throw error;
+  return data as ProjectRecord;
+}
+
+export async function rejectProject(projectId: string): Promise<void> {
+  const { error } = await client().rpc("reject_project", { p_project_id: projectId });
+  if (error) throw error;
+}
+
+export async function recycleProject(projectId: string): Promise<ProjectRecord> {
+  const { data, error } = await client()
+    .rpc("recycle_project", { p_project_id: projectId })
+    .single();
+  if (error) throw error;
+  return data as ProjectRecord;
+}
+
+export async function restoreProject(projectId: string): Promise<ProjectRecord> {
+  const { data, error } = await client()
+    .rpc("restore_project", { p_project_id: projectId })
+    .single();
+  if (error) throw error;
+  return data as ProjectRecord;
+}
+
+export async function permanentDeleteProject(projectId: string): Promise<void> {
+  const { error } = await client().rpc("permanent_delete_project", { p_project_id: projectId });
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Project metadata edit (published and own-drafts, gated by RLS)
+// ---------------------------------------------------------------------------
 
 export async function updateProject(args: {
   projectId: string;
@@ -142,10 +208,9 @@ export async function updateProject(args: {
   return data as ProjectRecord;
 }
 
-export async function deleteProject(projectId: string): Promise<void> {
-  const { error } = await client().from("projects").delete().eq("id", projectId);
-  if (error) throw error;
-}
+// ---------------------------------------------------------------------------
+// Milestones
+// ---------------------------------------------------------------------------
 
 export async function createMilestone(args: {
   labId: string;
@@ -203,10 +268,15 @@ export async function deleteMilestone(milestoneId: string): Promise<void> {
   if (error) throw error;
 }
 
+// ---------------------------------------------------------------------------
+// Experiments
+// ---------------------------------------------------------------------------
+
 export async function createExperiment(args: {
   labId: string;
   projectId: string;
   userId: string;
+  milestoneId?: string | null;
   title: string;
   notes?: string;
   protocolId?: string | null;
@@ -219,6 +289,7 @@ export async function createExperiment(args: {
     .insert({
       lab_id: args.labId,
       project_id: args.projectId,
+      milestone_id: args.milestoneId ?? null,
       protocol_id: args.protocolId ?? null,
       title: args.title,
       notes: args.notes?.trim() || null,
@@ -237,6 +308,7 @@ export async function createExperiment(args: {
 export async function updateExperiment(args: {
   experimentId: string;
   userId: string;
+  milestoneId?: string | null;
   title: string;
   notes?: string;
   protocolId?: string | null;
@@ -247,6 +319,7 @@ export async function updateExperiment(args: {
   const { data, error } = await client()
     .from("experiments")
     .update({
+      milestone_id: args.milestoneId ?? null,
       protocol_id: args.protocolId ?? null,
       title: args.title,
       notes: args.notes?.trim() || null,
