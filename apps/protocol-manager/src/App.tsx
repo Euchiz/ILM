@@ -92,6 +92,14 @@ const APP_BASE_URL = import.meta.env.BASE_URL;
 
 const buildPageUrl = (path: "" | "protocol-manager/") => new URL(path, window.location.origin + APP_BASE_URL).toString();
 
+const readRequestedProtocolId = () => new URLSearchParams(window.location.search).get("protocolId");
+
+const clearRequestedProtocolId = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("protocolId");
+  window.history.replaceState({}, "", url);
+};
+
 type ActiveModule = "home" | "protocol-manager";
 
 type AppProps = {
@@ -247,6 +255,7 @@ export const App = ({ page }: AppProps) => {
   const mainGridRef = useRef<HTMLDivElement | null>(null);
   const fallbackDocRef = useRef<ProtocolDocument>(createProtocolForMode("template"));
   const editorRef = useRef<ActiveEditor | null>(null);
+  const requestedProtocolHandledRef = useRef(false);
 
   const [workspace, setWorkspace] = useState<CloudWorkspaceSnapshot | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -353,6 +362,22 @@ export const App = ({ page }: AppProps) => {
     let cancelled = false;
     void refreshWorkspace().then((nextWorkspace) => {
       if (cancelled || !nextWorkspace) return;
+      if (!requestedProtocolHandledRef.current) {
+        requestedProtocolHandledRef.current = true;
+        const requestedProtocolId = readRequestedProtocolId();
+        if (requestedProtocolId) {
+          const requestedProtocol = findPublishedProtocol(nextWorkspace, requestedProtocolId);
+          clearRequestedProtocolId();
+          if (requestedProtocol) {
+            setEditor(buildEditorFromPublished(requestedProtocol, findDraftByProtocol(nextWorkspace, requestedProtocolId)));
+            setSidebarTab("view");
+            setViewMode("summary");
+            setStatus([`Opened ${requestedProtocol.document.protocol.title} from project-manager.`]);
+            return;
+          }
+        }
+      }
+
       setEditor((current) => current ?? chooseInitialEditor(nextWorkspace));
     });
 
