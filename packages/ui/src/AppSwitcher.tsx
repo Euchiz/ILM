@@ -14,11 +14,18 @@ const APP_LINKS: AppLink[] = [
   { id: "funding-manager", label: "Funding", href: "funding-manager/" },
 ];
 
+const APP_ROOT_SEGMENTS = new Set(APP_LINKS.map((link) => link.href).filter(Boolean));
+
 const resolveSiteRoot = (baseUrl: string) => {
   const base = baseUrl.trim() || "/";
-  const normalized = base.startsWith("/") ? base : `/${base}`;
+  const withLeadingSlash = base.startsWith("/") ? base : `/${base}`;
+  const normalized = withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
   const currentBase = new URL(normalized, window.location.origin);
-  return normalized === "/" ? currentBase : new URL("../", currentBase);
+
+  if (normalized === "/") return currentBase;
+  const pathname = currentBase.pathname;
+  const matchedAppRoot = Array.from(APP_ROOT_SEGMENTS).find((segment) => pathname.endsWith(segment));
+  return matchedAppRoot ? new URL("../", currentBase) : currentBase;
 };
 
 const buildAppUrl = (href: string, baseUrl: string) => new URL(href || ".", resolveSiteRoot(baseUrl)).toString();

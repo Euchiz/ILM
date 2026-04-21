@@ -61,30 +61,34 @@ const MODULE_CARDS = [
   {
     id: "protocol-manager",
     title: "Protocol Manager",
-    status: "Available",
-    description: "Portfolio-level protocol visibility, library organization, and structured viewing/editing workflows.",
-    actionLabel: "Open module",
+    status: "Operational",
+    isLive: true,
+    description: "Manage published protocols, private drafts, routed reviews, and recycle-bin recovery inside one authenticated lab workspace.",
+    actionLabel: "Open workspace",
   },
   {
     id: "supply-manager",
     title: "Supply Manager",
     status: "Planned",
-    description: "Track reagents, linked vendors, and inventory relationships against upcoming protocol runs.",
-    actionLabel: "Coming soon",
+    isLive: false,
+    description: "Track reagents, vendors, and inventory counts against operational demand from experimental work.",
+    actionLabel: "Planned",
   },
   {
     id: "project-manager",
     title: "Project Manager",
-    status: "Planned",
-    description: "Coordinate project milestones, protocol coverage, and experiment readiness across teams.",
-    actionLabel: "Coming soon",
+    status: "Staged rollout",
+    isLive: false,
+    description: "Coordinate project metadata, milestones, experiments, and project-lead ownership on normalized tables.",
+    actionLabel: "Deployment pending",
   },
   {
     id: "funding-manager",
     title: "Funding Manager",
     status: "Planned",
-    description: "Connect grants and budgets to active project portfolios and protocol execution plans.",
-    actionLabel: "Coming soon",
+    isLive: false,
+    description: "Connect grants, allocations, and expense controls to the same lab and project structure used by the other modules.",
+    actionLabel: "Planned",
   },
 ] as const;
 
@@ -249,7 +253,7 @@ const buildProjectGroups = (protocols: PublishedProtocolRecord[], pendingSubmiss
 };
 
 export const App = ({ page }: AppProps) => {
-  const { activeLab, user } = useAuth();
+  const { activeLab, profile, status: authStatus, signOut, user } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const mainGridRef = useRef<HTMLDivElement | null>(null);
@@ -1348,67 +1352,132 @@ export const App = ({ page }: AppProps) => {
       </article>
     ) : null;
 
+  const liveModuleCount = MODULE_CARDS.filter((module) => module.isLive).length;
+  const signedInLabel = profile?.display_name || profile?.email || user?.email || "Signed-in user";
+
   const homeView = (
-    <main className="dashboard-shell">
-      <header className="dashboard-topbar">
-        <div className="dashboard-brand">
-          <div className="dashboard-brand-mark">ILM</div>
-          <div>
-            <p className="dashboard-brand-subtitle">Integrated Lab Manager</p>
-            <h1 className="dashboard-brand-title">Control Surface</h1>
-          </div>
-        </div>
+    <main className="protocol-shell protocol-shell-home">
+      <header className="protocol-topbar">
+        <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
+          <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
+            biotech
+          </span>
+          <span className="protocol-wordmark-stack">
+            <span className="protocol-wordmark-text">Integrated Lab Manager</span>
+            <span className="protocol-wordmark-module">Operations Hub</span>
+          </span>
+        </button>
 
-        <nav className="dashboard-nav" aria-label="Primary module navigation">
-          <a className="active" href={buildPageUrl("")}>
-            Modules
-          </a>
-          <a href={buildPageUrl("protocol-manager/")}>Protocol Manager</a>
-          <a href="#roadmap">Roadmap</a>
-        </nav>
-
-        <div className="dashboard-actions">
-          <AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />
-          <div className="dashboard-connection-badge">
-            <span>Workspace</span>
-            <strong>{MODULE_CARDS.filter((module) => module.status === "Available").length} active module(s)</strong>
-          </div>
-        </div>
+        <AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />
       </header>
 
-      <section className="dashboard-hero">
-        <div>
-          <h1>Protocol Operations Reframed Around Portfolio Visibility.</h1>
-          <div className="dashboard-hero-meta">
-            <span className="dashboard-status-live">1 live module</span>
-            <span>Library-centric navigation</span>
-            <span>Structured protocol editing</span>
+      <section className="home-main">
+        <article className="protocol-content-card protocol-content-card-accent home-hero-card">
+          <div className="home-hero-copy">
+            <p className="protocol-page-kicker">Unified Product Shell</p>
+            <h1 className="home-hero-title">Manage laboratory operations through one authenticated, lab-scoped control surface.</h1>
+            <p className="hero-subtitle">
+              Integrated Lab Manager provides a common shell for protocol governance, project coordination, supply operations, and funding oversight, all connected through shared identity, lab membership, and normalized data.
+            </p>
           </div>
-        </div>
 
-        <div className="dashboard-hero-actions">
-          <span>Protocol workspace ready</span>
-          <button className="protocol-primary-action" type="button" onClick={openProtocolManager}>
-            Open Protocol Manager
-          </button>
-        </div>
-      </section>
-
-      <section className="module-grid">
-        {MODULE_CARDS.map((module) => (
-          <article className={`module-card ${module.status === "Available" ? "live" : ""}`} key={module.id}>
-            <div className="module-card-header">
-              <h2>{module.title}</h2>
-              <span className={module.status === "Available" ? "ilm-tag ilm-tag-success" : "ilm-tag ilm-tag-neutral"}>{module.status}</span>
+          <div className="home-hero-actions">
+            <div className="home-status-list">
+              <span className="protocol-status-badge protocol-status-badge-reviewed">{authStatus === "signed-in" ? "Signed in" : "Session loading"}</span>
+              <span className="protocol-status-badge protocol-status-badge-active">{liveModuleCount} operational module{liveModuleCount === 1 ? "" : "s"}</span>
+              <span className="protocol-status-badge protocol-status-badge-validated">{activeLab?.name ?? "Lab context required"}</span>
             </div>
-            <p>{module.description}</p>
-            <div className="module-toolbar">
-              <button type="button" onClick={module.id === "protocol-manager" ? openProtocolManager : undefined} disabled={module.id !== "protocol-manager"}>
-                {module.actionLabel}
+            <div className="protocol-inline-actions">
+              <button className="protocol-primary-action" type="button" onClick={openProtocolManager}>
+                Open Protocol Manager
               </button>
             </div>
+          </div>
+        </article>
+
+        <div className="home-summary-grid">
+          <article className="protocol-content-card">
+            <div className="protocol-card-heading">
+              <h3>Current workspace</h3>
+              <span>Authenticated session</span>
+            </div>
+            <div className="protocol-summary-grid">
+              <div>
+                <span>Lab</span>
+                <strong>{activeLab?.name ?? "No lab selected"}</strong>
+                <small>{activeLab?.slug ?? "Select a lab to continue"}</small>
+              </div>
+              <div>
+                <span>Role</span>
+                <strong>{activeLab?.role ?? "member"}</strong>
+                <small>Applied to all module permissions</small>
+              </div>
+              <div>
+                <span>Account</span>
+                <strong>{signedInLabel}</strong>
+                <small>Supabase-authenticated session</small>
+              </div>
+              <div>
+                <span>Operational modules</span>
+                <strong>{liveModuleCount}</strong>
+                <small>Available from the shared navigation bar</small>
+              </div>
+            </div>
           </article>
-        ))}
+
+          <article className="protocol-content-card">
+            <div className="protocol-card-heading">
+              <h3>Platform scope</h3>
+              <span>Stage 4 expansion</span>
+            </div>
+            <div className="home-highlights">
+              <div>
+                <strong>Shared authentication and lab context</strong>
+                <p>Every module inherits the same account, active lab, and role-aware authorization model.</p>
+              </div>
+              <div>
+                <strong>Normalized operational data</strong>
+                <p>Protocols, projects, milestones, experiments, and future supply or funding records stay in dedicated tables rather than generic document payloads.</p>
+              </div>
+              <div>
+                <strong>Module-specific workflows</strong>
+                <p>Each module keeps its own operational tabs while the primary product bar stays reserved for ILM-level navigation.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <section className="home-module-section">
+          <div className="protocol-page-header home-module-header">
+            <div>
+              <p className="protocol-page-kicker">Modules</p>
+              <h1>Module portfolio</h1>
+              <p className="hero-subtitle">Each module shares the same authenticated shell while preserving domain-specific workflows, permissions, and review behavior.</p>
+            </div>
+          </div>
+
+          <div className="home-module-grid">
+            {MODULE_CARDS.map((module) => (
+              <article className={module.isLive ? "protocol-content-card home-module-card home-module-card-live" : "protocol-content-card home-module-card"} key={module.id}>
+                <div className="protocol-card-heading">
+                  <h3>{module.title}</h3>
+                  <span className={module.isLive ? "ilm-tag ilm-tag-success" : "ilm-tag ilm-tag-neutral"}>{module.status}</span>
+                </div>
+                <p className="protocol-observation-copy">{module.description}</p>
+                <div className="home-module-footer">
+                  <span>{module.isLive ? "Connected to the current lab shell" : "Not yet available in production navigation"}</span>
+                  <button
+                    type="button"
+                    onClick={module.id === "protocol-manager" ? openProtocolManager : undefined}
+                    disabled={!module.isLive}
+                  >
+                    {module.actionLabel}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       </section>
     </main>
   );
@@ -2199,72 +2268,106 @@ export const App = ({ page }: AppProps) => {
       ) : (
         <main className="protocol-shell">
           <header className="protocol-topbar">
-            <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to module home">
+            <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
               <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
                 biotech
               </span>
-              <span className="protocol-wordmark-text">RHINE_PROTOCOL_V4</span>
+              <span className="protocol-wordmark-stack">
+                <span className="protocol-wordmark-text">Integrated Lab Manager</span>
+                <span className="protocol-wordmark-module">Protocol Manager</span>
+              </span>
             </button>
 
             <div className="protocol-topbar-controls">
               <AppSwitcher currentApp="protocol-manager" baseUrl={APP_BASE_URL} />
-              <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
-                <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
-                  Step
-                </button>
-                <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
-                  Summary
-                </button>
-                <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
-                  Preview
-                </button>
-                <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
-                  Transfer
-                </button>
-              </div>
             </div>
           </header>
 
+          <section className="protocol-subbar">
+            <div className="protocol-subbar-copy">
+              <p className="protocol-page-kicker">Module Workspace</p>
+              <p className="protocol-subbar-description">Protocol-specific views for authoring, inspection, rendering, and transfer.</p>
+            </div>
+            <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
+              <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
+                Step
+              </button>
+              <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
+                Summary
+              </button>
+              <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
+                Preview
+              </button>
+              <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
+                Transfer
+              </button>
+            </div>
+          </section>
+
           <div className="protocol-body">
             <aside className="protocol-side-rail" aria-label="Protocol manager navigation">
-              <button className={sidebarTab === "overview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("overview")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                  analytics
-                </span>
-                <span>Overview</span>
-              </button>
-              <button className={sidebarTab === "library" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("library")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                  folder_open
-                </span>
-                <span>Library</span>
-              </button>
-              {visibleReviewsTab ? (
-                <button className={sidebarTab === "reviews" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("reviews")}>
+              <div className="protocol-side-rail-nav">
+                <button className={sidebarTab === "overview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("overview")}>
                   <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                    assignment
+                    analytics
                   </span>
-                  <span>Reviews</span>
+                  <span>Overview</span>
                 </button>
-              ) : null}
-              <button className={sidebarTab === "recycle" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("recycle")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                  delete
-                </span>
-                <span>Recycle Bin</span>
-              </button>
-              <button className={sidebarTab === "view" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("view")}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                  visibility
-                </span>
-                <span>View</span>
-              </button>
-              <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={() => setNewProtocolModalOpen(true)}>
-                <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                  add_box
-                </span>
-                <span>New Protocol</span>
-              </button>
+                <button className={sidebarTab === "library" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("library")}>
+                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                    folder_open
+                  </span>
+                  <span>Library</span>
+                </button>
+                {visibleReviewsTab ? (
+                  <button className={sidebarTab === "reviews" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("reviews")}>
+                    <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                      assignment
+                    </span>
+                    <span>Reviews</span>
+                  </button>
+                ) : null}
+                <button className={sidebarTab === "recycle" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("recycle")}>
+                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                    delete
+                  </span>
+                  <span>Recycle Bin</span>
+                </button>
+                <button className={sidebarTab === "view" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("view")}>
+                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                    visibility
+                  </span>
+                  <span>View</span>
+                </button>
+              </div>
+
+              <div className="protocol-side-rail-footer">
+                <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={() => setNewProtocolModalOpen(true)}>
+                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
+                    add_box
+                  </span>
+                  <span>New Protocol</span>
+                </button>
+
+                <section className="protocol-side-account" aria-label="Signed-in account and lab context">
+                  <div className="protocol-side-account-header">
+                    <span className="material-symbols-outlined protocol-side-account-icon" aria-hidden="true">
+                      account_circle
+                    </span>
+                    <div>
+                      <strong>{signedInLabel}</strong>
+                      <span>{authStatus === "signed-in" ? "Signed in" : "Session loading"}</span>
+                    </div>
+                  </div>
+                  <div className="protocol-side-account-meta">
+                    <span>{activeLab?.name ?? "No active lab"}</span>
+                    <span>{activeLab?.role ?? "member"}</span>
+                  </div>
+                  <button type="button" className="protocol-side-account-action" onClick={() => void signOut()}>
+                    Log out
+                  </button>
+                </section>
+              </div>
             </aside>
 
             {sidebarTab === "view" ? viewWorkspace : libraryAndOverview}
