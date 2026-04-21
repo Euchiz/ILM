@@ -1411,16 +1411,21 @@ label {
 .protocol-body {
   display: grid;
   grid-template-columns: 220px 1fr;
+  height: calc(100vh - 128px);
   min-height: calc(100vh - 128px);
+  overflow: hidden;
 }
 
 .protocol-side-rail {
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+  height: 100%;
+  min-height: 0;
   padding: 1.4rem 0.85rem;
   border-right: 1px solid #cbd1c8;
   background: #f6f6f2;
+  overflow-y: auto;
 }
 
 .protocol-side-rail-nav {
@@ -1611,7 +1616,9 @@ label {
 .protocol-main-grid {
   display: grid;
   grid-template-columns: minmax(430px, 500px) minmax(0, 1fr);
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .protocol-main-grid.is-resizing {
@@ -1643,7 +1650,10 @@ label {
 .protocol-main-panel {
   width: 100%;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   padding: 1.75rem 2rem 2rem;
+  overflow-y: auto;
 }
 
 .protocol-page-header {
@@ -1679,6 +1689,8 @@ label {
   border-right: 1px solid #cbd1c8;
   background: #f7f7f4;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
 }
 
 .protocol-outline-header,
@@ -1760,7 +1772,12 @@ label {
 
 .protocol-workspace {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   padding: 1.5rem 2rem 2rem;
+  overflow-y: auto;
 }
 
 .protocol-workspace-header {
@@ -1771,6 +1788,7 @@ label {
   margin-bottom: 1.6rem;
   padding: 0 0 1.25rem;
   border-bottom: 1px solid #cbd1c8;
+  flex: 0 0 auto;
 }
 
 .protocol-workspace-header h1 {
@@ -1878,6 +1896,7 @@ label {
 .protocol-tab-panel {
   display: grid;
   gap: 1.5rem;
+  min-height: 0;
 }
 
 .protocol-editor-canvas,
@@ -2392,15 +2411,22 @@ label {
 
   .protocol-body {
     display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   .protocol-main-grid {
     grid-template-columns: 1fr !important;
+    height: auto;
+    overflow: visible;
   }
 
   .protocol-side-rail {
     border-right: none;
     border-bottom: 1px solid #cbd1c8;
+    height: auto;
+    overflow: visible;
   }
 
   .protocol-side-rail-nav {
@@ -2453,6 +2479,14 @@ label {
   .protocol-workspace,
   .protocol-side-rail {
     min-width: 0;
+  }
+
+  .protocol-main-panel,
+  .protocol-outline-pane,
+  .protocol-workspace {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   .protocol-side-rail-nav,

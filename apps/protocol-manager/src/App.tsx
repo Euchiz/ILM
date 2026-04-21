@@ -2356,7 +2356,6 @@ export const App = ({ page }: AppProps) => {
                     </span>
                     <div>
                       <strong>{signedInLabel}</strong>
-                      <span>{authStatus === "signed-in" ? "Signed in" : "Session loading"}</span>
                     </div>
                   </div>
                   <div className="protocol-side-account-meta">
