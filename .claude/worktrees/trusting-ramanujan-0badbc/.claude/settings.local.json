@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"D:/Files/Dropbox/ILM\" branch -D claude/trusting-ramanujan-0badbc)",
+      "Bash(git checkout *)",
+      "Read(//d/Files/Dropbox/ILM/**)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/assets/\" -o /dev/null -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/\")",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/assets/main-qRDbmz0z.js\")",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/\" -H \"Cache-Control: no-cache\")",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/assets/main-qRDbmz0z.js\" -o /tmp/bundle.js)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/?bust=$\\(date +%s\\)\")",
+      "Bash(curl -s \"https://euchiz.github.io/ILM/assets/main-qRDbmz0z.js?bust=$\\(date +%s\\)\" -o /tmp/bundle.js)",
+      "Bash(VITE_SUPABASE_URL=\"https://testproject.supabase.co\" VITE_SUPABASE_ANON_KEY=\"eyJTEST_TOKEN_ABCDEFGHIJKLMNOP\" npm run build -w @ilm/protocol-manager)",
+      "Bash(gh pr *)",
+      "Bash(git ls-tree *)",
+      "Bash(git branch *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}
