@@ -22,7 +22,12 @@ export const LabPicker = () => {
     try {
       await createLab(trimmed, slug.trim() || slugify(trimmed));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to create lab");
+      const message =
+        (e && typeof e === "object" && "message" in e &&
+          typeof (e as { message?: unknown }).message === "string")
+          ? (e as { message: string }).message
+          : "Failed to create lab";
+      setErr(message);
     } finally {
       setSubmitting(false);
     }

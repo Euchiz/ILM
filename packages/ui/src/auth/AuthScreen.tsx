@@ -41,7 +41,12 @@ export const AuthScreen = () => {
         setLocalMessage("Password reset email sent. Check your inbox.");
       }
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : "Failed");
+      const message =
+        (err && typeof err === "object" && "message" in err &&
+          typeof (err as { message?: unknown }).message === "string")
+          ? (err as { message: string }).message
+          : "Failed";
+      setLocalError(message);
     } finally {
       setSubmitting(false);
     }

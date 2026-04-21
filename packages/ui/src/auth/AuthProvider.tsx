@@ -246,18 +246,39 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
           created_by: user.id,
         })
         .select("id, name, slug, created_by")
-        .single();
+        .maybeSingle();
       if (err) {
+        console.error("[ilm] createLab failed", err);
         setError(err.message);
         throw err;
       }
-      // The on_lab_created trigger adds an owner membership automatically.
-      const created: LabWithRole = { ...(data as Omit<LabWithRole, "role">), role: "owner" };
-      setLabs((prev) => [...prev, created]);
+      // The on_lab_created trigger inserts an owner membership for the
+      // creator. Refresh through the membership table so SELECT RLS paints
+      // the new row even if .select() on the insert returned empty.
+      let created: LabWithRole | null = data
+        ? { ...(data as Omit<LabWithRole, "role">), role: "owner" }
+        : null;
+      if (!created) {
+        const refreshed = await loadLabs();
+        setLabs(refreshed);
+        created =
+          refreshed.find((lab) => lab.name === name && lab.role === "owner") ??
+          null;
+        if (!created) {
+          const message =
+            "Lab created, but we couldn't read it back. Try reloading.";
+          setError(message);
+          throw new Error(message);
+        }
+      } else {
+        setLabs((prev) =>
+          prev.some((lab) => lab.id === created!.id) ? prev : [...prev, created!]
+        );
+      }
       setActiveLabId(created.id);
       return created;
     },
-    [supabase, user]
+    [loadLabs, supabase, user]
   );
 
   const selectLab = useCallback((labId: string) => {
