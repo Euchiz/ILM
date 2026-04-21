@@ -43,8 +43,8 @@ export const MigrationBanner = ({
     const raw = window.localStorage.getItem(LIBRARY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = safeJsonParse<ProtocolLibraryState>(raw);
-    if (!parsed?.protocols?.length) return [];
-    return parsed.protocols;
+    if (!parsed.ok || !parsed.value.protocols.length) return [];
+    return parsed.value.protocols;
   }, []);
 
   const cloudIds = useMemo(
