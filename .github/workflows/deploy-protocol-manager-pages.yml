@@ -1,4 +1,4 @@
-name: Deploy Protocol Manager to GitHub Pages
+name: Deploy ILM Apps to GitHub Pages
 
 on:
   push:
@@ -38,13 +38,27 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      - name: Build Project Manager for Pages
+        run: npm run build -w @ilm/project-manager
+        env:
+          VITE_BASE_PATH: /ILM/project-manager/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Assemble Pages artifact
+        run: |
+          rm -rf .pages-dist
+          mkdir -p .pages-dist/project-manager
+          cp -R apps/protocol-manager/dist/. .pages-dist/
+          cp -R apps/project-manager/dist/. .pages-dist/project-manager/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/protocol-manager/dist
+          path: .pages-dist
 
   deploy:
     environment:
