@@ -1,6 +1,8 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { AuthGate } from "@ilm/ui";
 import { App } from "./App";
+import "@ilm/ui/auth.css";
 import "./styles.css";
 
 const rootElement = document.getElementById("root");
@@ -13,6 +15,8 @@ const page = rootElement.dataset.page === "protocol-manager" ? "protocol-manager
 
 createRoot(rootElement).render(
   <React.StrictMode>
-    <App page={page} />
+    <AuthGate>
+      <App page={page} />
+    </AuthGate>
   </React.StrictMode>
 );

@@ -1,0 +1,187 @@
+.ilm-auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: var(--ilm-color-bg, #f6f7f9);
+}
+
+.ilm-auth-card {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--ilm-color-surface, #ffffff);
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.ilm-auth-title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.ilm-auth-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--ilm-color-border, #e2e5ea);
+}
+
+.ilm-auth-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--ilm-color-text-muted, #64748b);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.ilm-auth-tab-active {
+  color: var(--ilm-color-text, #0f172a);
+  border-bottom-color: var(--ilm-color-accent, #2563eb);
+  font-weight: 600;
+}
+
+.ilm-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.ilm-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.ilm-auth-field span {
+  color: var(--ilm-color-text-muted, #64748b);
+  font-weight: 500;
+}
+
+.ilm-auth-field input {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: var(--ilm-color-surface, #ffffff);
+  color: var(--ilm-color-text, #0f172a);
+}
+
+.ilm-auth-field input:focus {
+  outline: 2px solid var(--ilm-color-accent, #2563eb);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.ilm-auth-submit {
+  appearance: none;
+  border: 0;
+  background: var(--ilm-color-accent, #2563eb);
+  color: #ffffff;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.ilm-auth-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ilm-auth-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.ilm-auth-note {
+  color: var(--ilm-color-text-muted, #64748b);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.ilm-auth-hint {
+  color: var(--ilm-color-text-muted, #64748b);
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0;
+}
+
+.ilm-text-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ilm-color-accent, #2563eb);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.ilm-text-button:hover {
+  text-decoration: underline;
+}
+
+.ilm-lab-picker {
+  max-width: 32rem;
+}
+
+.ilm-lab-picker-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ilm-lab-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.25rem 0 -0.25rem;
+}
+
+.ilm-lab-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ilm-lab-list-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  background: var(--ilm-color-surface, #ffffff);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.ilm-lab-list-item:hover {
+  border-color: var(--ilm-color-accent, #2563eb);
+}
+
+.ilm-lab-list-name {
+  font-weight: 500;
+  color: var(--ilm-color-text, #0f172a);
+}
+
+.ilm-lab-list-meta {
+  font-size: 0.8rem;
+  color: var(--ilm-color-text-muted, #64748b);
+  text-transform: capitalize;
+}

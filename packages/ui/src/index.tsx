@@ -1,5 +1,7 @@
 import type { PropsWithChildren } from "react";
 
+export * from "./auth";
+
 export const Panel = ({ title, children }: PropsWithChildren<{ title: string }>) => (
   <section className="ilm-panel">
     <h2 className="ilm-panel-title">{title}</h2>
