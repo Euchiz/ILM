@@ -1,7 +1,5 @@
 # ILM (Integrated Lab Manager)
 
-**This file is only for CLAUDE usage from the HPC, which has a different setting from normal building environment. Only CLAUDE should refer to this. Codex that is building out of the HPC should ignore any instructions from this file.**
-
 ## Repository
 
 - GitHub: https://github.com/Euchiz/ILM.git
@@ -27,13 +25,15 @@ npm workspaces monorepo:
 
 ## npm / Node Environment
 
-`npm` is not available on the host. All npm commands must be run via Singularity:
+When running on HPC node: `npm` is not available on the host. All npm commands must be run via Singularity:
 
 ```bash
 singularity exec --bind /mnt/isilon/wang_lab/zac/projects/ILM:/work docker://node:24-slim sh -c "cd /work && <npm command>"
 ```
 
 The SIF image is cached locally. Node version: 24-slim. npm version: 11.12.1.
+
+When running on windows PC: `npm` is already installed.
 
 ## Common Commands
 
@@ -95,13 +95,18 @@ user-editable metadata or frontend checks.
 - Zero-lab / multi-lab / single-lab auto-open behavior
 - Invitations remain dashboard-admin only for now
 
-**Stage 3 — Storage cutover (protocol-manager)**
-- Refactor `apps/protocol-manager/src/state/protocolState.ts` and
-  `lib/protocolLibrary.ts` to read/write Supabase scoped to the active lab
-- Debounced saves; keep JSON import/export intact
-- One-time "Import local data to cloud" banner for legacy localStorage
-  payloads; never silently drop local data
-- `protocol_revisions` snapshot on save
+**Stage 3 — Storage cutover (protocol-manager) with review-gated publishing**
+See `docs/stage-3-plan.md` for the full plan. Summary:
+- Published `protocols` are read-only to everyone except via RPC. Every
+  edit goes through a **draft → submit → review → publish** flow.
+- New tables: `protocol_drafts` (per-user sandbox), `protocol_submissions`
+  (frozen snapshots), `project_leads` (admins designate reviewers).
+- `projects.approval_required` toggle; each lab auto-gets a "General"
+  project with `approval_required=false` so edits there publish directly.
+- Hard delete with 30-day recycle bin (`protocols.deleted_at`).
+- `protocol_revisions` is written **only on approval**.
+- Shipped in two PRs: 3a (schema + RPCs + RLS), 3b (UI cutover, drafts,
+  submissions panel, recycle bin, localStorage→cloud migration banner).
 
 **Stage 4 — Extend to other apps**
 - Wire the same auth/lab shell into `funding-manager`, `project-manager`,
