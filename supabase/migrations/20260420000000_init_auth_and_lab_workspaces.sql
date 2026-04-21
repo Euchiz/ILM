@@ -35,6 +35,7 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row execute function public.set_updated_at();
@@ -76,6 +77,7 @@ create table if not exists public.labs (
   updated_at timestamptz not null default now()
 );
 
+drop trigger if exists labs_set_updated_at on public.labs;
 create trigger labs_set_updated_at
 before update on public.labs
 for each row execute function public.set_updated_at();
@@ -178,6 +180,7 @@ create table if not exists public.projects (
 
 create index if not exists projects_lab_id_idx on public.projects (lab_id);
 
+drop trigger if exists projects_set_updated_at on public.projects;
 create trigger projects_set_updated_at
 before update on public.projects
 for each row execute function public.set_updated_at();
@@ -206,6 +209,7 @@ create table if not exists public.protocols (
 create index if not exists protocols_lab_id_idx on public.protocols (lab_id);
 create index if not exists protocols_project_id_idx on public.protocols (project_id);
 
+drop trigger if exists protocols_set_updated_at on public.protocols;
 create trigger protocols_set_updated_at
 before update on public.protocols
 for each row execute function public.set_updated_at();
@@ -240,80 +244,102 @@ alter table public.protocols           enable row level security;
 alter table public.protocol_revisions  enable row level security;
 
 -- profiles: users manage only their own row
+drop policy if exists profiles_select_self on public.profiles;
 create policy profiles_select_self on public.profiles
   for select using (auth.uid() = id);
 
+drop policy if exists profiles_insert_self on public.profiles;
 create policy profiles_insert_self on public.profiles
   for insert with check (auth.uid() = id);
 
+drop policy if exists profiles_update_self on public.profiles;
 create policy profiles_update_self on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- labs: members see their labs; any authenticated user can create a lab;
 -- only owners/admins can update; only owners can delete.
+drop policy if exists labs_select_member on public.labs;
 create policy labs_select_member on public.labs
   for select using (public.is_lab_member(id));
 
+drop policy if exists labs_insert_authenticated on public.labs;
 create policy labs_insert_authenticated on public.labs
   for insert with check (auth.uid() is not null and auth.uid() = created_by);
 
+drop policy if exists labs_update_admin on public.labs;
 create policy labs_update_admin on public.labs
   for update using (public.is_lab_admin(id))
   with check (public.is_lab_admin(id));
 
+drop policy if exists labs_delete_owner on public.labs;
 create policy labs_delete_owner on public.labs
   for delete using (public.lab_role(id) = 'owner');
 
 -- lab_memberships: members can read memberships of labs they belong to.
 -- Writes are admin-only via RLS; first-version invitation flow is handled
 -- out-of-band (dashboard / SQL) or through the new-lab trigger.
+drop policy if exists lab_memberships_select_member on public.lab_memberships;
 create policy lab_memberships_select_member on public.lab_memberships
   for select using (public.is_lab_member(lab_id));
 
+drop policy if exists lab_memberships_insert_admin on public.lab_memberships;
 create policy lab_memberships_insert_admin on public.lab_memberships
   for insert with check (public.is_lab_admin(lab_id));
 
+drop policy if exists lab_memberships_update_admin on public.lab_memberships;
 create policy lab_memberships_update_admin on public.lab_memberships
   for update using (public.is_lab_admin(lab_id))
   with check (public.is_lab_admin(lab_id));
 
+drop policy if exists lab_memberships_delete_admin on public.lab_memberships;
 create policy lab_memberships_delete_admin on public.lab_memberships
   for delete using (public.is_lab_admin(lab_id));
 
 -- projects: any member can read/write; delete restricted to admins.
+drop policy if exists projects_select_member on public.projects;
 create policy projects_select_member on public.projects
   for select using (public.is_lab_member(lab_id));
 
+drop policy if exists projects_insert_member on public.projects;
 create policy projects_insert_member on public.projects
   for insert with check (public.is_lab_member(lab_id));
 
+drop policy if exists projects_update_member on public.projects;
 create policy projects_update_member on public.projects
   for update using (public.is_lab_member(lab_id))
   with check (public.is_lab_member(lab_id));
 
+drop policy if exists projects_delete_admin on public.projects;
 create policy projects_delete_admin on public.projects
   for delete using (public.is_lab_admin(lab_id));
 
 -- protocols: any member can read/write; delete restricted to admins.
+drop policy if exists protocols_select_member on public.protocols;
 create policy protocols_select_member on public.protocols
   for select using (public.is_lab_member(lab_id));
 
+drop policy if exists protocols_insert_member on public.protocols;
 create policy protocols_insert_member on public.protocols
   for insert with check (public.is_lab_member(lab_id));
 
+drop policy if exists protocols_update_member on public.protocols;
 create policy protocols_update_member on public.protocols
   for update using (public.is_lab_member(lab_id))
   with check (public.is_lab_member(lab_id));
 
+drop policy if exists protocols_delete_admin on public.protocols;
 create policy protocols_delete_admin on public.protocols
   for delete using (public.is_lab_admin(lab_id));
 
 -- protocol_revisions: members may read and append; no updates; delete admin.
+drop policy if exists protocol_revisions_select_member on public.protocol_revisions;
 create policy protocol_revisions_select_member on public.protocol_revisions
   for select using (public.is_lab_member(lab_id));
 
+drop policy if exists protocol_revisions_insert_member on public.protocol_revisions;
 create policy protocol_revisions_insert_member on public.protocol_revisions
   for insert with check (public.is_lab_member(lab_id));
 
+drop policy if exists protocol_revisions_delete_admin on public.protocol_revisions;
 create policy protocol_revisions_delete_admin on public.protocol_revisions
   for delete using (public.is_lab_admin(lab_id));
