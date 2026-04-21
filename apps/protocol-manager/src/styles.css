@@ -1312,6 +1312,9 @@ label {
 }
 
 .protocol-subbar {
+  position: sticky;
+  top: 68px;
+  z-index: 18;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1417,6 +1420,8 @@ label {
 }
 
 .protocol-side-rail {
+  position: sticky;
+  top: 128px;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
@@ -1781,6 +1786,9 @@ label {
 }
 
 .protocol-workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
   display: flex;
   justify-content: space-between;
   align-items: start;
@@ -1789,6 +1797,7 @@ label {
   padding: 0 0 1.25rem;
   border-bottom: 1px solid #cbd1c8;
   flex: 0 0 auto;
+  background: #f9f8f4;
 }
 
 .protocol-workspace-header h1 {
@@ -2423,6 +2432,7 @@ label {
   }
 
   .protocol-side-rail {
+    position: static;
     border-right: none;
     border-bottom: 1px solid #cbd1c8;
     height: auto;
@@ -2487,6 +2497,11 @@ label {
     height: auto;
     min-height: 0;
     overflow: visible;
+  }
+
+  .protocol-subbar,
+  .protocol-workspace-header {
+    position: static;
   }
 
   .protocol-side-rail-nav,
