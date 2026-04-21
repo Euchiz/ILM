@@ -238,46 +238,32 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     async (name: string, slug?: string): Promise<LabWithRole> => {
       if (!user) throw new Error("Not signed in");
       setError(null);
-      // created_by is set server-side from auth.uid() (column default +
-      // BEFORE INSERT trigger) so the client does not need to — and
-      // cannot — override it. This keeps the RLS insert policy to a
-      // simple "authenticated" check.
+      // Under Supabase's new asymmetric-key JWT system, auth.uid() returns
+      // NULL inside BEFORE-INSERT triggers and RLS WITH CHECK expressions
+      // even when the JWT is verified at the top level, so a direct INSERT
+      // on public.labs fails with 42501. The create_lab RPC reads
+      // auth.uid() at entry (where it works) and does the insert under
+      // SECURITY DEFINER, also creating the owner membership.
       const { data, error: err } = await supabase
-        .from("labs")
-        .insert({
-          name,
-          slug: slug?.trim() || null,
-        })
-        .select("id, name, slug, created_by")
+        .rpc("create_lab", { p_name: name, p_slug: slug ?? null })
         .maybeSingle();
       if (err) {
         console.error("[ilm] createLab failed", err);
         setError(err.message);
         throw err;
       }
-      // The on_lab_created trigger inserts an owner membership for the
-      // creator. Refresh through the membership table so SELECT RLS paints
-      // the new row even if .select() on the insert returned empty.
-      let created: LabWithRole | null = data
-        ? { ...(data as Omit<LabWithRole, "role">), role: "owner" }
-        : null;
-      if (!created) {
-        const refreshed = await loadLabs();
-        setLabs(refreshed);
-        created =
-          refreshed.find((lab) => lab.name === name && lab.role === "owner") ??
-          null;
-        if (!created) {
-          const message =
-            "Lab created, but we couldn't read it back. Try reloading.";
-          setError(message);
-          throw new Error(message);
-        }
-      } else {
-        setLabs((prev) =>
-          prev.some((lab) => lab.id === created!.id) ? prev : [...prev, created!]
-        );
+      if (!data) {
+        const message = "Lab created, but we couldn't read it back. Try reloading.";
+        setError(message);
+        throw new Error(message);
       }
+      const created: LabWithRole = {
+        ...(data as Omit<LabWithRole, "role">),
+        role: "owner",
+      };
+      setLabs((prev) =>
+        prev.some((lab) => lab.id === created.id) ? prev : [...prev, created]
+      );
       setActiveLabId(created.id);
       return created;
     },
