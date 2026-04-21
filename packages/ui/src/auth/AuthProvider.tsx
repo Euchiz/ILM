@@ -238,12 +238,15 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     async (name: string, slug?: string): Promise<LabWithRole> => {
       if (!user) throw new Error("Not signed in");
       setError(null);
+      // created_by is set server-side from auth.uid() (column default +
+      // BEFORE INSERT trigger) so the client does not need to — and
+      // cannot — override it. This keeps the RLS insert policy to a
+      // simple "authenticated" check.
       const { data, error: err } = await supabase
         .from("labs")
         .insert({
           name,
           slug: slug?.trim() || null,
-          created_by: user.id,
         })
         .select("id, name, slug, created_by")
         .maybeSingle();
