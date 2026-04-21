@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 export * from "./auth";
+export * from "./admin";
 export { AppSwitcher, type AppId } from "./AppSwitcher";
 
 export const Panel = ({ title, children }: PropsWithChildren<{ title: string }>) => (

@@ -152,6 +152,11 @@ button {
   gap: 0.7rem;
 }
 
+.manager-admin-stack {
+  display: grid;
+  gap: 1rem;
+}
+
 @media (max-width: 900px) {
   .manager-header,
   .manager-grid {

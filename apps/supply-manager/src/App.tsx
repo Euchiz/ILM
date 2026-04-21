@@ -1,4 +1,4 @@
-import { AppSwitcher, useAuth } from "@ilm/ui";
+import { AppSwitcher, LabMembersPanel, useAuth } from "@ilm/ui";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -71,6 +71,10 @@ export const App = () => {
             <li>Placeholder shell is ready for the supply adapter and hooks</li>
           </ul>
         </article>
+
+        <div className="manager-card manager-card-hero manager-admin-stack">
+          <LabMembersPanel />
+        </div>
       </section>
     </main>
   );

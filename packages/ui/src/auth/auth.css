@@ -215,3 +215,175 @@
   border-color: var(--ilm-color-accent, #2563eb);
   color: #ffffff;
 }
+
+.ilm-admin-card {
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1.25rem;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+}
+
+.ilm-admin-header,
+.ilm-admin-form-header,
+.ilm-admin-list-item,
+.ilm-admin-actions,
+.ilm-admin-field-row,
+.ilm-admin-split {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ilm-admin-header,
+.ilm-admin-form-header,
+.ilm-admin-list-item {
+  justify-content: space-between;
+  align-items: start;
+}
+
+.ilm-admin-form-header,
+.ilm-admin-project-meta {
+  margin-bottom: 0.75rem;
+}
+
+.ilm-admin-header {
+  margin-bottom: 1rem;
+}
+
+.ilm-admin-header h2,
+.ilm-admin-form-header h3 {
+  margin: 0;
+}
+
+.ilm-admin-pill,
+.ilm-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ilm-admin-pill {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.ilm-admin-badge {
+  background: #e2e8f0;
+  color: #334155;
+  text-transform: capitalize;
+}
+
+.ilm-admin-badge-owner {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.ilm-admin-badge-admin {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.ilm-admin-badge-member {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.ilm-admin-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ilm-admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ilm-admin-list-item {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.75);
+}
+
+.ilm-admin-list-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ilm-admin-list-copy strong {
+  color: var(--ilm-color-text, #0f172a);
+}
+
+.ilm-admin-list-copy span,
+.ilm-admin-list-copy small,
+.ilm-admin-helper,
+.ilm-admin-empty,
+.ilm-admin-project-meta span {
+  color: var(--ilm-color-text-muted, #64748b);
+}
+
+.ilm-admin-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ilm-admin-form,
+.ilm-admin-invitations {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ilm-color-border, #e2e5ea);
+}
+
+.ilm-admin-field-row {
+  align-items: end;
+  margin-bottom: 0.85rem;
+}
+
+.ilm-admin-field-row > * {
+  flex: 1 1 0;
+}
+
+.ilm-admin-form select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: var(--ilm-color-surface, #ffffff);
+  color: var(--ilm-color-text, #0f172a);
+}
+
+.ilm-admin-project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ilm-admin-split {
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.ilm-admin-split > * {
+  flex: 1 1 0;
+}
+
+@media (max-width: 720px) {
+  .ilm-admin-field-row,
+  .ilm-admin-split,
+  .ilm-admin-list-item {
+    flex-direction: column;
+  }
+
+  .ilm-admin-actions {
+    justify-content: start;
+  }
+}

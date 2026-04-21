@@ -1,4 +1,4 @@
-import { AppSwitcher, useAuth } from "@ilm/ui";
+import { AppSwitcher, LabMembersPanel, ProjectLeadsPanel, useAuth } from "@ilm/ui";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -71,6 +71,11 @@ export const App = () => {
             <li>Placeholder shell is ready for the normalized-table cutover</li>
           </ul>
         </article>
+
+        <div className="manager-card manager-card-hero manager-admin-stack">
+          <LabMembersPanel />
+          <ProjectLeadsPanel />
+        </div>
       </section>
     </main>
   );
