@@ -24,6 +24,7 @@ export interface MilestoneRecord {
   id: string;
   lab_id: string;
   project_id: string;
+  sort_order: number;
   title: string;
   description: string | null;
   due_date: string | null;
@@ -39,6 +40,7 @@ export interface ExperimentRecord {
   lab_id: string;
   project_id: string;
   milestone_id: string | null;
+  sort_order: number;
   protocol_id: string | null;
   title: string;
   notes: string | null;
@@ -77,16 +79,16 @@ const PROJECT_FIELDS =
   "id, lab_id, name, description, status, state, deleted_at, approval_required, created_by, updated_by, created_at, updated_at";
 
 const MILESTONE_FIELDS =
-  "id, lab_id, project_id, title, description, due_date, status, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, project_id, sort_order, title, description, due_date, status, created_by, updated_by, created_at, updated_at";
 
 const EXPERIMENT_FIELDS =
-  "id, lab_id, project_id, milestone_id, protocol_id, title, notes, status, started_at, completed_at, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, project_id, milestone_id, sort_order, protocol_id, title, notes, status, started_at, completed_at, created_by, updated_by, created_at, updated_at";
 
 export async function listProjectWorkspace(labId: string): Promise<ProjectWorkspaceSnapshot> {
   const [projectsResult, milestonesResult, experimentsResult, protocolsResult, leadsResult] = await Promise.all([
     client().from("projects").select(PROJECT_FIELDS).eq("lab_id", labId).order("name", { ascending: true }),
-    client().from("milestones").select(MILESTONE_FIELDS).eq("lab_id", labId).order("due_date", { ascending: true, nullsFirst: false }),
-    client().from("experiments").select(EXPERIMENT_FIELDS).eq("lab_id", labId).order("updated_at", { ascending: false }),
+    client().from("milestones").select(MILESTONE_FIELDS).eq("lab_id", labId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
+    client().from("experiments").select(EXPERIMENT_FIELDS).eq("lab_id", labId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     client().from("protocols").select("id, project_id, title, updated_at").eq("lab_id", labId).order("updated_at", { ascending: false }),
     client().from("project_leads").select("project_id, user_id, projects!inner(lab_id)").eq("projects.lab_id", labId),
   ]);
@@ -216,6 +218,7 @@ export async function createMilestone(args: {
   labId: string;
   projectId: string;
   userId: string;
+  sortOrder?: number;
   title: string;
   description?: string;
   dueDate?: string | null;
@@ -226,6 +229,7 @@ export async function createMilestone(args: {
     .insert({
       lab_id: args.labId,
       project_id: args.projectId,
+      sort_order: args.sortOrder ?? 1024,
       title: args.title,
       description: args.description?.trim() || null,
       due_date: args.dueDate ?? null,
@@ -242,6 +246,7 @@ export async function createMilestone(args: {
 export async function updateMilestone(args: {
   milestoneId: string;
   userId: string;
+  sortOrder?: number;
   title: string;
   description?: string;
   dueDate?: string | null;
@@ -250,6 +255,7 @@ export async function updateMilestone(args: {
   const { data, error } = await client()
     .from("milestones")
     .update({
+      sort_order: args.sortOrder,
       title: args.title,
       description: args.description?.trim() || null,
       due_date: args.dueDate ?? null,
@@ -277,6 +283,7 @@ export async function createExperiment(args: {
   projectId: string;
   userId: string;
   milestoneId?: string | null;
+  sortOrder?: number;
   title: string;
   notes?: string;
   protocolId?: string | null;
@@ -290,6 +297,7 @@ export async function createExperiment(args: {
       lab_id: args.labId,
       project_id: args.projectId,
       milestone_id: args.milestoneId ?? null,
+      sort_order: args.sortOrder ?? 1024,
       protocol_id: args.protocolId ?? null,
       title: args.title,
       notes: args.notes?.trim() || null,
@@ -309,6 +317,7 @@ export async function updateExperiment(args: {
   experimentId: string;
   userId: string;
   milestoneId?: string | null;
+  sortOrder?: number;
   title: string;
   notes?: string;
   protocolId?: string | null;
@@ -320,6 +329,7 @@ export async function updateExperiment(args: {
     .from("experiments")
     .update({
       milestone_id: args.milestoneId ?? null,
+      sort_order: args.sortOrder,
       protocol_id: args.protocolId ?? null,
       title: args.title,
       notes: args.notes?.trim() || null,
@@ -338,4 +348,36 @@ export async function updateExperiment(args: {
 export async function deleteExperiment(experimentId: string): Promise<void> {
   const { error } = await client().from("experiments").delete().eq("id", experimentId);
   if (error) throw error;
+}
+
+export async function reorderMilestones(args: {
+  userId: string;
+  items: Array<{ milestoneId: string; sortOrder: number }>;
+}): Promise<void> {
+  const updates = await Promise.all(
+    args.items.map(({ milestoneId, sortOrder }) =>
+      client()
+        .from("milestones")
+        .update({ sort_order: sortOrder, updated_by: args.userId })
+        .eq("id", milestoneId)
+    )
+  );
+  const failed = updates.find((result) => result.error);
+  if (failed?.error) throw failed.error;
+}
+
+export async function reorderExperiments(args: {
+  userId: string;
+  items: Array<{ experimentId: string; milestoneId: string | null; sortOrder: number }>;
+}): Promise<void> {
+  const updates = await Promise.all(
+    args.items.map(({ experimentId, milestoneId, sortOrder }) =>
+      client()
+        .from("experiments")
+        .update({ milestone_id: milestoneId, sort_order: sortOrder, updated_by: args.userId })
+        .eq("id", experimentId)
+    )
+  );
+  const failed = updates.find((result) => result.error);
+  if (failed?.error) throw failed.error;
 }

@@ -9,6 +9,8 @@ import {
   listDeletedProjects,
   listProjectWorkspace,
   permanentDeleteProject as rpcPermanentDeleteProject,
+  reorderExperiments as rpcReorderExperiments,
+  reorderMilestones as rpcReorderMilestones,
   recycleProject as rpcRecycleProject,
   rejectProject as rpcRejectProject,
   restoreProject as rpcRestoreProject,
@@ -71,6 +73,7 @@ export interface UseProjectWorkspaceValue extends ProjectWorkspaceSnapshot {
     status: MilestoneStatus;
   }) => Promise<MilestoneRecord>;
   deleteMilestone: (milestoneId: string) => Promise<void>;
+  reorderMilestones: (items: Array<{ milestoneId: string; sortOrder: number }>) => Promise<void>;
   createExperiment: (args: {
     projectId: string;
     milestoneId?: string | null;
@@ -92,6 +95,7 @@ export interface UseProjectWorkspaceValue extends ProjectWorkspaceSnapshot {
     completedAt?: string | null;
   }) => Promise<ExperimentRecord>;
   deleteExperiment: (experimentId: string) => Promise<void>;
+  reorderExperiments: (items: Array<{ experimentId: string; milestoneId: string | null; sortOrder: number }>) => Promise<void>;
 }
 
 const EMPTY_ARRAY: [] = [];
@@ -214,10 +218,12 @@ export function useProjectWorkspace(
 
   const createMilestone = useCallback<UseProjectWorkspaceValue["createMilestone"]>(async (args) => {
     const identity = requireIdentity();
-    const created = await rpcCreateMilestone({ ...identity, ...args });
+    const siblingMilestones = milestones.filter((milestone) => milestone.project_id === args.projectId);
+    const sortOrder = (siblingMilestones.at(-1)?.sort_order ?? 0) + 1024;
+    const created = await rpcCreateMilestone({ ...identity, ...args, sortOrder });
     await hydrate();
     return created;
-  }, [hydrate, requireIdentity]);
+  }, [hydrate, milestones, requireIdentity]);
 
   const updateMilestone = useCallback<UseProjectWorkspaceValue["updateMilestone"]>(async (args) => {
     const { userId: uid } = requireIdentity();
@@ -232,12 +238,20 @@ export function useProjectWorkspace(
     await hydrate();
   }, [hydrate, requireIdentity]);
 
+  const reorderMilestones = useCallback<UseProjectWorkspaceValue["reorderMilestones"]>(async (items) => {
+    const { userId: uid } = requireIdentity();
+    await rpcReorderMilestones({ userId: uid, items });
+    await hydrate();
+  }, [hydrate, requireIdentity]);
+
   const createExperiment = useCallback<UseProjectWorkspaceValue["createExperiment"]>(async (args) => {
     const identity = requireIdentity();
-    const created = await rpcCreateExperiment({ ...identity, ...args });
+    const siblingExperiments = experiments.filter((experiment) => experiment.project_id === args.projectId);
+    const sortOrder = (siblingExperiments.at(-1)?.sort_order ?? 0) + 1024;
+    const created = await rpcCreateExperiment({ ...identity, ...args, sortOrder });
     await hydrate();
     return created;
-  }, [hydrate, requireIdentity]);
+  }, [experiments, hydrate, requireIdentity]);
 
   const updateExperiment = useCallback<UseProjectWorkspaceValue["updateExperiment"]>(async (args) => {
     const { userId: uid } = requireIdentity();
@@ -249,6 +263,12 @@ export function useProjectWorkspace(
   const deleteExperiment = useCallback<UseProjectWorkspaceValue["deleteExperiment"]>(async (experimentId) => {
     requireIdentity();
     await rpcDeleteExperiment(experimentId);
+    await hydrate();
+  }, [hydrate, requireIdentity]);
+
+  const reorderExperiments = useCallback<UseProjectWorkspaceValue["reorderExperiments"]>(async (items) => {
+    const { userId: uid } = requireIdentity();
+    await rpcReorderExperiments({ userId: uid, items });
     await hydrate();
   }, [hydrate, requireIdentity]);
 
@@ -273,8 +293,10 @@ export function useProjectWorkspace(
     createMilestone,
     updateMilestone,
     deleteMilestone,
+    reorderMilestones,
     createExperiment,
     updateExperiment,
     deleteExperiment,
+    reorderExperiments,
   };
 }

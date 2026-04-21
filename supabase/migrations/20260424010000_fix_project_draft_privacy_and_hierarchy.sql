@@ -90,6 +90,7 @@ create policy milestones_update_member on public.milestones
   );
 
 drop policy if exists milestones_delete_admin on public.milestones;
+drop policy if exists milestones_delete_moderated on public.milestones;
 create policy milestones_delete_moderated on public.milestones
   for delete using (public.can_delete_project_workspace_item(project_id));
 
@@ -113,6 +114,7 @@ create policy experiments_update_member on public.experiments
   );
 
 drop policy if exists experiments_delete_admin on public.experiments;
+drop policy if exists experiments_delete_moderated on public.experiments;
 create policy experiments_delete_moderated on public.experiments
   for delete using (public.can_delete_project_workspace_item(project_id));
 

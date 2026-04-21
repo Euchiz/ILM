@@ -19,6 +19,10 @@ import type {
   ProjectStatus,
   ProtocolOptionRecord,
 } from "./lib/cloudAdapter";
+import {
+  ProjectOutlinePanel,
+  type ProjectOutlineSelection,
+} from "./components/ProjectOutlinePanel";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -27,11 +31,7 @@ const MILESTONE_STATUSES: MilestoneStatus[] = ["planned", "in_progress", "done",
 const EXPERIMENT_STATUSES: ExperimentStatus[] = ["planned", "running", "completed", "failed"];
 
 type SidebarTab = "overview" | "library" | "review" | "view";
-type ViewSubTab = "info" | "personnel" | "roadmap";
-type OutlineSelection =
-  | { kind: "milestone"; id: string }
-  | { kind: "experiment"; id: string }
-  | null;
+type ViewSubTab = "info" | "personnel" | "edit" | "roadmap";
 
 const statusLabel = (value: string) =>
   value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -75,6 +75,24 @@ const buildProtocolUrl = (protocolId: string) => {
   const url = new URL("protocol-manager/", resolveSiteRoot(APP_BASE_URL));
   url.searchParams.set("protocolId", protocolId);
   return url.toString();
+};
+
+const normalizeSortOrders = <T extends { id: string }>(items: T[]) =>
+  items.map((item, index) => ({
+    id: item.id,
+    sortOrder: (index + 1) * 1024,
+  }));
+
+const moveItemBeforeTarget = <T extends { id: string }>(items: T[], movingId: string, targetId: string) => {
+  const movingIndex = items.findIndex((item) => item.id === movingId);
+  const targetIndex = items.findIndex((item) => item.id === targetId);
+  if (movingIndex === -1 || targetIndex === -1 || movingIndex === targetIndex) return items;
+
+  const next = [...items];
+  const [movingItem] = next.splice(movingIndex, 1);
+  const insertionIndex = movingIndex < targetIndex ? targetIndex - 1 : targetIndex;
+  next.splice(insertionIndex, 0, movingItem);
+  return next;
 };
 
 // ---------------------------------------------------------------------------
@@ -460,22 +478,21 @@ export const App = () => {
     createMilestone,
     updateMilestone,
     deleteMilestone,
+    reorderMilestones,
     createExperiment,
     updateExperiment,
     deleteExperiment,
+    reorderExperiments,
   } = workspace;
 
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("overview");
   const [viewSubTab, setViewSubTab] = useState<ViewSubTab>("info");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [outlineSelection, setOutlineSelection] = useState<OutlineSelection>(null);
+  const [outlineSelection, setOutlineSelection] = useState<ProjectOutlineSelection>(null);
   const [labMembers, setLabMembers] = useState<LabMemberRecord[]>([]);
   const [projectSaveError, setProjectSaveError] = useState<string | null>(null);
   const [projectSaveBusy, setProjectSaveBusy] = useState<"idle" | "saving">("idle");
-  const [milestoneDraftTitle, setMilestoneDraftTitle] = useState("");
-  const [experimentDraftTitle, setExperimentDraftTitle] = useState("");
-  const [experimentDraftMilestoneId, setExperimentDraftMilestoneId] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Lab roster (for lead-name resolution + personnel lists)
@@ -578,22 +595,36 @@ export const App = () => {
 
   const activeProjectMilestones = activeProject ? milestonesByProject.get(activeProject.id) ?? [] : [];
   const activeProjectExperiments = activeProject ? experimentsByProject.get(activeProject.id) ?? [] : [];
+  const isActiveProjectLead = activeProject ? (leadsByProject.get(activeProject.id) ?? []).includes(user?.id ?? "") : false;
   const activeUnassignedExperiments = useMemo(
     () => activeProjectExperiments.filter((experiment) => !experiment.milestone_id),
     [activeProjectExperiments]
   );
   const canManageRoadmap =
     isAdmin || (activeProject?.state === "draft" && activeProject.created_by === user?.id);
+  const selectedMilestone = useMemo(
+    () =>
+      outlineSelection?.kind === "milestone"
+        ? activeProjectMilestones.find((milestone) => milestone.id === outlineSelection.id) ?? null
+        : null,
+    [activeProjectMilestones, outlineSelection]
+  );
+  const selectedExperiment = useMemo(
+    () =>
+      outlineSelection?.kind === "experiment"
+        ? activeProjectExperiments.find((experiment) => experiment.id === outlineSelection.id) ?? null
+        : null,
+    [activeProjectExperiments, outlineSelection]
+  );
 
   useEffect(() => {
-    if (outlineSelection?.kind === "milestone") {
-      setExperimentDraftMilestoneId(outlineSelection.id);
-      return;
+    if (outlineSelection?.kind === "milestone" && !selectedMilestone) {
+      setOutlineSelection(null);
     }
-    if (!activeProjectMilestones.some((milestone) => milestone.id === experimentDraftMilestoneId)) {
-      setExperimentDraftMilestoneId("");
+    if (outlineSelection?.kind === "experiment" && !selectedExperiment) {
+      setOutlineSelection(null);
     }
-  }, [activeProjectMilestones, experimentDraftMilestoneId, outlineSelection]);
+  }, [outlineSelection, selectedExperiment, selectedMilestone]);
 
   const leadNamesForProject = useCallback(
     (projectId: string) => {
@@ -723,24 +754,246 @@ export const App = () => {
     [activeProject, updateProject]
   );
 
-  // Roadmap inline creation
-  const handleCreateMilestone = async () => {
+  const persistMilestoneOrder = useCallback(
+    async (orderedMilestones: MilestoneRecord[]) => {
+      await reorderMilestones(
+        normalizeSortOrders(orderedMilestones).map(({ id, sortOrder }) => ({
+          milestoneId: id,
+          sortOrder,
+        }))
+      );
+    },
+    [reorderMilestones]
+  );
+
+  const persistExperimentLayout = useCallback(
+    async (
+      nextGroups: Array<{ milestoneId: string | null; experiments: ExperimentRecord[] }>
+    ) => {
+      const flattened = nextGroups.flatMap((group) =>
+        group.experiments.map((experiment) => ({
+          experimentId: experiment.id,
+          milestoneId: group.milestoneId,
+        }))
+      );
+      await reorderExperiments(
+        flattened.map((item, index) => ({
+          ...item,
+          sortOrder: (index + 1) * 1024,
+        }))
+      );
+    },
+    [reorderExperiments]
+  );
+
+  const handleCreateExperiment = async (milestoneId: string | null, title: string) => {
     if (!activeProject) return;
-    if (!milestoneDraftTitle.trim()) return;
-    await createMilestone({ projectId: activeProject.id, title: milestoneDraftTitle.trim() });
-    setMilestoneDraftTitle("");
-  };
-  const handleCreateExperiment = async () => {
-    if (!activeProject) return;
-    if (!experimentDraftTitle.trim()) return;
-    await createExperiment({
+    if (!title.trim()) return;
+    const created = await createExperiment({
       projectId: activeProject.id,
-      milestoneId: experimentDraftMilestoneId || null,
-      title: experimentDraftTitle.trim(),
+      milestoneId,
+      title: title.trim(),
     });
-    setExperimentDraftTitle("");
-    setExperimentDraftMilestoneId("");
+    setOutlineSelection({ kind: "experiment", id: created.id });
+    setViewSubTab("edit");
   };
+
+  const handleMoveMilestone = useCallback(
+    async (movingMilestoneId: string, targetMilestoneId: string) => {
+      const reordered = moveItemBeforeTarget(activeProjectMilestones, movingMilestoneId, targetMilestoneId);
+      if (reordered === activeProjectMilestones) return;
+      try {
+        setActionError(null);
+        await persistMilestoneOrder(reordered);
+      } catch (err) {
+        setActionError(errorMessage(err));
+      }
+    },
+    [activeProjectMilestones, persistMilestoneOrder]
+  );
+
+  const experimentGroups = useMemo(
+    () => [
+      ...activeProjectMilestones.map((milestone) => ({
+        milestoneId: milestone.id,
+        experiments: experimentsByMilestone.get(milestone.id) ?? [],
+      })),
+      { milestoneId: null as string | null, experiments: activeUnassignedExperiments },
+    ],
+    [activeProjectMilestones, activeUnassignedExperiments, experimentsByMilestone]
+  );
+
+  const handleMoveExperiment = useCallback(
+    async (experimentId: string, destinationMilestoneId: string | null, targetExperimentId?: string) => {
+      const sourceExperiment = activeProjectExperiments.find((experiment) => experiment.id === experimentId);
+      if (!sourceExperiment) return;
+
+      const nextGroups = experimentGroups.map((group) => ({
+        milestoneId: group.milestoneId,
+        experiments: group.experiments.filter((experiment) => experiment.id !== experimentId),
+      }));
+      const destinationGroup = nextGroups.find((group) => group.milestoneId === destinationMilestoneId);
+      if (!destinationGroup) return;
+
+      const movedExperiment = { ...sourceExperiment, milestone_id: destinationMilestoneId };
+      if (!targetExperimentId) {
+        destinationGroup.experiments.push(movedExperiment);
+      } else {
+        const targetIndex = destinationGroup.experiments.findIndex((experiment) => experiment.id === targetExperimentId);
+        if (targetIndex === -1) {
+          destinationGroup.experiments.push(movedExperiment);
+        } else {
+          destinationGroup.experiments.splice(targetIndex, 0, movedExperiment);
+        }
+      }
+
+      try {
+        setActionError(null);
+        await persistExperimentLayout(nextGroups);
+      } catch (err) {
+        setActionError(errorMessage(err));
+      }
+    },
+    [activeProjectExperiments, experimentGroups, persistExperimentLayout]
+  );
+
+  const handleOutlineAddMilestone = useCallback(async () => {
+    if (!activeProject || !canManageRoadmap) return;
+    try {
+      setActionError(null);
+      const created = await createMilestone({
+        projectId: activeProject.id,
+        title: `Milestone ${activeProjectMilestones.length + 1}`,
+      });
+      setOutlineSelection({ kind: "milestone", id: created.id });
+      setViewSubTab("edit");
+    } catch (err) {
+      setActionError(errorMessage(err));
+    }
+  }, [activeProject, activeProjectMilestones.length, canManageRoadmap, createMilestone]);
+
+  const handleOutlineAddExperiment = useCallback(
+    async (milestoneId: string | null) => {
+      if (!activeProject || !canManageRoadmap) return;
+      try {
+        setActionError(null);
+        await handleCreateExperiment(milestoneId, "New experiment");
+      } catch (err) {
+        setActionError(errorMessage(err));
+      }
+    },
+    [activeProject, canManageRoadmap, handleCreateExperiment]
+  );
+
+  const handleDuplicateSelection = useCallback(async () => {
+    if (!activeProject || !outlineSelection || !canManageRoadmap) return;
+    try {
+      setActionError(null);
+      if (outlineSelection.kind === "milestone") {
+        const sourceMilestone = activeProjectMilestones.find((milestone) => milestone.id === outlineSelection.id);
+        if (!sourceMilestone) return;
+        const createdMilestone = await createMilestone({
+          projectId: activeProject.id,
+          title: `${sourceMilestone.title} copy`,
+          description: sourceMilestone.description ?? "",
+          dueDate: sourceMilestone.due_date,
+          status: sourceMilestone.status,
+        });
+
+        const sourceExperiments = experimentsByMilestone.get(sourceMilestone.id) ?? [];
+        for (const experiment of sourceExperiments) {
+          await createExperiment({
+            projectId: activeProject.id,
+            milestoneId: createdMilestone.id,
+            title: `${experiment.title} copy`,
+            notes: experiment.notes ?? "",
+            protocolId: experiment.protocol_id,
+            status: experiment.status,
+            startedAt: experiment.started_at,
+            completedAt: experiment.completed_at,
+          });
+        }
+
+        const inserted = [...activeProjectMilestones];
+        const sourceIndex = inserted.findIndex((milestone) => milestone.id === sourceMilestone.id);
+        inserted.splice(sourceIndex + 1, 0, { ...createdMilestone, sort_order: sourceMilestone.sort_order + 1 });
+        await persistMilestoneOrder(inserted);
+        setOutlineSelection({ kind: "milestone", id: createdMilestone.id });
+      } else {
+        const sourceExperiment = activeProjectExperiments.find((experiment) => experiment.id === outlineSelection.id);
+        if (!sourceExperiment) return;
+        const createdExperiment = await createExperiment({
+          projectId: activeProject.id,
+          milestoneId: sourceExperiment.milestone_id,
+          title: `${sourceExperiment.title} copy`,
+          notes: sourceExperiment.notes ?? "",
+          protocolId: sourceExperiment.protocol_id,
+          status: sourceExperiment.status,
+          startedAt: sourceExperiment.started_at,
+          completedAt: sourceExperiment.completed_at,
+        });
+        const nextGroups = experimentGroups.map((group) => ({
+          milestoneId: group.milestoneId,
+          experiments: [...group.experiments],
+        }));
+        const destinationGroup = nextGroups.find((group) => group.milestoneId === sourceExperiment.milestone_id);
+        if (destinationGroup) {
+          const sourceIndex = destinationGroup.experiments.findIndex((experiment) => experiment.id === sourceExperiment.id);
+          destinationGroup.experiments.splice(sourceIndex + 1, 0, {
+            ...createdExperiment,
+            milestone_id: sourceExperiment.milestone_id,
+            sort_order: sourceExperiment.sort_order + 1,
+          });
+          await persistExperimentLayout(nextGroups);
+        }
+        setOutlineSelection({ kind: "experiment", id: createdExperiment.id });
+      }
+      setViewSubTab("edit");
+    } catch (err) {
+      setActionError(errorMessage(err));
+    }
+  }, [
+    activeProject,
+    activeProjectExperiments,
+    activeProjectMilestones,
+    canManageRoadmap,
+    createExperiment,
+    createMilestone,
+    experimentsByMilestone,
+    experimentGroups,
+    outlineSelection,
+    persistExperimentLayout,
+    persistMilestoneOrder,
+  ]);
+
+  const handleCutSelection = useCallback(async () => {
+    if (!outlineSelection || !canManageRoadmap) return;
+    try {
+      setActionError(null);
+      if (outlineSelection.kind === "milestone") {
+        const targetMilestone = activeProjectMilestones.find((milestone) => milestone.id === outlineSelection.id);
+        if (!targetMilestone) return;
+        if (!window.confirm(`Cut milestone "${targetMilestone.title}" from this roadmap?`)) return;
+        await deleteMilestone(targetMilestone.id);
+      } else {
+        const targetExperiment = activeProjectExperiments.find((experiment) => experiment.id === outlineSelection.id);
+        if (!targetExperiment) return;
+        if (!window.confirm(`Cut experiment "${targetExperiment.title}" from this roadmap?`)) return;
+        await deleteExperiment(targetExperiment.id);
+      }
+      setOutlineSelection(null);
+      setViewSubTab("roadmap");
+    } catch (err) {
+      setActionError(errorMessage(err));
+    }
+  }, [
+    activeProjectExperiments,
+    activeProjectMilestones,
+    canManageRoadmap,
+    deleteExperiment,
+    deleteMilestone,
+    outlineSelection,
+  ]);
 
   // ---------------------------------------------------------------------
   // Render helpers
@@ -968,92 +1221,33 @@ export const App = () => {
   const viewPanel = activeProject ? (
     <div className="pm-view-grid">
       <aside className="pm-outline-pane">
-        <div className="pm-outline-head">
-          <div>
-            <small>{activeProject.state === "draft" ? "Draft" : "Project"}</small>
-            <strong>{activeProject.name}</strong>
-          </div>
-        </div>
-        <div className="pm-outline-body">
-          {activeProjectMilestones.length === 0 && activeProjectExperiments.length === 0 ? (
-            <p className="pm-empty">No milestones or experiments yet. Add some from the Roadmap tab.</p>
-          ) : (
-            <>
-              {activeProjectMilestones.map((m) => {
-                const relatedExperiments = experimentsByMilestone.get(m.id) ?? [];
-                const selected = outlineSelection?.kind === "milestone" && outlineSelection.id === m.id;
-                return (
-                  <div key={m.id} className="pm-outline-group">
-                    <button
-                      type="button"
-                      className={`pm-outline-row pm-outline-row-milestone${selected ? " selected" : ""}`}
-                      onClick={() => {
-                        setOutlineSelection({ kind: "milestone", id: m.id });
-                        setViewSubTab("roadmap");
-                      }}
-                    >
-                      <span className={`pm-status-dot pm-status-dot-${m.status}`} aria-hidden />
-                      <span className="pm-outline-row-copy">
-                        <strong>{m.title}</strong>
-                        <small>{m.due_date ? `Due ${formatDate(m.due_date)}` : "No due date"}</small>
-                      </span>
-                      <span className={`pm-status-tag pm-status-tag-${m.status}`}>{statusLabel(m.status)}</span>
-                    </button>
-
-                    {relatedExperiments.map((experiment) => {
-                      const experimentSelected =
-                        outlineSelection?.kind === "experiment" && outlineSelection.id === experiment.id;
-                      return (
-                        <button
-                          key={experiment.id}
-                          type="button"
-                          className={`pm-outline-row pm-outline-row-experiment${experimentSelected ? " selected" : ""}`}
-                          onClick={() => {
-                            setOutlineSelection({ kind: "experiment", id: experiment.id });
-                            setViewSubTab("roadmap");
-                          }}
-                        >
-                          <span className={`pm-status-dot pm-status-dot-${experiment.status}`} aria-hidden />
-                          <span className="pm-outline-row-copy">
-                            <strong>{experiment.title}</strong>
-                            <small>{experiment.protocol_id ? protocolTitles.get(experiment.protocol_id) ?? "Linked protocol" : "No protocol"}</small>
-                          </span>
-                          <span className={`pm-status-tag pm-status-tag-${experiment.status}`}>{statusLabel(experiment.status)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-              {activeUnassignedExperiments.length > 0 ? (
-                <div className="pm-outline-group">
-                  <div className="pm-outline-subhead">Unassigned experiments</div>
-                  {activeUnassignedExperiments.map((ex) => {
-                    const selected = outlineSelection?.kind === "experiment" && outlineSelection.id === ex.id;
-                    return (
-                      <button
-                        key={ex.id}
-                        type="button"
-                        className={`pm-outline-row pm-outline-row-experiment${selected ? " selected" : ""}`}
-                        onClick={() => {
-                          setOutlineSelection({ kind: "experiment", id: ex.id });
-                          setViewSubTab("roadmap");
-                        }}
-                      >
-                        <span className={`pm-status-dot pm-status-dot-${ex.status}`} aria-hidden />
-                        <span className="pm-outline-row-copy">
-                          <strong>{ex.title}</strong>
-                          <small>{ex.protocol_id ? protocolTitles.get(ex.protocol_id) ?? "Linked protocol" : "No protocol"}</small>
-                        </span>
-                        <span className={`pm-status-tag pm-status-tag-${ex.status}`}>{statusLabel(ex.status)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
+        <ProjectOutlinePanel
+          projectName={activeProject.name}
+          milestones={activeProjectMilestones}
+          experimentsByMilestone={experimentsByMilestone}
+          unassignedExperiments={activeUnassignedExperiments}
+          selection={outlineSelection}
+          canManage={canManageRoadmap}
+          onSelectMilestone={(milestoneId) => setOutlineSelection({ kind: "milestone", id: milestoneId })}
+          onOpenMilestone={(milestoneId) => {
+            setOutlineSelection({ kind: "milestone", id: milestoneId });
+            setViewSubTab("edit");
+          }}
+          onSelectExperiment={(experimentId) => setOutlineSelection({ kind: "experiment", id: experimentId })}
+          onOpenExperiment={(experimentId) => {
+            setOutlineSelection({ kind: "experiment", id: experimentId });
+            setViewSubTab("edit");
+          }}
+          onClearSelection={() => setOutlineSelection(null)}
+          onMoveMilestone={(movingMilestoneId, targetMilestoneId) => void handleMoveMilestone(movingMilestoneId, targetMilestoneId)}
+          onMoveExperiment={(experimentId, destinationMilestoneId, targetExperimentId) =>
+            void handleMoveExperiment(experimentId, destinationMilestoneId, targetExperimentId)
+          }
+          onAddMilestone={() => void handleOutlineAddMilestone()}
+          onAddExperiment={(milestoneId) => void handleOutlineAddExperiment(milestoneId)}
+          onDuplicateSelection={() => void handleDuplicateSelection()}
+          onCutSelection={() => void handleCutSelection()}
+        />
       </aside>
 
       <section className="pm-detail-pane">
@@ -1074,6 +1268,13 @@ export const App = () => {
           </button>
           <button
             type="button"
+            className={`pm-tab-link${viewSubTab === "edit" ? " active" : ""}`}
+            onClick={() => setViewSubTab("edit")}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
             className={`pm-tab-link${viewSubTab === "roadmap" ? " active" : ""}`}
             onClick={() => setViewSubTab("roadmap")}
           >
@@ -1083,6 +1284,45 @@ export const App = () => {
         </nav>
 
         <div className="pm-detail-body">
+          {actionError ? <p className="pm-page-error">{actionError}</p> : null}
+          {activeProject.state === "draft" ? (
+            <section className="pm-draft-actions">
+              <div>
+                <strong>Draft workflow</strong>
+                <p>
+                  Save ongoing work privately, abort the draft, or send it forward for review.
+                  Project lead and admin submissions publish immediately.
+                </p>
+              </div>
+              <div className="pm-inline-actions">
+                <button
+                  type="button"
+                  className="pm-text-button"
+                  onClick={() => window.alert("Draft changes are already saved as you edit.")}
+                >
+                  Save draft
+                </button>
+                <button type="button" className="pm-text-button pm-text-button-danger" onClick={() => void handleWithdraw(activeProject)}>
+                  Abort
+                </button>
+                <button
+                  type="button"
+                  className="pm-primary-button"
+                  onClick={() => {
+                    if (isAdmin || isActiveProjectLead) {
+                      void handleApprove(activeProject);
+                      return;
+                    }
+                    setSidebarTab("review");
+                    window.alert("This draft is ready in the review queue for lab admins.");
+                  }}
+                >
+                  {isAdmin || isActiveProjectLead ? "Publish now" : "Publish for review"}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
           {viewSubTab === "info" ? (
             <InfoTab
               project={activeProject}
@@ -1119,121 +1359,62 @@ export const App = () => {
             </div>
           ) : null}
 
-          {viewSubTab === "roadmap" ? (
-            <div className="pm-roadmap-body">
+          {viewSubTab === "edit" ? (
+            selectedMilestone ? (
+              <div className="pm-item-wrap highlight">
+                <MilestoneEditor
+                  milestone={selectedMilestone}
+                  canDelete={canManageRoadmap}
+                  onSave={async (args) => {
+                    await updateMilestone(args);
+                  }}
+                  onDelete={async (id) => {
+                    await deleteMilestone(id);
+                    if (outlineSelection?.kind === "milestone" && outlineSelection.id === id) {
+                      setOutlineSelection(null);
+                    }
+                  }}
+                />
+              </div>
+            ) : selectedExperiment ? (
+              <div className="pm-item-wrap highlight">
+                <ExperimentEditor
+                  experiment={selectedExperiment}
+                  canDelete={canManageRoadmap}
+                  milestones={activeProjectMilestones}
+                  protocols={protocols}
+                  protocolTitles={protocolTitles}
+                  onSave={async (args) => {
+                    await updateExperiment(args);
+                  }}
+                  onDelete={async (id) => {
+                    await deleteExperiment(id);
+                    if (outlineSelection?.kind === "experiment" && outlineSelection.id === id) {
+                      setOutlineSelection(null);
+                    }
+                  }}
+                />
+              </div>
+            ) : (
               <section className="pm-panel-section">
                 <div className="pm-panel-section-head">
-                  <h3>Milestones</h3>
-                  <span>{activeProjectMilestones.length}</span>
+                  <h3>Edit selection</h3>
+                  <span>Outline driven</span>
                 </div>
-                <div className="pm-inline-create">
-                  <input
-                    value={milestoneDraftTitle}
-                    onChange={(event) => setMilestoneDraftTitle(event.target.value)}
-                    placeholder="New milestone title"
-                  />
-                  <button
-                    type="button"
-                    className="pm-primary-button"
-                    disabled={!milestoneDraftTitle.trim()}
-                    onClick={() => void handleCreateMilestone()}
-                  >
-                    Add
-                  </button>
-                </div>
-                {activeProjectMilestones.length === 0 ? (
-                  <p className="pm-empty">No milestones yet.</p>
-                ) : (
-                  <div className="pm-item-list">
-                    {activeProjectMilestones.map((milestone) => {
-                      const highlight =
-                        outlineSelection?.kind === "milestone" && outlineSelection.id === milestone.id;
-                      return (
-                        <div key={milestone.id} className={`pm-item-wrap${highlight ? " highlight" : ""}`}>
-                          <MilestoneEditor
-                            milestone={milestone}
-                            canDelete={canManageRoadmap}
-                            onSave={async (args) => {
-                              await updateMilestone(args);
-                            }}
-                            onDelete={async (id) => {
-                              await deleteMilestone(id);
-                              if (outlineSelection?.kind === "milestone" && outlineSelection.id === id) {
-                                setOutlineSelection(null);
-                              }
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <p className="pm-empty">
+                  Select a milestone or experiment from the outline, or create a new one from the outline toolbar.
+                </p>
               </section>
+            )
+          ) : null}
 
-              <section className="pm-panel-section">
-                <div className="pm-panel-section-head">
-                  <h3>Experiments</h3>
-                  <span>{activeProjectExperiments.length}</span>
-                </div>
-                <div className="pm-inline-create">
-                  <input
-                    value={experimentDraftTitle}
-                    onChange={(event) => setExperimentDraftTitle(event.target.value)}
-                    placeholder="New experiment title"
-                  />
-                  <select
-                    className="pm-inline-select"
-                    value={experimentDraftMilestoneId}
-                    onChange={(event) => setExperimentDraftMilestoneId(event.target.value)}
-                  >
-                    <option value="">Unassigned</option>
-                    {activeProjectMilestones.map((milestone) => (
-                      <option key={milestone.id} value={milestone.id}>
-                        {milestone.title}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="pm-primary-button"
-                    disabled={!experimentDraftTitle.trim()}
-                    onClick={() => void handleCreateExperiment()}
-                  >
-                    Add
-                  </button>
-                </div>
-                {activeProjectExperiments.length === 0 ? (
-                  <p className="pm-empty">No experiments yet.</p>
-                ) : (
-                  <div className="pm-item-list">
-                    {activeProjectExperiments.map((experiment) => {
-                      const highlight =
-                        outlineSelection?.kind === "experiment" && outlineSelection.id === experiment.id;
-                      return (
-                        <div key={experiment.id} className={`pm-item-wrap${highlight ? " highlight" : ""}`}>
-                          <ExperimentEditor
-                            experiment={experiment}
-                            canDelete={canManageRoadmap}
-                            milestones={activeProjectMilestones}
-                            protocols={protocols}
-                            protocolTitles={protocolTitles}
-                            onSave={async (args) => {
-                              await updateExperiment(args);
-                            }}
-                            onDelete={async (id) => {
-                              await deleteExperiment(id);
-                              if (outlineSelection?.kind === "experiment" && outlineSelection.id === id) {
-                                setOutlineSelection(null);
-                              }
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            </div>
+          {viewSubTab === "roadmap" ? (
+            <ProjectRoadmapPreview
+              milestones={activeProjectMilestones}
+              experimentsByMilestone={experimentsByMilestone}
+              protocolTitles={protocolTitles}
+              unassignedExperiments={activeUnassignedExperiments}
+            />
           ) : null}
         </div>
       </section>
@@ -1355,6 +1536,105 @@ export const App = () => {
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Roadmap preview
+// ---------------------------------------------------------------------------
+
+const ProjectRoadmapPreview = ({
+  milestones,
+  experimentsByMilestone,
+  unassignedExperiments,
+  protocolTitles,
+}: {
+  milestones: MilestoneRecord[];
+  experimentsByMilestone: Map<string, ExperimentRecord[]>;
+  unassignedExperiments: ExperimentRecord[];
+  protocolTitles: Map<string, string>;
+}) => (
+  <div className="pm-roadmap-preview">
+    {milestones.length === 0 && unassignedExperiments.length === 0 ? (
+      <section className="pm-panel-section">
+        <div className="pm-panel-section-head">
+          <h3>Roadmap</h3>
+          <span>Rendered view</span>
+        </div>
+        <p className="pm-empty">No milestones or experiments yet. Build the roadmap from the outline toolbar.</p>
+      </section>
+    ) : (
+      <>
+        {milestones.map((milestone, index) => {
+          const milestoneExperiments = experimentsByMilestone.get(milestone.id) ?? [];
+          return (
+            <section key={milestone.id} className="pm-roadmap-section">
+              <header className="pm-roadmap-section-head">
+                <div>
+                  <span className="pm-outline-marker">Milestone {index + 1}</span>
+                  <h3>{milestone.title}</h3>
+                  <p>{milestone.description || "No milestone description yet."}</p>
+                </div>
+                <div className="pm-roadmap-section-meta">
+                  <span className={`pm-status-tag pm-status-tag-${milestone.status}`}>{statusLabel(milestone.status)}</span>
+                  <span>{milestone.due_date ? `Due ${formatDate(milestone.due_date)}` : "No due date"}</span>
+                </div>
+              </header>
+
+              {milestoneExperiments.length === 0 ? (
+                <p className="pm-empty">No experiments assigned to this milestone yet.</p>
+              ) : (
+                <div className="pm-roadmap-card-grid">
+                  {milestoneExperiments.map((experiment, experimentIndex) => (
+                    <article key={experiment.id} className="pm-roadmap-card">
+                      <div className="pm-roadmap-card-head">
+                        <div>
+                          <span className="pm-outline-marker">Experiment {index + 1}.{experimentIndex + 1}</span>
+                          <strong>{experiment.title}</strong>
+                        </div>
+                        <span className={`pm-status-tag pm-status-tag-${experiment.status}`}>{statusLabel(experiment.status)}</span>
+                      </div>
+                      <p>{experiment.notes || "No experiment notes yet."}</p>
+                      <div className="pm-roadmap-card-meta">
+                        <span>{experiment.protocol_id ? protocolTitles.get(experiment.protocol_id) ?? "Linked protocol" : "No linked protocol"}</span>
+                        <span>{experiment.started_at ? `Started ${formatDateTime(experiment.started_at)}` : "Not started"}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
+
+        {unassignedExperiments.length > 0 ? (
+          <section className="pm-roadmap-section">
+            <header className="pm-roadmap-section-head">
+              <div>
+                <span className="pm-outline-marker">Unassigned</span>
+                <h3>Unassigned experiments</h3>
+                <p>These experiments are not yet attached to a milestone.</p>
+              </div>
+            </header>
+            <div className="pm-roadmap-card-grid">
+              {unassignedExperiments.map((experiment) => (
+                <article key={experiment.id} className="pm-roadmap-card">
+                  <div className="pm-roadmap-card-head">
+                    <strong>{experiment.title}</strong>
+                    <span className={`pm-status-tag pm-status-tag-${experiment.status}`}>{statusLabel(experiment.status)}</span>
+                  </div>
+                  <p>{experiment.notes || "No experiment notes yet."}</p>
+                  <div className="pm-roadmap-card-meta">
+                    <span>{experiment.protocol_id ? protocolTitles.get(experiment.protocol_id) ?? "Linked protocol" : "No linked protocol"}</span>
+                    <span>{experiment.completed_at ? `Completed ${formatDateTime(experiment.completed_at)}` : "In progress"}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </>
+    )}
+  </div>
+);
 
 // ---------------------------------------------------------------------------
 // InfoTab (project metadata editor)
