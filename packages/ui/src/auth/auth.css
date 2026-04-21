@@ -185,3 +185,33 @@
   color: var(--ilm-color-text-muted, #64748b);
   text-transform: capitalize;
 }
+
+.ilm-app-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ilm-app-switcher-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--ilm-color-border, #e2e5ea);
+  border-radius: 999px;
+  background: var(--ilm-color-surface, #ffffff);
+  color: var(--ilm-color-text-muted, #64748b);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.ilm-app-switcher-link:hover {
+  border-color: var(--ilm-color-accent, #2563eb);
+  color: var(--ilm-color-text, #0f172a);
+}
+
+.ilm-app-switcher-link-active {
+  background: var(--ilm-color-accent, #2563eb);
+  border-color: var(--ilm-color-accent, #2563eb);
+  color: #ffffff;
+}

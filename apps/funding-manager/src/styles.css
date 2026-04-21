@@ -1,0 +1,168 @@
+:root {
+  color: #302047;
+  background: #f7f2fb;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.12), transparent 26%),
+    linear-gradient(180deg, #f7f2fb 0%, #f2ebf9 100%);
+  color: #302047;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.manager-shell {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.manager-header,
+.manager-grid {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.manager-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.manager-kicker {
+  margin: 0 0 0.5rem;
+  color: #76539e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.manager-header h1,
+.manager-card h2 {
+  margin: 0;
+  font-family: "Georgia", serif;
+}
+
+.manager-header h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.manager-subtitle {
+  max-width: 42rem;
+  margin: 0.85rem 0 0;
+  color: #5d487b;
+  font-size: 1.05rem;
+}
+
+.manager-header-actions {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: end;
+}
+
+.manager-ghost-button {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #decff0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #5d3f7f;
+}
+
+.manager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.manager-card {
+  border: 1px solid rgba(93, 63, 127, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 1.4rem;
+  box-shadow: 0 18px 44px rgba(48, 32, 71, 0.08);
+}
+
+.manager-card-hero {
+  grid-column: 1 / -1;
+}
+
+.manager-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.manager-card-header span,
+.manager-stat-grid span {
+  color: #7b5aa0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.manager-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.manager-stat-grid div,
+.manager-list {
+  color: #5d487b;
+}
+
+.manager-stat-grid strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #3f2a5b;
+  font-size: 1.2rem;
+}
+
+.manager-stat-grid small {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.manager-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .manager-header,
+  .manager-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-header-actions {
+    justify-items: start;
+  }
+
+  .manager-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}

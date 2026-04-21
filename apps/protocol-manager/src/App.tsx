@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { useAuth } from "@ilm/ui";
+import { AppSwitcher, useAuth } from "@ilm/ui";
 import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
 import { getSupabaseClient, nowIso, safeJsonParse } from "@ilm/utils";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
@@ -1343,6 +1343,7 @@ export const App = ({ page }: AppProps) => {
         </nav>
 
         <div className="dashboard-actions">
+          <AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />
           <div className="dashboard-connection-badge">
             <span>Workspace</span>
             <strong>{MODULE_CARDS.filter((module) => module.status === "Available").length} active module(s)</strong>
@@ -2181,6 +2182,7 @@ export const App = ({ page }: AppProps) => {
             </button>
 
             <div className="protocol-topbar-controls">
+              <AppSwitcher currentApp="protocol-manager" baseUrl={APP_BASE_URL} />
               <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
                 <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
                   Step

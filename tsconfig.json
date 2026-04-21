@@ -6,6 +6,9 @@
     { "path": "packages/validation" },
     { "path": "packages/ai-import" },
     { "path": "packages/ui" },
-    { "path": "apps/protocol-manager" }
+    { "path": "apps/protocol-manager" },
+    { "path": "apps/project-manager" },
+    { "path": "apps/supply-manager" },
+    { "path": "apps/funding-manager" }
   ]
 }
