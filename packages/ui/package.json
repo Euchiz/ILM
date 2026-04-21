@@ -6,7 +6,12 @@
   "types": "src/index.tsx",
   "exports": {
     ".": "./src/index.tsx",
-    "./tokens.css": "./src/tokens.css"
+    "./tokens.css": "./src/tokens.css",
+    "./auth.css": "./src/auth/auth.css"
+  },
+  "dependencies": {
+    "@ilm/utils": "file:../utils",
+    "@supabase/supabase-js": "^2.45.0"
   },
   "peerDependencies": {
     "react": "^18.3.1"
