@@ -5,7 +5,6 @@ import {
   listLabInvitations,
   listLabMembers,
   removeLabMember,
-  updateLabMemberRole,
   type LabInvitationRecord,
   type LabMemberRecord,
 } from "./api";
@@ -69,21 +68,6 @@ export const LabMembersPanel = ({
     () => invitations.filter((invitation) => invitation.status === "pending"),
     [invitations]
   );
-
-  const handleRoleChange = async (member: LabMemberRecord, role: "admin" | "member") => {
-    if (!labId || member.role === "owner" || member.role === role) return;
-    setBusyUserId(member.user_id);
-    setError(null);
-    try {
-      await updateLabMemberRole(labId, member.user_id, role);
-      await load();
-      await refreshLabs();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusyUserId(null);
-    }
-  };
 
   const handleRemove = async (member: LabMemberRecord) => {
     if (!labId || member.role === "owner") return;
@@ -158,26 +142,16 @@ export const LabMembersPanel = ({
                   <div className="ilm-admin-actions">
                     <span className={`ilm-admin-badge ilm-admin-badge-${member.role}`}>{member.role}</span>
                     {member.role !== "owner" ? (
-                      <>
-                        <button
-                          type="button"
-                          className="ilm-text-button"
-                          disabled={isBusy}
-                          onClick={() => void handleRoleChange(member, member.role === "admin" ? "member" : "admin")}
-                        >
-                          {member.role === "admin" ? "Demote to member" : "Promote to admin"}
-                        </button>
-                        <button
-                          type="button"
-                          className="ilm-text-button"
-                          disabled={isBusy}
-                          onClick={() => void handleRemove(member)}
-                        >
-                          Remove
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        className="ilm-text-button"
+                        disabled={isBusy}
+                        onClick={() => void handleRemove(member)}
+                      >
+                        Remove
+                      </button>
                     ) : (
-                      <span className="ilm-admin-helper">Owner role is fixed here</span>
+                      <span className="ilm-admin-helper">Owner</span>
                     )}
                   </div>
                 </li>

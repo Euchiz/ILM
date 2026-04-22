@@ -75,8 +75,12 @@ jobs:
           cp -R apps/supply-manager/dist/. .pages-dist/supply-manager/
           cp -R apps/funding-manager/dist/. .pages-dist/funding-manager/
           cp -R apps/account/dist/. .pages-dist/account/
-          # SPA fallback for /account/join/<uuid> and any future client-side routes
-          cp .pages-dist/account/index.html .pages-dist/account/404.html
+          # SPA fallback: GitHub Pages serves /<site>/404.html for any missing
+          # path under the site, so put the Account shell there — that's the
+          # app with client-side routes (/account/join/<uuid>). The shell
+          # reads window.location.pathname and routes accordingly; assets
+          # resolve against its configured base of /ILM/account/.
+          cp .pages-dist/account/index.html .pages-dist/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
