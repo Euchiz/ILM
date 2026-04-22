@@ -4,37 +4,60 @@ Rewrite this file when priorities change. It always describes *the current plann
 
 ---
 
-## Stage: Funding Manager schema + adapter
+## Stage: Funding Manager (Stage 4b)
 
-**Why now.** Account app is feature-complete (flat two-panel layout, strict owner/admin/member tier hierarchy, invitations + join requests + share links, auto-claim on sign-in, real-time badge updates). The remaining auth-shell stubs (`funding-manager`, `supply-manager`) are the biggest gap. Funding first because it's a cleaner domain model (grants / budgets / allocations / expenses) and because project-manager already has experimental expense fields that funding should take over.
+**Why now.** Account app is complete. Of the remaining auth-shell stubs (`funding-manager`, `supply-manager`), funding has a cleaner domain model and project-manager already carries experimental expense fields that funding should take over — blocking cleanup there until funding lands.
 
-### Backend
+### Step 1 — Schema migration
 
-New migration `YYYYMMDDHHMMSS_funding_manager.sql`:
+Create `supabase/migrations/YYYYMMDDHHMMSS_funding_manager.sql`:
 
-- `grants` (lab_id, funder, title, amount, start_date, end_date, status, notes)
-- `budgets` (grant_id, fiscal_year, amount)
-- `allocations` (budget_id, project_id, amount, status: proposed/committed/declined)
-- `expenses` (allocation_id, amount, category, occurred_on, description, submitted_by)
-- RLS modeled on `projects`: lab-scoped, read for members, write for admins + project leads.
-- RPCs: `propose_allocation`, `commit_allocation`, `decline_allocation` (admin-only), `submit_expense`, `approve_expense`, `reject_expense`.
-- `audit_log` entries on commit / decline / approve / reject.
+- `grants` — `(id, lab_id, funder, title, amount_total numeric, currency, start_date, end_date, status: active/closed, notes, created_by, timestamps)`
+- `budgets` — `(id, grant_id, fiscal_year int, amount numeric, notes)`; unique `(grant_id, fiscal_year)`
+- `allocations` — `(id, budget_id, project_id, amount numeric, status: proposed/committed/declined, reviewed_by, reviewed_at, comment, created_by, timestamps)`
+- `expenses` — `(id, allocation_id, amount numeric, category, occurred_on date, description, submitted_by, status: submitted/approved/rejected, reviewed_by, reviewed_at, comment, timestamps)`
+- `updated_at` trigger on all four tables.
+- **RLS**: lab-scoped via the parent chain (`grants.lab_id` → `budgets.grant_id` → `allocations.budget_id` → `expenses.allocation_id`). Read for any lab member; write on grants/budgets restricted to `is_lab_admin`; allocations writable by admins + project leads of the target project; expenses submittable by project leads and approvable by admins.
+- **RPCs** (all SECURITY DEFINER, emit `_log_audit`):
+  - `propose_allocation(p_budget_id, p_project_id, p_amount)` — inserts with status=proposed
+  - `commit_allocation(p_allocation_id, p_comment?)` / `decline_allocation(p_allocation_id, p_comment)` — admin-only
+  - `submit_expense(p_allocation_id, p_amount, p_category, p_occurred_on, p_description)` — project-lead or admin
+  - `approve_expense(p_expense_id, p_comment?)` / `reject_expense(p_expense_id, p_comment)` — admin-only; reject requires comment
+- **Audit**: entries on `commit / decline / approve / reject` (mirror project review pattern); draft edits are not logged.
 
-### Frontend
+### Step 2 — Remove experimental fields from `projects`
 
-- `apps/funding-manager` adapter + hooks mirroring `useProjectWorkspace`.
-- Screens: Grants overview, Budget drill-down, Allocation queue (admin review), Expense ledger.
-- Reuse `SubmissionHistoryLink`, `LabMembersPanel` removed from the app (lives in Account shell now).
+Project-manager carries in-progress expense-ish columns that predate the funding model. Drop them in the same migration (or an immediately-following one) once funding owns the domain — list them during the migration write-up. Guard with a data-migration step if any rows are populated.
+
+### Step 3 — Shared types + adapter
+
+- `packages/types`: `Grant`, `Budget`, `Allocation`, `Expense`, status unions.
+- `packages/ui` (or `apps/funding-manager/src/adapters`): `useFundingWorkspace` hook mirroring `useProjectWorkspace` — one subscription per lab, local normalization, optimistic updates on the RPC verbs above.
+
+### Step 4 — Frontend screens
+
+- **Grants overview** — table of grants with fiscal-year budgets inlined; admins can create/edit/close.
+- **Budget drill-down** — per-grant view: budget vs. committed vs. expensed; per-project allocation rows; inline allocation proposals for project leads.
+- **Allocation queue** — admin review surface; approve/decline with optional comment; mirror the project review UX.
+- **Expense ledger** — per-allocation entry log; submit form for leads; approval queue for admins with required-comment rejection.
+- Reuse `SubmissionHistoryLink` pattern for per-allocation history.
+
+### Step 5 — Deployment + docs
+
+- Register the app in `.github/workflows/deploy-protocol-manager-pages.yml` (build step + artifact copy).
+- Add `AccountLinkCard` to the funding-manager shell.
+- Update `docs/features.md` under a new "Funding Manager (Stage 4b)" section once shipped.
 
 ### Tradeoffs
 
-- **Scope.** A first pass can ship grants + budgets + allocations and defer expenses. Recommend doing the full loop so expense approval surfaces the audit pattern before supply-manager copies it.
+- **Scope of first ship.** Could stop after allocations (grants → budgets → allocations) and defer expenses. Recommend shipping the full loop so expense approval surfaces the audit pattern before supply-manager copies it.
 - **Source of truth for committed dollars.** Allocations vs. expenses: commit-at-allocation keeps budgets tidy; commit-at-expense is more accurate but churns dashboards. Recommend commit-at-allocation with expense = actuals.
+- **Currency.** Single-currency per grant column keeps math simple. Multi-currency conversion is explicitly out of scope for this stage.
 
 ---
 
 ## After this stage
 
-- **Stage 4c (supply-manager)** — schema design + adapter + UI; reuse funding's audit pattern for order/receive transitions.
-- **Rotatable share-link token**. Today the Account share link embeds a raw lab UUID. A signed HMAC with a server-stored secret + a "rotate" button in `LabShareLinkPanel` would make leaked links revocable.
+- **Stage 4c — Supply Manager.** Schema design + adapter + UI; reuse funding's audit pattern for order/receive transitions.
+- **Rotatable share-link token.** Today the Account share link embeds a raw lab UUID. A signed HMAC with a server-stored secret + a "rotate" button in the share-link section would make leaked links revocable.
 - **Deferred housekeeping**: fractional `sort_order`, layout polish (InfoTab responsive grid, roadmap card ellipsis, recycle-bin visual differentiation), dead-code simplify pass.
