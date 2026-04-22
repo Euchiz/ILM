@@ -387,3 +387,95 @@
     justify-content: start;
   }
 }
+
+/* ------------------------------------------------------------------
+ * Submission history link + drawer
+ * ----------------------------------------------------------------*/
+.ilm-history-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--rl-muted, #6d736a);
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ilm-history-link:hover { color: var(--rl-ink, #1b1b1b); }
+
+.ilm-history-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.ilm-history-sheet {
+  background: var(--rl-surface, #fff);
+  border-radius: 12px;
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+.ilm-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.ilm-history-head h3 { margin: 0; font-size: 1rem; }
+.ilm-history-empty {
+  color: var(--rl-muted, #6d736a);
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+.ilm-history-log {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ilm-history-entry {
+  border-left: 3px solid var(--rl-line, #d6d9d2);
+  padding: 0.5rem 0.75rem;
+  background: var(--rl-surface-2, #f3f3f3);
+  border-radius: 4px;
+}
+.ilm-history-entry-submitted { border-left-color: #4a6fa5; }
+.ilm-history-entry-approved { border-left-color: #4f8a4f; }
+.ilm-history-entry-rejected { border-left-color: #b3532a; }
+.ilm-history-entry-head {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.ilm-history-entry-head strong { font-size: 0.85rem; }
+.ilm-history-actor { color: var(--rl-muted, #6d736a); margin-left: auto; }
+.ilm-history-comment {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.ilm-history-no-comment { color: var(--rl-muted, #6d736a); font-style: italic; }
+
+.ilm-admin-badge-owner {
+  background: #3a3a3a;
+  color: #fff;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}

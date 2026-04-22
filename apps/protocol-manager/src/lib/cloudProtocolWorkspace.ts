@@ -25,6 +25,13 @@ export type PublishedProtocolRecord = {
   deletedAt: string | null;
 };
 
+export type SubmissionHistoryEntry = {
+  type: "submitted" | "approved" | "rejected" | string;
+  actor?: string | null;
+  at?: string | null;
+  comment?: string | null;
+};
+
 export type DraftRecord = {
   id: string;
   protocolId: string | null;
@@ -32,6 +39,7 @@ export type DraftRecord = {
   projectName: string;
   document: ProtocolDocument;
   updatedAt: string;
+  submissionHistory: SubmissionHistoryEntry[];
 };
 
 export type SubmissionStatus = "pending" | "approved" | "rejected" | "withdrawn";
@@ -81,6 +89,7 @@ type DraftRow = {
   project_id: string | null;
   updated_at: string;
   document_json: unknown;
+  submission_history?: unknown;
 };
 
 type SubmissionRow = {
@@ -152,6 +161,16 @@ const toDraftRecord = (row: DraftRow, projectName: string): DraftRecord | null =
   const document = normalizeDocument(row.document_json, projectName, "reviewing");
   if (!document) return null;
 
+  const historyRaw = Array.isArray(row.submission_history) ? row.submission_history : [];
+  const submissionHistory = historyRaw
+    .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+    .map((entry) => ({
+      type: typeof entry.type === "string" ? entry.type : "submitted",
+      actor: typeof entry.actor === "string" ? entry.actor : null,
+      at: typeof entry.at === "string" ? entry.at : null,
+      comment: typeof entry.comment === "string" ? entry.comment : null,
+    })) as SubmissionHistoryEntry[];
+
   return {
     id: row.id,
     protocolId: row.protocol_id,
@@ -159,6 +178,7 @@ const toDraftRecord = (row: DraftRow, projectName: string): DraftRecord | null =
     projectName,
     document,
     updatedAt: row.updated_at,
+    submissionHistory,
   };
 };
 
@@ -207,7 +227,7 @@ export const loadCloudWorkspaceSnapshot = async (
   ] = await Promise.all([
     supabase.from("projects").select("id, name, approval_required").eq("lab_id", labId).order("name", { ascending: true }),
     supabase.from("protocols").select("id, project_id, updated_at, document_json").eq("lab_id", labId).order("updated_at", { ascending: false }),
-    supabase.from("protocol_drafts").select("id, protocol_id, project_id, updated_at, document_json").eq("lab_id", labId).order("updated_at", { ascending: false }),
+    supabase.from("protocol_drafts").select("id, protocol_id, project_id, updated_at, document_json, submission_history").eq("lab_id", labId).order("updated_at", { ascending: false }),
     supabase
       .from("protocol_submissions")
       .select("id, project_id, protocol_id, submitter_id, status, review_comment, reviewed_by, reviewed_at, submitted_at, document_json")

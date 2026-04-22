@@ -3,6 +3,8 @@ import type { PropsWithChildren } from "react";
 export * from "./auth";
 export * from "./admin";
 export { AppSwitcher, type AppId } from "./AppSwitcher";
+export { SubmissionHistoryLink, type SubmissionHistoryEntry } from "./SubmissionHistoryLink";
+export { LabSettingsPanel } from "./admin/LabSettingsPanel";
 
 export const Panel = ({ title, children }: PropsWithChildren<{ title: string }>) => (
   <section className="ilm-panel">

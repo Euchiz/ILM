@@ -15,6 +15,13 @@ export interface CloudProtocolRow {
   deleted_at: string | null;
 }
 
+export interface SubmissionHistoryEntryRow {
+  type: "submitted" | "approved" | "rejected" | string;
+  actor?: string | null;
+  at?: string | null;
+  comment?: string | null;
+}
+
 export interface CloudDraftRow {
   id: string;
   lab_id: string;
@@ -23,6 +30,7 @@ export interface CloudDraftRow {
   user_id: string;
   document_json: ProtocolDocument;
   updated_at: string;
+  submission_history?: SubmissionHistoryEntryRow[] | null;
 }
 
 export interface CloudProjectRow {
@@ -60,7 +68,7 @@ export async function listProtocols(labId: string): Promise<CloudProtocolRow[]> 
 export async function listDrafts(labId: string): Promise<CloudDraftRow[]> {
   const { data, error } = await client()
     .from("protocol_drafts")
-    .select("id, lab_id, project_id, protocol_id, user_id, document_json, updated_at")
+    .select("id, lab_id, project_id, protocol_id, user_id, document_json, updated_at, submission_history")
     .eq("lab_id", labId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -98,8 +106,11 @@ export async function discardDraft(draftId: string): Promise<void> {
  * approval_required=false (e.g. the default General project), this also
  * publishes immediately.
  */
-export async function submitDraft(draftId: string): Promise<string> {
-  const { data, error } = await client().rpc("submit_draft", { p_draft_id: draftId });
+export async function submitDraft(draftId: string, comment?: string | null): Promise<string> {
+  const { data, error } = await client().rpc("submit_draft", {
+    p_draft_id: draftId,
+    p_comment: comment ?? null,
+  });
   if (error) throw error;
   return data as string;
 }

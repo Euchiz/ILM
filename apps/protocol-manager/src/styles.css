@@ -1821,6 +1821,17 @@ label {
   margin-top: 0.75rem;
 }
 
+.protocol-autosaved-caption {
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(75, 120, 70, 0.14);
+  color: #3d6b3b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .protocol-status-badge {
   display: inline-flex;
   align-items: center;

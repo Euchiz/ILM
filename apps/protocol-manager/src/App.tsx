@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { AppSwitcher, useAuth } from "@ilm/ui";
+import { AppSwitcher, SubmissionHistoryLink, useAuth } from "@ilm/ui";
 import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
 import { getSupabaseClient, nowIso, safeJsonParse } from "@ilm/utils";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
@@ -612,6 +612,7 @@ export const App = ({ page }: AppProps) => {
       }
 
       const nextDraftId = typeof data === "string" ? data : String(data ?? "");
+      const existingDraft = workspace?.drafts.find((draft) => draft.id === nextDraftId);
       const nextDraft: DraftRecord = {
         id: nextDraftId,
         protocolId: target.protocolId,
@@ -619,6 +620,7 @@ export const App = ({ page }: AppProps) => {
         projectName: resolveProjectName(target.projectId),
         document: preparedDocument,
         updatedAt: nowIso(),
+        submissionHistory: existingDraft?.submissionHistory ?? [],
       };
 
       setEditor((current) =>
@@ -1078,7 +1080,14 @@ export const App = ({ page }: AppProps) => {
       const draftId = await persistEditorDraft(target, { createIfMissing: true });
       if (!draftId) return;
 
-      const { error } = await supabase.rpc("submit_draft", { p_draft_id: draftId });
+      const submitComment = project.approvalRequired
+        ? window.prompt(`Submit "${preparedDocument.protocol.title}" for review. Optional comment:`, "")
+        : null;
+      if (project.approvalRequired && submitComment === null) return;
+      const { error } = await supabase.rpc("submit_draft", {
+        p_draft_id: draftId,
+        p_comment: submitComment?.trim() || null,
+      });
       if (error) throw error;
 
       const nextWorkspace = await refreshWorkspace();
@@ -1233,7 +1242,10 @@ export const App = ({ page }: AppProps) => {
         });
         if (error) throw error;
         const draftId = typeof data === "string" ? data : String(data ?? "");
-        const submitResult = await supabase.rpc("submit_draft", { p_draft_id: draftId });
+        const submitResult = await supabase.rpc("submit_draft", {
+          p_draft_id: draftId,
+          p_comment: null,
+        });
         if (submitResult.error) throw submitResult.error;
       }
 
@@ -1593,9 +1605,15 @@ export const App = ({ page }: AppProps) => {
           </div>
 
           <div className="protocol-workspace-actions">
-            <button type="button" onClick={() => void saveActiveDraft()} disabled={!editor}>
-              Save draft
-            </button>
+            {editor?.draftId ? (
+              <span className="protocol-autosaved-caption" title="Draft changes are autosaved to your private workspace.">
+                Autosaved
+              </span>
+            ) : (
+              <button type="button" onClick={() => void saveActiveDraft()} disabled={!editor}>
+                Save draft
+              </button>
+            )}
             <button className="protocol-primary-action" type="button" onClick={() => void handleSubmitForReview()} disabled={!editor?.projectId}>
               {activeProject?.approvalRequired === false ? "Publish to General" : "Submit for review"}
             </button>
@@ -2389,6 +2407,13 @@ export const App = ({ page }: AppProps) => {
               <p className="protocol-subbar-description">Protocol-specific views for authoring, inspection, rendering, and transfer.</p>
             </div>
             <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
+              {editor?.draftId ? (
+                <SubmissionHistoryLink
+                  visible
+                  history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
+                  linkLabel="Submission history"
+                />
+              ) : null}
               <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
                 Summary
               </button>

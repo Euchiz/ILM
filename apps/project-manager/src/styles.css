@@ -748,6 +748,19 @@ a { color: inherit; }
   font-size: 0.84rem;
 }
 
+.pm-draft-autosaved {
+  display: inline-block;
+  margin-top: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(75, 120, 70, 0.12);
+  color: #3d6b3b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .pm-personnel-body { display: flex; flex-direction: column; gap: 1.1rem; }
 
 .pm-roster-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }

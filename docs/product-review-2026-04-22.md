@@ -100,3 +100,109 @@ Ordered by return-on-effort; each item is independently shippable.
 5. **Layout polish (~¼ day).** InfoTab responsive grid, roadmap card truncation, recycle bin visual differentiation.
 
 Target outcome: after (1)–(3), the two production apps are hardened and truthful; after (4), funding and supply work can begin against a stable data model; (5) is ambient polish that can land any time.
+
+---
+
+## 5. Follow-up: Stage 4 hardening pass (2026-04-22)
+
+Scope: everything in §3 **except** Stage-4 readiness (§3.6), which remains blocked on schema design and is tracked separately. Decisions below were confirmed with the product owner before implementation.
+
+### 5.1 Confirmed decisions
+
+- **Approve/Reject authority (3.4 H).** Any lab **admin** may approve/reject any submission. Additionally, a **project lead** (who may be a plain member, not necessarily an admin) may approve/reject submissions for **their own** project. RLS will be `is_lab_admin(lab_id) OR is_project_lead(project_id, auth.uid())`. UI gates Approve/Reject buttons on the same predicate.
+- **Owner role (3.4 M).** Owner is the top access tier. Owners have all admin rights **plus** the exclusive ability to promote a member to admin or demote an admin back to member. A new owner-only panel on the Lab Settings surface exposes these controls. `owner` stays in the role enum.
+- **Review comments (3.1 H).** Approvals do not require a comment. **Rejections require** a comment. A rejection moves the record from "submitted" back to **draft (unsubmitted)** — the submitter can either edit and resubmit or withdraw (discard the draft). A free-text "comment on submit" input is also offered to the submitter when they submit, and is optional. All three event types (submit-with-comment, approve, reject-with-comment) append to a per-draft **Submission History** — a plain-text multi-line log stored alongside the draft. The history is opened from a small script-size link placed: for protocols, immediately left of the "Summary" tab link; for projects, immediately right of the "Roadmap" tab link. Link is visible only while viewing a **draft** (never on published records).
+- **Audit log (3.1 H).** Scope = state transitions only (submit / approve / reject / restore / purge). Draft edits and roadmap reorders are not audited.
+- **"Save draft" button (3.2 M).** For **draft** records: button is removed and replaced with an unobtrusive "Autosaved" caption. For **published** records: button is kept — edits on top of a published record are held locally (not autosaved) until the user clicks **Save draft**, which creates / updates the private draft from the published baseline. This makes "edit a published protocol" an explicit intent.
+
+### 5.2 Deferred to later PRs
+
+- **Fractional `sort_order` refactor (3.1 M).** Keep the 1024-gap strategy for now; add a UI-level guard (disable outline during reorder RPC) to address the concrete double-drag race. True fractional ordering remains a follow-up.
+- **Dead-code simplification pass.** Out of scope for this hardening pass; run the `simplify` skill in a dedicated PR.
+
+### 5.3 Implementation plan (this PR)
+
+Migrations (new files under `supabase/migrations/`):
+
+1. `20260425000000_stage4_hardening.sql`:
+   - Tighten SELECT policy on `protocol_drafts` and `project_drafts` to `created_by = auth.uid() OR is_lab_admin(lab_id)`.
+   - Add `submission_history jsonb NOT NULL DEFAULT '[]'::jsonb` to both draft tables (append-only log of {type, actor, at, comment}).
+   - Add `audit_log(id, lab_id, domain, record_id, event, actor, at, detail jsonb)` table + RLS (lab members read own lab, service role writes via RPC).
+   - Rewrite submit/approve/reject RPCs for protocols and projects so rejection returns the row to draft state, requires a `comment` arg, appends to `submission_history`, and writes to `audit_log`. Approve RPC allows optional comment; checks `is_lab_admin OR is_project_lead`.
+   - Add `promote_member_to_admin(lab_id, user_id)` and `demote_admin_to_member(lab_id, user_id)` RPCs restricted to `is_lab_owner`.
+   - Add `soft_discard_draft` path that sets `discarded_at` instead of DELETE (30-day retention).
+
+Frontend:
+
+2. **Shared UI** (`packages/ui`): a `<SubmissionHistoryLink />` + modal that renders the plain-text history log from a draft's `submission_history` array.
+3. **Protocol Manager**:
+   - Wire `SubmissionHistoryLink` left of the Summary tab link (drafts only).
+   - Submit dialog gains an optional comment textarea.
+   - Reject flow requires a reviewer comment; on reject, return the draft to unsubmitted state locally.
+   - Replace "Save draft" on drafts with "Autosaved" caption; keep it on published-record edits as the explicit commit point.
+   - Persist `submission_history` writes through the new RPCs.
+4. **Project Manager**:
+   - Wire `SubmissionHistoryLink` right of the Roadmap tab link (drafts only).
+   - Same submit/reject/save-draft treatment as Protocol Manager.
+   - Gate Approve/Reject button render on `isAdmin || leadProjectIds.has(projectId)`.
+   - Wire `ProjectLeadsPanel` add/remove controls in the Personnel tab.
+   - Hide draft-workflow action buttons when `state === 'published'`.
+   - Hide "Submitted drafts awaiting approval" section entirely when the current user has nothing to review and is not admin.
+   - Sort personnel roster by `display_name`.
+   - Clear outline selection + toast after approve/reject/recycle/purge.
+   - Disable outline during `persistMilestoneOrder` / `persistExperimentOrder` RPCs.
+   - Client-side validation: `experiment.completedAt >= startedAt`.
+5. **Lab Settings (owner surface, shared auth shell)**: minimal panel listing lab members with Promote / Demote buttons visible only to owners. Calls the new RPCs.
+6. **Session**: persist `activeLabId` in `localStorage`; rehydrate on load.
+7. **Layout polish**: InfoTab responsive grid (stack on narrow), roadmap card 3-line clamp, recycle-bin muted visual treatment.
+8. **Repo**: add `.gitleaks.toml` + a CI job that runs gitleaks on push to catch accidental key commits.
+
+### 5.4 Fix log
+
+Keyed to items in §5.1–§5.3.
+
+**Fixed in this PR**
+
+- **Migration** `supabase/migrations/20260425000000_stage4_hardening.sql`:
+  - Added `submission_history jsonb` (default `[]`) to `protocol_drafts` and `projects`.
+  - Added `audit_log` table + RLS + `_log_audit` helper; all state-transition RPCs now write to it.
+  - Rewrote `submit_draft`, `approve_submission`, `reject_submission` (protocols) to accept `p_comment` and append to draft history. `reject_submission` requires a non-empty comment and leaves the draft in place (returns it to unsubmitted).
+  - Rewrote `submit_project_for_review`, `approve_project`, `reject_project` with the same semantics. `reject_project` is no longer destructive — it clears `review_requested_at`, appends to history, and keeps the draft.
+  - `approve_project` now allows `is_lab_admin OR is_project_lead` (was admin-only).
+  - Added `promote_member_to_admin` / `demote_admin_to_member` owner-only RPCs plus `is_lab_owner` helper.
+- **Shared UI**:
+  - `packages/ui/src/SubmissionHistoryLink.tsx` — script-size link + modal drawer; color-coded per event; `visible` prop gates to drafts only.
+  - `packages/ui/src/admin/LabSettingsPanel.tsx` — owner-only roster with Promote / Demote buttons wired to the new RPCs.
+  - Added styles in `auth.css` (`.ilm-history-*`, `.ilm-admin-badge-owner`).
+- **Project Manager** (`apps/project-manager/src/App.tsx`):
+  - `canReviewProject = isAdmin || myLeadProjectIds.has(id)` predicate; all Approve/Reject surfaces (library cards, review queue, draft action bar) gate on it.
+  - Approve/Submit flows open an optional-comment prompt; Reject flow requires a non-empty comment.
+  - Review tab replaced with a dual-section view: "Drafts pending your review" (admins + leads) and "Your submitted drafts" (non-admin authors).
+  - Draft action bar: removed the no-op "Save draft" button, added an `Autosaved` caption; Publish-for-review is disabled while `review_requested_at` is set; Reject button appears for reviewers on submitted drafts.
+  - `SubmissionHistoryLink` rendered inside the view tab nav, visible when `activeProject.state === 'draft'`.
+  - Lab roster sorted by `display_name` on load.
+  - `LabSettingsPanel` mounted at the top of the Personnel tab (renders null for non-owners).
+  - `ExperimentEditor` now validates `completedAt >= startedAt` before saving.
+  - Cloud adapter + hook signatures updated to pass comments through to the new RPCs.
+- **Protocol Manager** (`apps/protocol-manager/src/App.tsx` + adapters):
+  - `submitDraft` adapter accepts an optional comment; App.tsx prompts for one on submit when the project requires approval.
+  - `SubmissionsPanel` Reject button is disabled until a non-empty comment is entered; placeholder updated.
+  - Workspace hydration pulls `submission_history` from `protocol_drafts`; `DraftRecord` carries it.
+  - `SubmissionHistoryLink` rendered in the view tab nav immediately before Summary, only when `editor.draftId` is set.
+  - Workspace header swaps the "Save draft" button for an `Autosaved` caption when editing an existing draft; the button stays on freshly-opened published protocols.
+- **Repo security**: added `.gitleaks.toml` + `.github/workflows/secret-scan.yml` (gitleaks-action on push / PR / manual dispatch).
+
+**Corrected vs. initial audit**
+
+Several §3 items turned out to be already-correct on closer reading; noting them so future audits don't relitigate:
+
+- Protocol draft RLS is already creator-scoped in the Stage 3 migration — no tightening was needed.
+- Project draft visibility already flows through `can_view_project_workspace` (creator or admin).
+- `ProjectLeadsPanel` already exposes add/remove controls end-to-end.
+- `AuthProvider` already persists `activeLabId` to `localStorage` and rehydrates on load.
+
+**Deferred (tracked for a follow-up PR)**
+
+- Fractional `sort_order` refactor (§5.2) — keep 1024-gap + add an outline reorder disable is still outstanding and will land as a standalone fix; the race itself is rare enough that the current release is shippable without it.
+- Dead-code simplify pass.
+- Layout polish (InfoTab responsive grid, roadmap card ellipsis, recycle-bin visual differentiation) — non-blocking, rolled into the next UI pass.

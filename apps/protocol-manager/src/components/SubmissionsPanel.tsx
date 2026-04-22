@@ -174,7 +174,7 @@ export const SubmissionsPanel = ({
                   <textarea
                     value={commentText}
                     onChange={(event) => setCommentText(event.target.value)}
-                    placeholder="Optional comment"
+                    placeholder="Optional comment for approve · required to reject"
                     rows={3}
                   />
                   <div className="ilm-submissions-review-buttons">
@@ -187,8 +187,9 @@ export const SubmissionsPanel = ({
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
-                      onClick={() => void runAction(row, "reject", commentText.trim() || undefined)}
+                      disabled={busy || !commentText.trim()}
+                      title={!commentText.trim() ? "A comment is required to reject." : undefined}
+                      onClick={() => void runAction(row, "reject", commentText.trim())}
                     >
                       Reject
                     </button>

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AppSwitcher,
+  LabSettingsPanel,
   ProjectLeadsPanel,
+  SubmissionHistoryLink,
   useAuth,
   listLabMembers,
   type LabMemberRecord,
@@ -247,6 +249,12 @@ const ExperimentEditor = ({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const startedIso = fromDateTimeLocalValue(startedAt);
+    const completedIso = fromDateTimeLocalValue(completedAt);
+    if (startedIso && completedIso && new Date(completedIso).getTime() < new Date(startedIso).getTime()) {
+      setError("Completion date must be on or after the start date.");
+      return;
+    }
     setBusy("saving");
     setError(null);
     try {
@@ -257,8 +265,8 @@ const ExperimentEditor = ({
         milestoneId: milestoneId || null,
         protocolId: protocolId || null,
         status,
-        startedAt: fromDateTimeLocalValue(startedAt),
-        completedAt: fromDateTimeLocalValue(completedAt),
+        startedAt: startedIso,
+        completedAt: completedIso,
       });
     } catch (err) {
       setError(errorMessage(err));
@@ -505,7 +513,11 @@ export const App = () => {
     let cancelled = false;
     listLabMembers(activeLab.id)
       .then((rows) => {
-        if (!cancelled) setLabMembers(rows);
+        if (cancelled) return;
+        const sorted = [...rows].sort((a, b) =>
+          (a.display_name ?? a.email ?? "").localeCompare(b.display_name ?? b.email ?? "")
+        );
+        setLabMembers(sorted);
       })
       .catch(() => {
         if (!cancelled) setLabMembers([]);
@@ -600,6 +612,25 @@ export const App = () => {
     return map;
   }, [leads]);
 
+  const myLeadProjectIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!user?.id) return set;
+    leads.forEach((l) => {
+      if (l.user_id === user.id) set.add(l.project_id);
+    });
+    return set;
+  }, [leads, user?.id]);
+
+  const canReviewProject = useCallback(
+    (project: ProjectRecord) => isAdmin || myLeadProjectIds.has(project.id),
+    [isAdmin, myLeadProjectIds]
+  );
+
+  const pendingForMyReview = useMemo(
+    () => pendingForReview.filter((project) => isAdmin || myLeadProjectIds.has(project.id)),
+    [pendingForReview, isAdmin, myLeadProjectIds]
+  );
+
   const protocolTitles = useMemo(
     () => new Map(protocols.map((p) => [p.id, p.title])),
     [protocols]
@@ -679,9 +710,11 @@ export const App = () => {
 
   const handleApprove = useCallback(
     async (project: ProjectRecord) => {
+      const comment = window.prompt(`Approve "${project.name}"? Optional comment:`, "");
+      if (comment === null) return;
       setActionError(null);
       try {
-        await approveProject(project.id);
+        await approveProject(project.id, comment.trim() || null);
       } catch (err) {
         setActionError(errorMessage(err));
       }
@@ -691,9 +724,11 @@ export const App = () => {
 
   const handleSubmitProjectForReview = useCallback(
     async (project: ProjectRecord) => {
+      const comment = window.prompt(`Submit "${project.name}" for review. Optional comment:`, "");
+      if (comment === null) return;
       setActionError(null);
       try {
-        await submitProjectForReview(project.id);
+        await submitProjectForReview(project.id, comment.trim() || null);
       } catch (err) {
         setActionError(errorMessage(err));
       }
@@ -703,16 +738,24 @@ export const App = () => {
 
   const handleReject = useCallback(
     async (project: ProjectRecord) => {
-      if (!window.confirm(`Reject and delete draft "${project.name}"? This cannot be undone.`)) return;
+      const comment = window.prompt(
+        `Reject "${project.name}"? A comment is required; the draft will return to the author.`,
+        ""
+      );
+      if (comment === null) return;
+      const trimmed = comment.trim();
+      if (!trimmed) {
+        setActionError("A rejection comment is required.");
+        return;
+      }
       setActionError(null);
       try {
-        await rejectProject(project.id);
-        if (activeProjectId === project.id) setActiveProjectId(null);
+        await rejectProject(project.id, trimmed);
       } catch (err) {
         setActionError(errorMessage(err));
       }
     },
-    [rejectProject, activeProjectId]
+    [rejectProject]
   );
 
   const handleRecycle = useCallback(
@@ -1080,7 +1123,7 @@ export const App = () => {
           <button type="button" className="pm-primary-button" onClick={() => openProject(project.id)}>
             Open
           </button>
-          {opts.showReviewActions && isAdmin ? (
+          {opts.showReviewActions && canReviewProject(project) ? (
             <>
               <button type="button" className="pm-text-button" onClick={() => void handleApprove(project)}>
                 Approve
@@ -1140,8 +1183,14 @@ export const App = () => {
         </article>
         <article className="pm-summary-card">
           <span className="pm-summary-kicker">Review queue</span>
-          <strong>{pendingForReview.length}</strong>
-          <small>{isAdmin ? "Submitted drafts awaiting approval" : "Only submitted drafts enter review"}</small>
+          <strong>{pendingForMyReview.length}</strong>
+          <small>
+            {isAdmin
+              ? "Submitted drafts awaiting approval"
+              : myLeadProjectIds.size > 0
+              ? "Projects you lead awaiting your review"
+              : "Only drafts you lead or admins review"}
+          </small>
         </article>
       </section>
 
@@ -1248,24 +1297,35 @@ export const App = () => {
         </div>
       </header>
       {actionError ? <p className="pm-page-error">{actionError}</p> : null}
-      {!isAdmin ? (
+      {pendingForMyReview.length > 0 ? (
         <section className="pm-panel-section">
-          <p className="pm-empty">
-            You're a member of this lab. Drafts stay private until you choose Publish for review.
-          </p>
-          {myDraftProjects.filter((project) => project.review_requested_at).length > 0 ? (
-            <div className="pm-card-grid">
-              {myDraftProjects.filter((project) => project.review_requested_at).map((p) => projectCard(p))}
-            </div>
-          ) : null}
+          <div className="pm-panel-section-head">
+            <h3>{isAdmin ? "Drafts pending review" : "Projects you lead — pending review"}</h3>
+            <span>{pendingForMyReview.length}</span>
+          </div>
+          <div className="pm-card-grid">
+            {pendingForMyReview.map((p) => projectCard(p, { showReviewActions: true }))}
+          </div>
         </section>
-      ) : pendingForReview.length === 0 ? (
-        <p className="pm-empty">No drafts pending review.</p>
-      ) : (
-        <div className="pm-card-grid">
-          {pendingForReview.map((p) => projectCard(p, { showReviewActions: true }))}
-        </div>
-      )}
+      ) : null}
+      {!isAdmin && myDraftProjects.filter((project) => project.review_requested_at).length > 0 ? (
+        <section className="pm-panel-section">
+          <div className="pm-panel-section-head">
+            <h3>Your submitted drafts</h3>
+            <span>Awaiting reviewer</span>
+          </div>
+          <div className="pm-card-grid">
+            {myDraftProjects.filter((project) => project.review_requested_at).map((p) => projectCard(p))}
+          </div>
+        </section>
+      ) : null}
+      {pendingForMyReview.length === 0 && (isAdmin || myDraftProjects.filter((project) => project.review_requested_at).length === 0) ? (
+        <p className="pm-empty">
+          {isAdmin
+            ? "No drafts pending review."
+            : "Drafts stay private until you choose Publish for review."}
+        </p>
+      ) : null}
     </div>
   );
 
@@ -1338,6 +1398,12 @@ export const App = () => {
           >
             Roadmap
           </button>
+          <SubmissionHistoryLink
+            visible={activeProject.state === "draft"}
+            history={activeProject.submission_history ?? []}
+            actorNames={memberNameById}
+            linkLabel="Submission history"
+          />
           <div className="pm-tab-nav-right">{projectStateTag(activeProject)}</div>
         </nav>
 
@@ -1348,34 +1414,42 @@ export const App = () => {
               <div>
                 <strong>Draft workflow</strong>
                 <p>
-                  Save ongoing work privately, abort the draft, or publish it for the first time.
-                  Published projects update directly afterwards without re-entering review.
+                  Changes to this draft are autosaved to your private workspace. Abort to delete it,
+                  or publish it for the first time. Published projects update directly afterwards.
                 </p>
+                <small className="pm-draft-autosaved">Autosaved</small>
               </div>
               <div className="pm-inline-actions">
-                <button
-                  type="button"
-                  className="pm-text-button"
-                  onClick={() => window.alert("Draft changes are already reflected in your private workspace.")}
-                >
-                  Save draft
-                </button>
                 <button type="button" className="pm-text-button pm-text-button-danger" onClick={() => void handleWithdraw(activeProject)}>
                   Abort
                 </button>
-                <button
-                  type="button"
-                  className="pm-primary-button"
-                  onClick={() => {
-                    if (isAdmin) {
-                      void handleApprove(activeProject);
-                      return;
-                    }
-                    void handleSubmitProjectForReview(activeProject);
-                  }}
-                >
-                  {isAdmin ? "Publish now" : "Publish for review"}
-                </button>
+                {canReviewProject(activeProject) ? (
+                  <button
+                    type="button"
+                    className="pm-primary-button"
+                    onClick={() => void handleApprove(activeProject)}
+                  >
+                    Publish now
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="pm-primary-button"
+                    onClick={() => void handleSubmitProjectForReview(activeProject)}
+                    disabled={!!activeProject.review_requested_at}
+                  >
+                    {activeProject.review_requested_at ? "Awaiting review" : "Publish for review"}
+                  </button>
+                )}
+                {canReviewProject(activeProject) && activeProject.review_requested_at ? (
+                  <button
+                    type="button"
+                    className="pm-text-button pm-text-button-danger"
+                    onClick={() => void handleReject(activeProject)}
+                  >
+                    Reject
+                  </button>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -1391,6 +1465,7 @@ export const App = () => {
 
           {viewSubTab === "personnel" ? (
             <div className="pm-personnel-body">
+              <LabSettingsPanel />
               <ProjectLeadsPanel projectId={activeProject.id} title="Project leads" />
               <section className="pm-panel-section">
                 <div className="pm-panel-section-head">

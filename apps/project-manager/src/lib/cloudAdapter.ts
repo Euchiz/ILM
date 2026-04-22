@@ -5,6 +5,13 @@ export type ProjectState = "draft" | "published" | "deleted";
 export type MilestoneStatus = "planned" | "in_progress" | "done" | "cancelled";
 export type ExperimentStatus = "planned" | "running" | "completed" | "failed";
 
+export interface SubmissionHistoryEntryRecord {
+  type: string;
+  actor?: string | null;
+  at?: string | null;
+  comment?: string | null;
+}
+
 export interface ProjectRecord {
   id: string;
   lab_id: string;
@@ -16,6 +23,7 @@ export interface ProjectRecord {
   review_requested_at: string | null;
   review_requested_by: string | null;
   approval_required: boolean;
+  submission_history: SubmissionHistoryEntryRecord[] | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -78,7 +86,7 @@ export interface ProjectWorkspaceSnapshot {
 const client = () => getSupabaseClient();
 
 const PROJECT_FIELDS =
-  "id, lab_id, name, description, status, state, deleted_at, review_requested_at, review_requested_by, approval_required, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, name, description, status, state, deleted_at, review_requested_at, review_requested_by, approval_required, submission_history, created_by, updated_by, created_at, updated_at";
 
 const MILESTONE_FIELDS =
   "id, lab_id, project_id, sort_order, title, description, due_date, status, created_by, updated_by, created_at, updated_at";
@@ -150,25 +158,33 @@ export async function withdrawProjectDraft(projectId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function approveProject(projectId: string): Promise<ProjectRecord> {
+export async function approveProject(projectId: string, comment?: string | null): Promise<ProjectRecord> {
   const { data, error } = await client()
-    .rpc("approve_project", { p_project_id: projectId })
+    .rpc("approve_project", { p_project_id: projectId, p_comment: comment ?? null })
     .single();
   if (error) throw error;
   return data as ProjectRecord;
 }
 
-export async function submitProjectForReview(projectId: string): Promise<ProjectRecord> {
+export async function submitProjectForReview(
+  projectId: string,
+  comment?: string | null
+): Promise<ProjectRecord> {
   const { data, error } = await client()
-    .rpc("submit_project_for_review", { p_project_id: projectId })
+    .rpc("submit_project_for_review", { p_project_id: projectId, p_comment: comment ?? null })
     .single();
   if (error) throw error;
   return data as ProjectRecord;
 }
 
-export async function rejectProject(projectId: string): Promise<void> {
-  const { error } = await client().rpc("reject_project", { p_project_id: projectId });
+export async function rejectProject(projectId: string, comment: string): Promise<ProjectRecord> {
+  const trimmed = comment.trim();
+  if (!trimmed) throw new Error("Rejection requires a comment.");
+  const { data, error } = await client()
+    .rpc("reject_project", { p_project_id: projectId, p_comment: trimmed })
+    .single();
   if (error) throw error;
+  return data as ProjectRecord;
 }
 
 export async function recycleProject(projectId: string): Promise<ProjectRecord> {

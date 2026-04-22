@@ -45,9 +45,9 @@ export interface UseProjectWorkspaceValue extends ProjectWorkspaceSnapshot {
     approvalRequired?: boolean;
   }) => Promise<ProjectRecord>;
   withdrawProjectDraft: (projectId: string) => Promise<void>;
-  approveProject: (projectId: string) => Promise<ProjectRecord>;
-  submitProjectForReview: (projectId: string) => Promise<ProjectRecord>;
-  rejectProject: (projectId: string) => Promise<void>;
+  approveProject: (projectId: string, comment?: string | null) => Promise<ProjectRecord>;
+  submitProjectForReview: (projectId: string, comment?: string | null) => Promise<ProjectRecord>;
+  rejectProject: (projectId: string, comment: string) => Promise<ProjectRecord>;
   recycleProject: (projectId: string) => Promise<ProjectRecord>;
   restoreProject: (projectId: string) => Promise<ProjectRecord>;
   permanentDeleteProject: (projectId: string) => Promise<void>;
@@ -178,24 +178,25 @@ export function useProjectWorkspace(
     await hydrate();
   }, [hydrate, requireIdentity]);
 
-  const approveProject = useCallback<UseProjectWorkspaceValue["approveProject"]>(async (projectId) => {
+  const approveProject = useCallback<UseProjectWorkspaceValue["approveProject"]>(async (projectId, comment) => {
     requireIdentity();
-    const updated = await rpcApproveProject(projectId);
+    const updated = await rpcApproveProject(projectId, comment);
     await hydrate();
     return updated;
   }, [hydrate, requireIdentity]);
 
-  const submitProjectForReview = useCallback<UseProjectWorkspaceValue["submitProjectForReview"]>(async (projectId) => {
+  const submitProjectForReview = useCallback<UseProjectWorkspaceValue["submitProjectForReview"]>(async (projectId, comment) => {
     requireIdentity();
-    const updated = await rpcSubmitProjectForReview(projectId);
+    const updated = await rpcSubmitProjectForReview(projectId, comment);
     await hydrate();
     return updated;
   }, [hydrate, requireIdentity]);
 
-  const rejectProject = useCallback<UseProjectWorkspaceValue["rejectProject"]>(async (projectId) => {
+  const rejectProject = useCallback<UseProjectWorkspaceValue["rejectProject"]>(async (projectId, comment) => {
     requireIdentity();
-    await rpcRejectProject(projectId);
+    const updated = await rpcRejectProject(projectId, comment);
     await hydrate();
+    return updated;
   }, [hydrate, requireIdentity]);
 
   const recycleProject = useCallback<UseProjectWorkspaceValue["recycleProject"]>(async (projectId) => {

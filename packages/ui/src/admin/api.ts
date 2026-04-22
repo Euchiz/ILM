@@ -110,3 +110,19 @@ export const revokeProjectLead = async (projectId: string, userId: string) => {
   });
   if (error) throw error;
 };
+
+export const promoteMemberToAdmin = async (labId: string, userId: string) => {
+  const { error } = await client().rpc("promote_member_to_admin", {
+    p_lab_id: labId,
+    p_user_id: userId,
+  });
+  if (error) throw error;
+};
+
+export const demoteAdminToMember = async (labId: string, userId: string) => {
+  const { error } = await client().rpc("demote_admin_to_member", {
+    p_lab_id: labId,
+    p_user_id: userId,
+  });
+  if (error) throw error;
+};

@@ -1,0 +1,16 @@
+title = "ILM gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "ILM allowlist — public anon keys and local placeholders"
+paths = [
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)docs/''',
+  '''(^|/)examples/''',
+]
+regexes = [
+  '''VITE_SUPABASE_ANON_KEY''',
+  '''your-.*-anon-key''',
+]
