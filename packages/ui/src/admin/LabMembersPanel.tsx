@@ -188,7 +188,7 @@ export const LabMembersPanel = ({
           <form className="ilm-admin-form" onSubmit={handleInvite}>
             <div className="ilm-admin-form-header">
               <h3>Invite Member</h3>
-              <span className="ilm-admin-helper">Email delivery is tracked out-of-band for now.</span>
+              <span className="ilm-admin-helper">Invited users are added automatically when they sign in with this email.</span>
             </div>
             <div className="ilm-admin-field-row">
               <label className="ilm-auth-field">

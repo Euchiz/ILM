@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@ilm/utils";
+import { claimPendingInvitations } from "../admin/api";
 import type { LabWithRole, Profile } from "./types";
 
 type AuthStatus = "loading" | "signed-out" | "signed-in";
@@ -115,10 +116,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         return;
       }
       try {
-        const [nextProfile, nextLabs] = await Promise.all([
-          loadProfile(nextSession.user.id),
-          loadLabs(),
-        ]);
+        const nextProfile = await loadProfile(nextSession.user.id);
+        try {
+          await claimPendingInvitations();
+        } catch (claimErr) {
+          console.warn("[ilm] claim_pending_invitations failed", claimErr);
+        }
+        const nextLabs = await loadLabs();
         setProfile(nextProfile);
         setLabs(nextLabs);
         setStatus("signed-in");
