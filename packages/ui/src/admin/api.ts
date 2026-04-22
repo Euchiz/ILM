@@ -62,15 +62,6 @@ export const listLabMembers = async (labId: string): Promise<LabMemberRecord[]> 
   return (data as LabMemberRecord[]) ?? [];
 };
 
-export const updateLabMemberRole = async (labId: string, userId: string, role: "admin" | "member") => {
-  const { error } = await client().rpc("update_lab_member_role", {
-    p_lab_id: labId,
-    p_user_id: userId,
-    p_role: role,
-  });
-  if (error) throw error;
-};
-
 export const removeLabMember = async (labId: string, userId: string) => {
   const { error } = await client().rpc("remove_lab_member", {
     p_lab_id: labId,

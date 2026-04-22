@@ -20,7 +20,6 @@ export {
   removeLabMember,
   requestLabJoin,
   revokeProjectLead,
-  updateLabMemberRole,
 } from "./api";
 export type {
   LabInvitationRecord,
