@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AppSwitcher,
   AuthScreen,
@@ -82,12 +82,26 @@ const useProjectCounts = (labId: string | null): ProjectCounts | null => {
   return counts;
 };
 
-const SidePanel = () => {
+type MembershipTier = "owner" | "admin" | "member";
+
+const TIER_LABEL: Record<MembershipTier, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+};
+
+const TIER_DESCRIPTION: Record<MembershipTier, string> = {
+  owner: "Full control: promote or demote admins, remove any non-owner, and manage the lab.",
+  admin: "Can promote members to admin and remove members. Cannot touch other admins.",
+  member: "Read-only in the lab management surface.",
+};
+
+const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
   const { profile, user, activeLab, labs, selectLab, signOut } = useAuth();
   const counts = useProjectCounts(activeLab?.id ?? null);
   const displayName = profile?.display_name ?? user?.email ?? "Signed in";
   const email = profile?.email ?? user?.email ?? "";
-  const role = activeLab?.role ?? "member";
+  const tier: MembershipTier | null = (activeLab?.role as MembershipTier | undefined) ?? null;
 
   return (
     <aside className="acct-side" aria-label="Account summary">
@@ -104,10 +118,11 @@ const SidePanel = () => {
 
       <section className="acct-side-section acct-lab-switcher">
         <h2>Active Lab</h2>
-        {activeLab ? (
+        {activeLab && tier ? (
           <>
             <h3>{activeLab.name}</h3>
-            <span className={`acct-lab-role ${role}`}>{role}</span>
+            <span className={`acct-lab-role ${tier}`}>{TIER_LABEL[tier]}</span>
+            <small style={{ color: "var(--acct-muted)" }}>{TIER_DESCRIPTION[tier]}</small>
           </>
         ) : (
           <h3>No lab selected</h3>
@@ -124,12 +139,20 @@ const SidePanel = () => {
             >
               {labs.map((lab) => (
                 <option key={lab.id} value={lab.id}>
-                  {lab.name} ({lab.role})
+                  {lab.name} ({TIER_LABEL[lab.role as MembershipTier]})
                 </option>
               ))}
             </select>
           </label>
         ) : null}
+        <button
+          type="button"
+          className="acct-text-button"
+          style={{ marginTop: "0.35rem", alignSelf: "flex-start" }}
+          onClick={onOpenLabPicker}
+        >
+          Join or create another lab…
+        </button>
       </section>
 
       <section className="acct-side-section">
@@ -153,8 +176,8 @@ const SidePanel = () => {
       <section className="acct-side-section">
         <h2>Working status</h2>
         <span style={{ fontSize: "0.85rem", color: "var(--acct-muted)" }}>
-          {activeLab
-            ? `Signed in as ${role} of ${activeLab.name}. Use the top-right switcher to open another app.`
+          {activeLab && tier
+            ? `Signed in as ${TIER_LABEL[tier]} of ${activeLab.name}. Use the top-right switcher to open another app.`
             : "Pick a lab to get started."}
         </span>
       </section>
@@ -175,9 +198,13 @@ const SidePanel = () => {
 const MembersTab = () => {
   const { activeLab, user } = useAuth();
   const labId = activeLab?.id ?? null;
-  const role = activeLab?.role ?? "member";
-  const isOwner = role === "owner";
-  const isAdmin = role === "admin" || role === "owner";
+  const tier: MembershipTier = (activeLab?.role as MembershipTier | undefined) ?? "member";
+  // Strict stratification: owner > admin > member. Each user has exactly one
+  // tier per lab (enforced by the `(lab_id, user_id)` PK on lab_memberships).
+  const isOwner = tier === "owner";
+  const isAdmin = tier === "admin";
+  const canManageMembers = isOwner || isAdmin; // promote member → admin, remove member
+  const canManageAdmins = isOwner;              // demote admin → member, remove admin
   const [members, setMembers] = useState<LabMemberRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
@@ -257,8 +284,8 @@ const MembersTab = () => {
         <div>
           <h2>Lab members</h2>
           <p>
-            {isAdmin
-              ? "Admins and the owner can promote members to admin and remove members. Only the owner can demote or remove an admin."
+            {canManageMembers
+              ? "Owner &gt; admin &gt; member. Admins and the owner can promote members and remove members. Only the owner can demote or remove an admin."
               : "Only admins and the owner can edit membership."}
           </p>
         </div>
@@ -274,9 +301,18 @@ const MembersTab = () => {
             const label = member.display_name || member.email || member.user_id;
             const isSelf = member.user_id === user?.id;
             const busy = busyUserId === member.user_id;
-            const canPromote = isAdmin && member.role === "member" && !isSelf;
-            const canDemote = isOwner && member.role === "admin";
-            const canRemove = member.role !== "owner" && !isSelf && (isOwner || (isAdmin && member.role === "member"));
+            const targetTier = member.role as MembershipTier;
+            // Promote member → admin: any manager (owner or admin) can do this
+            // to non-self members.
+            const canPromote = canManageMembers && targetTier === "member" && !isSelf;
+            // Demote admin → member: owner only.
+            const canDemote = canManageAdmins && targetTier === "admin";
+            // Remove: owner cannot be removed; admins can only be removed by the
+            // owner; members can be removed by any manager.
+            const canRemove =
+              !isSelf &&
+              targetTier !== "owner" &&
+              (targetTier === "admin" ? canManageAdmins : canManageMembers);
 
             return (
               <li className="acct-member" key={member.user_id}>
@@ -289,7 +325,7 @@ const MembersTab = () => {
                   <small>Joined {formatDate(member.joined_at)}</small>
                 </div>
                 <div className="acct-member-actions">
-                  <span className={`acct-badge ${member.role}`}>{member.role}</span>
+                  <span className={`acct-badge ${targetTier}`}>{TIER_LABEL[targetTier]}</span>
                   {canPromote ? (
                     <button type="button" className="acct-text-button" disabled={busy} onClick={() => void doPromote(member)}>
                       Promote to admin
@@ -324,7 +360,8 @@ const MembersTab = () => {
 const InvitationsTab = () => {
   const { activeLab } = useAuth();
   const labId = activeLab?.id ?? null;
-  const isAdmin = activeLab?.role === "owner" || activeLab?.role === "admin";
+  const tier: MembershipTier = (activeLab?.role as MembershipTier | undefined) ?? "member";
+  const canManageMembers = tier === "owner" || tier === "admin";
 
   const [invitations, setInvitations] = useState<LabInvitationRecord[]>([]);
   const [requests, setRequests] = useState<LabJoinRequestRecord[]>([]);
@@ -342,7 +379,7 @@ const InvitationsTab = () => {
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    if (!labId || !isAdmin) {
+    if (!labId || !canManageMembers) {
       setInvitations([]);
       setRequests([]);
       return;
@@ -361,7 +398,7 @@ const InvitationsTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [labId, isAdmin]);
+  }, [labId, canManageMembers]);
 
   useEffect(() => {
     void load();
@@ -438,7 +475,7 @@ const InvitationsTab = () => {
   if (!activeLab) {
     return <p className="acct-empty">Pick a lab from the left panel first.</p>;
   }
-  if (!isAdmin) {
+  if (!canManageMembers) {
     return <p className="acct-empty">Only admins and the owner can send invitations or review join requests.</p>;
   }
 
@@ -606,15 +643,16 @@ const InvitationsTab = () => {
 
 type ManagementTab = "members" | "invitations";
 
-const AccountDashboard = () => {
+const AccountDashboard = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
   const { activeLab } = useAuth();
   const [tab, setTab] = useState<ManagementTab>("members");
   const [pendingCount, setPendingCount] = useState<number>(0);
   const labId = activeLab?.id ?? null;
-  const isAdmin = activeLab?.role === "owner" || activeLab?.role === "admin";
+  const tier: MembershipTier = (activeLab?.role as MembershipTier | undefined) ?? "member";
+  const canManageMembers = tier === "owner" || tier === "admin";
 
   useEffect(() => {
-    if (!labId || !isAdmin) {
+    if (!labId || !canManageMembers) {
       setPendingCount(0);
       return;
     }
@@ -629,11 +667,11 @@ const AccountDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [labId, isAdmin, tab]);
+  }, [labId, canManageMembers, tab]);
 
   return (
     <div className="acct-shell">
-      <SidePanel />
+      <SidePanel onOpenLabPicker={onOpenLabPicker} />
       <main className="acct-main">
         <header className="acct-topbar">
           <div className="acct-topbar-copy">
@@ -839,8 +877,22 @@ const JoinScreen = ({ labId }: { labId: string }) => {
 
 const SignedInShell = () => {
   const { activeLab } = useAuth();
-  if (!activeLab) return <LabPicker />;
-  return <AccountDashboard />;
+  const [showPicker, setShowPicker] = useState(false);
+  const activeLabId = activeLab?.id ?? null;
+  // When the user picks/creates a lab inside LabPicker, activeLabId changes.
+  // Close the picker automatically so the dashboard re-mounts on the new lab.
+  const prevIdRef = useRef<string | null>(activeLabId);
+  useEffect(() => {
+    if (showPicker && activeLabId && activeLabId !== prevIdRef.current) {
+      setShowPicker(false);
+    }
+    prevIdRef.current = activeLabId;
+  }, [activeLabId, showPicker]);
+
+  if (!activeLab || showPicker) {
+    return <LabPicker />;
+  }
+  return <AccountDashboard onOpenLabPicker={() => setShowPicker(true)} />;
 };
 
 export const App = () => {

@@ -31,7 +31,7 @@ type AuthContextValue = {
   sendPasswordReset: (email: string, redirectTo?: string) => Promise<void>;
 
   // Lab actions
-  selectLab: (labId: string) => void;
+  selectLab: (labId: string | null) => void;
   createLab: (name: string, slug?: string) => Promise<LabWithRole>;
   refreshLabs: () => Promise<void>;
 };
@@ -274,7 +274,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     [loadLabs, supabase, user]
   );
 
-  const selectLab = useCallback((labId: string) => {
+  const selectLab = useCallback((labId: string | null) => {
     setActiveLabId(labId);
   }, []);
 
