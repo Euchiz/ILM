@@ -97,7 +97,7 @@ const TIER_DESCRIPTION: Record<MembershipTier, string> = {
 };
 
 const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
-  const { profile, user, activeLab, labs, selectLab, signOut } = useAuth();
+  const { profile, user, activeLab, signOut } = useAuth();
   const counts = useProjectCounts(activeLab?.id ?? null);
   const displayName = profile?.display_name ?? user?.email ?? "Signed in";
   const email = profile?.email ?? user?.email ?? "";
@@ -127,24 +127,6 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
         ) : (
           <h3>No lab selected</h3>
         )}
-        {labs.length > 1 ? (
-          <label className="acct-field" style={{ marginTop: "0.2rem" }}>
-            <span>Switch lab</span>
-            <select
-              value={activeLab?.id ?? ""}
-              onChange={(event) => {
-                const nextId = event.target.value;
-                if (nextId) selectLab(nextId);
-              }}
-            >
-              {labs.map((lab) => (
-                <option key={lab.id} value={lab.id}>
-                  {lab.name} ({TIER_LABEL[lab.role as MembershipTier]})
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
         <button
           type="button"
           className="acct-text-button"
