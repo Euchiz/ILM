@@ -1490,6 +1490,22 @@ label {
   border: 1px solid #d2d7cc;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.88);
+  color: inherit;
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.protocol-side-account:hover,
+.protocol-side-account:focus-visible {
+  background: rgba(255, 255, 255, 1);
+  border-color: #9da99a;
+  outline: none;
+}
+.protocol-side-account-action {
+  display: inline-block;
+  padding: 0.4rem 0.55rem;
+  background: rgba(247, 249, 245, 0.9);
+  border: 1px solid #d2d7cc;
+  text-align: center;
 }
 
 .protocol-side-account-header {

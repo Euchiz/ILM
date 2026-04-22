@@ -6,7 +6,7 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 
 ## Foundation
 
-- **Monorepo**: npm workspaces with apps (`funding-manager`, `project-manager`, `protocol-manager`, `supply-manager`) and shared packages (`@ilm/ai-import`, `@ilm/types`, `@ilm/ui`, `@ilm/utils`, `@ilm/validation`).
+- **Monorepo**: npm workspaces with apps (`account`, `funding-manager`, `project-manager`, `protocol-manager`, `supply-manager`) and shared packages (`@ilm/ai-import`, `@ilm/types`, `@ilm/ui`, `@ilm/utils`, `@ilm/validation`).
 - **Supabase backend**: Postgres schema under `supabase/migrations/`, Supabase Auth for identity, RLS on every app table.
 - **Static deploy**: GitHub Pages, no custom backend server; only `VITE_SUPABASE_URL` + anon key ship to the browser.
 
@@ -15,8 +15,17 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - Email/password sign-up, sign-in, sign-out, password reset.
 - `AuthProvider` + protected-route wrapper; `activeLabId` persisted to `localStorage` and rehydrated on load.
 - Lab roles: `owner` / `admin` / `member`. `is_lab_member`, `is_lab_admin`, `is_lab_owner`, `lab_role`, `is_project_lead` helpers in SQL.
-- Owner-only RPCs `promote_member_to_admin` / `demote_admin_to_member`; shared `LabSettingsPanel` exposes them (currently mounted inside the project Personnel tab).
-- Invite-by-email RPC (`invite_member_to_lab`) and `LabMembersPanel` exist in `@ilm/ui` but are **not yet mounted** in any production app surface.
+- Owner-only RPCs `promote_member_to_admin` / `demote_admin_to_member`.
+- Invite-by-email RPC (`invite_member_to_lab`) surfaced via `LabMembersPanel`.
+- **Self-serve join flow**: `lab_join_requests` table + `request_lab_join` / `approve_lab_join` / `reject_lab_join` / `cancel_lab_join` / `lookup_lab_by_id` RPCs. Rejection requires a comment; one pending request per user per lab.
+- **LabPicker empty state**: create-new-lab or paste-invite-link.
+
+## Account shell (`apps/account`)
+
+- Dedicated app at `/account/`, reachable by clicking the login status box in any other app.
+- Dashboard mounts `LabSettingsPanel` (owner promote/demote), `LabMembersPanel` (invite + remove), `LabJoinRequestsPanel` (approve/reject pending requests with required comment), and `LabShareLinkPanel` (copyable `/account/join/<uuid>` URL).
+- Join-by-link route at `/account/join/<lab-uuid>`: signed-out users see auth shell; signed-in members get "Open this lab"; non-members see lab name preview + "Request to join" form with optional message and self-cancel.
+- Shared `AccountLinkCard` in `@ilm/ui` renders the login status box consistently across placeholder apps (`funding-manager`, `supply-manager`).
 
 ## Protocol Manager (Stage 3b — production)
 
@@ -37,7 +46,7 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - Per-draft `submission_history` with a link in the view tab nav (drafts only).
 - Recycle bin for published projects; withdraw for drafts.
 - Experiments link to protocols; `completedAt >= startedAt` is validated client-side.
-- Personnel tab sorts roster by display name; shows `LabSettingsPanel` (owner-only) and `ProjectLeadsPanel`.
+- Personnel tab shows `ProjectLeadsPanel` and the roster. Lab-wide owner settings now live in the Account app.
 
 ## Audit & security
 
@@ -46,7 +55,5 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 
 ## Known gaps (see `next-stage.md`)
 
-- No top-level Lab Settings surface — owners with no projects can't reach `LabSettingsPanel`.
-- Admins cannot invite members through any mounted UI (RPC exists).
-- Registered users cannot request to join a lab — no self-serve onboarding.
 - `funding-manager` and `supply-manager` are auth-shell stubs with no schema or adapter.
+- Share-link token is a raw lab UUID; a rotatable HMAC token is a deferred follow-up.

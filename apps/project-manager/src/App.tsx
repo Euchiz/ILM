@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AppSwitcher,
-  LabSettingsPanel,
   ProjectLeadsPanel,
   SubmissionHistoryLink,
+  appUrl,
   useAuth,
   listLabMembers,
   type LabMemberRecord,
@@ -462,7 +462,8 @@ const NewProjectModal = ({
 // ---------------------------------------------------------------------------
 
 export const App = () => {
-  const { activeLab, profile, user, signOut } = useAuth();
+  const { activeLab, profile, user } = useAuth();
+  const accountHref = appUrl("account/", APP_BASE_URL);
   const isAdmin = activeLab?.role === "owner" || activeLab?.role === "admin";
   const workspace = useProjectWorkspace(activeLab?.id ?? null, user?.id ?? null, isAdmin);
   const {
@@ -1465,7 +1466,6 @@ export const App = () => {
 
           {viewSubTab === "personnel" ? (
             <div className="pm-personnel-body">
-              <LabSettingsPanel />
               <ProjectLeadsPanel projectId={activeProject.id} title="Project leads" />
               <section className="pm-panel-section">
                 <div className="pm-panel-section-head">
@@ -1612,7 +1612,11 @@ export const App = () => {
           >
             + New project
           </button>
-          <section className="pm-side-account">
+          <a
+            href={accountHref}
+            className="pm-side-account"
+            title="Open account & lab settings"
+          >
             <div className="pm-side-account-head">
               <strong>{signedInLabel}</strong>
               <span>{profile?.email}</span>
@@ -1621,10 +1625,8 @@ export const App = () => {
               <span>{activeLab?.name ?? "No lab"}</span>
               <span>{activeLab?.role ?? "member"}</span>
             </div>
-            <button type="button" className="pm-side-account-action" onClick={() => void signOut()}>
-              Log out
-            </button>
-          </section>
+            <span className="pm-side-account-action">Manage account →</span>
+          </a>
         </div>
       </aside>
 

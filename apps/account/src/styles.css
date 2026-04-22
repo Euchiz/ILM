@@ -1,0 +1,59 @@
+:root {
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f5f6f8;
+  color: #1a1a1f;
+}
+
+.acct-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.acct-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.acct-topbar h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.acct-topbar p {
+  margin: 0;
+  color: #60606b;
+}
+
+.acct-topbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.acct-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.acct-back-link {
+  font-size: 0.9rem;
+  color: #3b3be0;
+  text-decoration: none;
+}
+
+.acct-back-link:hover {
+  text-decoration: underline;
+}
