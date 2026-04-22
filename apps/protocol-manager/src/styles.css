@@ -1224,19 +1224,24 @@ label {
 }
 
 .protocol-shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
   min-height: 100vh;
+  height: 100vh;
   background: #f9f8f4;
+  overflow: hidden;
 }
 
 .protocol-shell-home {
+  display: block;
+  height: auto;
+  overflow: visible;
   background:
     radial-gradient(circle at top right, rgba(48, 103, 71, 0.08), transparent 28%),
     linear-gradient(180deg, #f9f8f4 0%, #f4f5ef 100%);
 }
 
 .protocol-topbar {
-  position: sticky;
-  top: 0;
   z-index: 20;
   display: flex;
   justify-content: space-between;
@@ -1312,8 +1317,6 @@ label {
 }
 
 .protocol-subbar {
-  position: sticky;
-  top: 68px;
   z-index: 18;
   display: flex;
   justify-content: space-between;
@@ -1414,14 +1417,12 @@ label {
 .protocol-body {
   display: grid;
   grid-template-columns: 220px 1fr;
-  height: calc(100vh - 128px);
-  min-height: calc(100vh - 128px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
 .protocol-side-rail {
-  position: sticky;
-  top: 128px;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
@@ -1779,25 +1780,30 @@ label {
   min-width: 0;
   min-height: 0;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem 2rem 2rem;
-  overflow-y: auto;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
 }
 
 .protocol-workspace-header {
-  position: sticky;
-  top: 0;
   z-index: 8;
   display: flex;
   justify-content: space-between;
   align-items: start;
   gap: 1.5rem;
-  margin-bottom: 1.6rem;
-  padding: 0 0 1.25rem;
+  padding: 1.5rem 2rem 1.25rem;
   border-bottom: 1px solid #cbd1c8;
   flex: 0 0 auto;
   background: #f9f8f4;
+}
+
+.protocol-workspace-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.5rem 2rem 2rem;
+  display: grid;
+  align-content: start;
+  gap: 1.5rem;
 }
 
 .protocol-workspace-header h1 {
@@ -2481,6 +2487,11 @@ label {
   .protocol-rail-item-strong {
     margin-top: 0;
   }
+
+  .protocol-shell {
+    height: auto;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2501,13 +2512,15 @@ label {
   .dashboard-hero,
   .protocol-subbar,
   .protocol-topbar,
-  .protocol-workspace {
+  .protocol-workspace,
+  .protocol-workspace-scroll {
     padding-inline: 0;
   }
 
   .dashboard-shell,
   .home-main,
-  .protocol-workspace {
+  .protocol-workspace,
+  .protocol-workspace-scroll {
     padding: 1rem;
   }
 
@@ -2519,15 +2532,19 @@ label {
 
   .protocol-main-panel,
   .protocol-outline-pane,
-  .protocol-workspace {
+  .protocol-workspace,
+  .protocol-workspace-scroll {
     height: auto;
     min-height: 0;
     overflow: visible;
   }
 
+  .protocol-shell,
   .protocol-subbar,
   .protocol-workspace-header {
+    height: auto;
     position: static;
+    overflow: visible;
   }
 
   .protocol-side-rail-nav,

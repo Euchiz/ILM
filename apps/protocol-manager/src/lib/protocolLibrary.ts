@@ -6,7 +6,7 @@ export const LIBRARY_STORAGE_KEY = "ilm.protocol-manager.library.v2";
 export const LEGACY_STORAGE_KEY = "ilm.protocol-manager.document";
 
 export type SidebarTab = "overview" | "library" | "reviews" | "recycle" | "view";
-export type ViewMode = "summary" | "step" | "preview" | "transfer";
+export type ViewMode = "step" | "preview" | "transfer";
 export type ReviewStatus = "reviewed" | "reviewing";
 export type LifecycleStatus = "active" | "archived";
 export type ValidationStatus = "validated" | "proposed";
