@@ -4,17 +4,22 @@ Integrated Lab Manager is a modular monorepo for structured lab operations softw
 
 ## Current status
 
-The first implemented module is **Protocol Manager**, a browser-based protocol designer for wet-lab workflows with structured JSON storage.
+Two apps are production-ready on Supabase with RLS-enforced, review-gated workflows:
+
+- **Protocol Manager** (Stage 3b) — visual protocol designer with typed steps, draft → submit → review → publish flow, append-only revisions, and a 30-day recycle bin.
+- **Project Manager** (Stage 4a) — project lifecycle with milestones, experiments, roadmap drag-reorder, project leads, and the same review-gated publish flow.
+
+**Funding Manager** and **Supply Manager** are scaffolded shells (auth + lab switcher + members panel) awaiting Stage 4b/4c schema design.
 
 ## Monorepo layout
 
 ```text
 integrated-lab-manager/
 ├─ apps/
-│  ├─ protocol-manager/      # implemented in this phase
-│  ├─ supply-manager/        # placeholder
-│  ├─ project-manager/       # placeholder
-│  └─ funding-manager/       # placeholder
+│  ├─ protocol-manager/      # Stage 3b — production
+│  ├─ project-manager/       # Stage 4a — production
+│  ├─ supply-manager/        # Stage 4c — stub (auth shell only)
+│  └─ funding-manager/       # Stage 4b — stub (auth shell only)
 ├─ packages/
 │  ├─ ai-import/             # AI import instructions + helpers
 │  ├─ types/                 # shared protocol TypeScript model
@@ -28,11 +33,13 @@ integrated-lab-manager/
 
 ## Technical direction
 
-- TypeScript across repo
-- React + Vite for Protocol Manager
-- static frontend-first architecture
-- canonical protocol JSON model with schema versioning and extension support
-- localStorage persistence (autosave) for the first release
+- TypeScript across the monorepo (npm workspaces)
+- React + Vite for every app
+- Static frontend — no custom backend server; deployable to GitHub Pages
+- Supabase (Postgres + Auth) for storage, with Row Level Security on every table
+- Canonical protocol JSON model (`document_json`) with schema versioning; other domains use normalized columns
+- Review-gated publishing: drafts are per-user sandboxes, submissions are frozen snapshots, revisions are written only on approval
+- Soft-delete with 30-day recycle bin across protocols and projects
 
 ## Getting started
 
@@ -51,6 +58,27 @@ The Protocol Manager app is configured to deploy to GitHub Pages from the `main`
 - Workflow file: `.github/workflows/deploy-protocol-manager-pages.yml`
 
 For local development, the app still runs at `/`. For the GitHub Pages build, the workflow sets `VITE_BASE_PATH=/ILM/` so static assets resolve correctly on the project site URL.
+
+## Role-based workflows
+
+Each lab membership carries a role of `owner`, `admin`, or `member`. Roles are stored in `lab_memberships` and enforced by RLS.
+
+- **Member** — can create personal drafts (protocols, projects), edit their own drafts, and submit them for review. Can view all published records in the lab.
+- **Project lead** — a member designated via `project_leads` on a specific project. Inherits edit rights on that project's roadmap, milestones, and experiments.
+- **Admin** — can approve or reject submissions, move items to the recycle bin, restore or permanently delete them, and manage project lead assignments.
+- **Owner** — admin privileges plus lab-level settings (future: invitations, role changes).
+
+Publishing flow (protocols and projects):
+
+1. Member creates a draft (private, owner-scoped).
+2. Member submits — a frozen snapshot is stored in `protocol_submissions` / project submission state.
+3. Admin (or designated lead) approves → a new revision is appended and the record is published. Reject returns the draft with reviewer comments.
+4. Projects marked `approval_required = false` (e.g. the auto-created "General" project) publish directly without the review step.
+
+Recycle bin:
+
+- Soft-delete sets `deleted_at`. Records are recoverable for 30 days, then eligible for permanent purge.
+- Only admins see the recycle bin and can restore or permanently delete.
 
 ## Supabase backend
 
