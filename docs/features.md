@@ -55,6 +55,7 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - Recycle bin for published projects; withdraw for drafts.
 - Experiments link to protocols; `completedAt >= startedAt` is validated client-side.
 - Personnel tab shows `ProjectLeadsPanel` and the roster. Lab-wide owner settings now live in the Account app.
+- **GitHub repo link per project**: optional `github_repo_url` on projects, editable from the Edit tab. Library cards show "last push {relative time}" in the bottom-right corner when a repo is linked, with a one-click refresh button. Status is cached in `project_repo_status` and fetched on demand by the `fetch-github-activity` edge function using a lab-scoped PAT (admin-managed, stored service-role-only on `labs.github_pat`, never sent to the browser).
 
 ## Audit & security
 

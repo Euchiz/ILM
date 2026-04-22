@@ -67,6 +67,21 @@ const toDateTimeLocalValue = (value: string | null) => {
 
 const fromDateTimeLocalValue = (value: string) => (value ? new Date(value).toISOString() : null);
 
+const formatRelativeTime = (value: string | null | undefined) => {
+  if (!value) return "never";
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "unknown";
+  const diffSec = Math.round((then - Date.now()) / 1000);
+  const abs = Math.abs(diffSec);
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  if (abs < 60) return formatter.format(diffSec, "second");
+  if (abs < 3600) return formatter.format(Math.round(diffSec / 60), "minute");
+  if (abs < 86_400) return formatter.format(Math.round(diffSec / 3600), "hour");
+  if (abs < 2_592_000) return formatter.format(Math.round(diffSec / 86_400), "day");
+  if (abs < 31_536_000) return formatter.format(Math.round(diffSec / 2_592_000), "month");
+  return formatter.format(Math.round(diffSec / 31_536_000), "year");
+};
+
 const resolveSiteRoot = (baseUrl: string) => {
   const normalized = (baseUrl.trim() || "/").replace(/\/?$/, "/");
   const currentBase = new URL(normalized.startsWith("/") ? normalized : `/${normalized}`, window.location.origin);
@@ -475,7 +490,12 @@ export const App = () => {
     protocols,
     leads,
     deletedProjects,
+    repoStatuses,
+    labGithubPatConfigured,
     refresh,
+    refreshRepoStatus,
+    setLabGithubPat,
+    clearLabGithubPat,
     createProjectDraft,
     withdrawProjectDraft,
     approveProject,
@@ -591,6 +611,28 @@ export const App = () => {
     });
     return map;
   }, [experiments]);
+
+  const repoStatusByProject = useMemo(() => {
+    const map = new Map<string, (typeof repoStatuses)[number]>();
+    repoStatuses.forEach((row) => map.set(row.project_id, row));
+    return map;
+  }, [repoStatuses]);
+
+  const [repoRefreshBusy, setRepoRefreshBusy] = useState<Record<string, boolean>>({});
+  const handleRefreshRepo = useCallback(async (projectId: string) => {
+    setRepoRefreshBusy((prev) => ({ ...prev, [projectId]: true }));
+    try {
+      await refreshRepoStatus(projectId);
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setRepoRefreshBusy((prev) => {
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
+      });
+    }
+  }, [refreshRepoStatus]);
 
   const experimentsByMilestone = useMemo(() => {
     const map = new Map<string, ExperimentRecord[]>();
@@ -800,7 +842,7 @@ export const App = () => {
 
   // Info editor handlers
   const handleSaveMetadata = useCallback(
-    async (args: { name: string; description: string; status: ProjectStatus; approvalRequired: boolean }) => {
+    async (args: { name: string; description: string; status: ProjectStatus; approvalRequired: boolean; githubRepoUrl: string }) => {
       if (!activeProject) return;
       setProjectSaveBusy("saving");
       setProjectSaveError(null);
@@ -811,6 +853,7 @@ export const App = () => {
           description: args.description,
           status: args.status,
           approvalRequired: args.approvalRequired,
+          githubRepoUrl: args.githubRepoUrl,
         });
       } catch (err) {
         setProjectSaveError(errorMessage(err));
@@ -1087,6 +1130,8 @@ export const App = () => {
     const ex = experimentsByProject.get(project.id) ?? [];
     const isGeneral = project.name === "General";
     const isMine = project.created_by === user?.id;
+    const repoStatus = repoStatusByProject.get(project.id) ?? null;
+    const repoBusy = Boolean(repoRefreshBusy[project.id]);
     return (
       <article key={project.id} className="pm-library-card">
         <div className="pm-library-card-head">
@@ -1150,6 +1195,49 @@ export const App = () => {
             </button>
           ) : null}
         </div>
+        {project.github_repo_url ? (
+          labGithubPatConfigured ? (
+            <div className="pm-library-card-repo" title={repoStatus?.error ?? project.github_repo_url}>
+              <a
+                href={repoStatus?.html_url ?? project.github_repo_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="pm-repo-link"
+              >
+                {repoStatus?.error
+                  ? "repo: error"
+                  : repoStatus?.pushed_at
+                    ? `last push ${formatRelativeTime(repoStatus.pushed_at)}`
+                    : "repo: no data yet"}
+              </a>
+              <button
+                type="button"
+                className="pm-text-button"
+                onClick={() => void handleRefreshRepo(project.id)}
+                disabled={repoBusy}
+                aria-label="Refresh repo status"
+              >
+                {repoBusy ? "..." : "↻"}
+              </button>
+            </div>
+          ) : (
+            <div
+              className="pm-library-card-repo pm-library-card-repo-muted"
+              title={isAdmin
+                ? "Add a lab GitHub PAT in Library → GitHub integration to enable monitoring."
+                : "Ask a lab admin to configure a GitHub PAT to enable monitoring."}
+            >
+              <a
+                href={project.github_repo_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="pm-repo-link"
+              >
+                GitHub monitor unavailable — no lab PAT
+              </a>
+            </div>
+          )
+        ) : null}
       </article>
     );
   };
@@ -1220,6 +1308,14 @@ export const App = () => {
         </div>
       </header>
       {actionError ? <p className="pm-page-error">{actionError}</p> : null}
+
+      {isAdmin ? (
+        <LabGithubPatPanel
+          configured={labGithubPatConfigured}
+          onSet={setLabGithubPat}
+          onClear={clearLabGithubPat}
+        />
+      ) : null}
 
       <section className="pm-panel-section">
         <div className="pm-panel-section-head">
@@ -1783,12 +1879,13 @@ const InfoTab = ({
   project: ProjectRecord;
   busy: "idle" | "saving";
   error: string | null;
-  onSave: (args: { name: string; description: string; status: ProjectStatus; approvalRequired: boolean }) => Promise<void>;
+  onSave: (args: { name: string; description: string; status: ProjectStatus; approvalRequired: boolean; githubRepoUrl: string }) => Promise<void>;
 }) => {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [status, setStatus] = useState<ProjectStatus>((project.status as ProjectStatus | null) ?? "planning");
   const [approvalRequired, setApprovalRequired] = useState(project.approval_required);
+  const [githubRepoUrl, setGithubRepoUrl] = useState(project.github_repo_url ?? "");
   const isGeneral = project.name === "General";
 
   useEffect(() => {
@@ -1796,11 +1893,12 @@ const InfoTab = ({
     setDescription(project.description ?? "");
     setStatus((project.status as ProjectStatus | null) ?? "planning");
     setApprovalRequired(project.approval_required);
+    setGithubRepoUrl(project.github_repo_url ?? "");
   }, [project]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await onSave({ name, description, status, approvalRequired });
+    await onSave({ name, description, status, approvalRequired, githubRepoUrl });
   };
 
   return (
@@ -1819,6 +1917,15 @@ const InfoTab = ({
       <label className="pm-field">
         <span>Description</span>
         <textarea rows={5} value={description} onChange={(event) => setDescription(event.target.value)} />
+      </label>
+      <label className="pm-field">
+        <span>GitHub repository URL</span>
+        <input
+          type="url"
+          placeholder="https://github.com/owner/repo"
+          value={githubRepoUrl}
+          onChange={(event) => setGithubRepoUrl(event.target.value)}
+        />
       </label>
       <div className="pm-field-row">
         <label className="pm-field">
@@ -1860,5 +1967,98 @@ const InfoTab = ({
         </div>
       </div>
     </form>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// LabGithubPatPanel — admin-only control to set / clear the shared GitHub PAT.
+// ---------------------------------------------------------------------------
+
+const LabGithubPatPanel = ({
+  configured,
+  onSet,
+  onClear,
+}: {
+  configured: boolean;
+  onSet: (pat: string) => Promise<void>;
+  onClear: () => Promise<void>;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [pat, setPat] = useState("");
+  const [busy, setBusy] = useState<"idle" | "saving" | "clearing">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!pat.trim()) return;
+    setBusy("saving");
+    setError(null);
+    setNote(null);
+    try {
+      await onSet(pat.trim());
+      setPat("");
+      setNote("PAT saved. Project cards can now fetch GitHub activity.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save PAT");
+    } finally {
+      setBusy("idle");
+    }
+  };
+
+  const handleClear = async () => {
+    if (!window.confirm("Clear the lab's GitHub PAT? Project repo status will stop refreshing.")) return;
+    setBusy("clearing");
+    setError(null);
+    setNote(null);
+    try {
+      await onClear();
+      setNote("PAT cleared.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear PAT");
+    } finally {
+      setBusy("idle");
+    }
+  };
+
+  return (
+    <details className="pm-collapsible-section" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary>
+        <span>GitHub integration</span>
+        <span>{configured ? "PAT configured" : "Not configured"}</span>
+      </summary>
+      <div className="pm-panel-section-body" style={{ display: "grid", gap: "0.6rem", paddingTop: "0.6rem" }}>
+        <p className="pm-muted-note" style={{ fontSize: "0.8rem" }}>
+          Paste a fine-grained GitHub Personal Access Token with read-only access to the repos you link from projects.
+          The token is stored in the lab row and is only readable by the <code>fetch-github-activity</code> edge
+          function — it is never sent back to the browser. Any lab member can trigger a refresh from a project card;
+          the server uses this shared token on their behalf.
+        </p>
+        {error ? <p className="pm-inline-error">{error}</p> : null}
+        {note ? <p className="pm-inline-note">{note}</p> : null}
+        <form className="pm-inline-form" onSubmit={handleSave} style={{ gap: "0.5rem" }}>
+          <label className="pm-field">
+            <span>New PAT</span>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="github_pat_..."
+              value={pat}
+              onChange={(event) => setPat(event.target.value)}
+            />
+          </label>
+          <div className="pm-inline-actions">
+            <button type="submit" className="pm-primary-button" disabled={busy !== "idle" || !pat.trim()}>
+              {busy === "saving" ? "Saving..." : configured ? "Replace PAT" : "Save PAT"}
+            </button>
+            {configured ? (
+              <button type="button" className="pm-text-button pm-text-button-danger" onClick={() => void handleClear()} disabled={busy !== "idle"}>
+                {busy === "clearing" ? "Clearing..." : "Clear PAT"}
+              </button>
+            ) : null}
+          </div>
+        </form>
+      </div>
+    </details>
   );
 };

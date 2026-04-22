@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   approveProject as rpcApproveProject,
+  clearLabGithubPat as rpcClearLabGithubPat,
   createExperiment as rpcCreateExperiment,
   createMilestone as rpcCreateMilestone,
   createProjectDraft as rpcCreateProjectDraft,
   deleteExperiment as rpcDeleteExperiment,
   deleteMilestone as rpcDeleteMilestone,
+  labGithubPatConfigured as rpcLabGithubPatConfigured,
   listDeletedProjects,
   listProjectWorkspace,
   permanentDeleteProject as rpcPermanentDeleteProject,
+  refreshProjectRepoStatus as rpcRefreshProjectRepoStatus,
   reorderExperiments as rpcReorderExperiments,
   reorderMilestones as rpcReorderMilestones,
   recycleProject as rpcRecycleProject,
   rejectProject as rpcRejectProject,
   restoreProject as rpcRestoreProject,
+  setLabGithubPat as rpcSetLabGithubPat,
   submitProjectForReview as rpcSubmitProjectForReview,
   updateExperiment as rpcUpdateExperiment,
   updateMilestone as rpcUpdateMilestone,
@@ -25,6 +29,7 @@ import {
   type MilestoneStatus,
   type ProjectLeadLinkRecord,
   type ProjectRecord,
+  type ProjectRepoStatusRecord,
   type ProjectStatus,
   type ProjectWorkspaceSnapshot,
   type ProtocolOptionRecord,
@@ -58,7 +63,14 @@ export interface UseProjectWorkspaceValue extends ProjectWorkspaceSnapshot {
     description?: string;
     status?: string;
     approvalRequired: boolean;
+    githubRepoUrl?: string | null;
   }) => Promise<ProjectRecord>;
+
+  refreshRepoStatus: (projectId: string) => Promise<ProjectRepoStatusRecord>;
+  setLabGithubPat: (pat: string) => Promise<void>;
+  clearLabGithubPat: () => Promise<void>;
+  refreshLabGithubPatConfigured: () => Promise<void>;
+  labGithubPatConfigured: boolean;
 
   createMilestone: (args: {
     projectId: string;
@@ -115,6 +127,8 @@ export function useProjectWorkspace(
   const [protocols, setProtocols] = useState<ProtocolOptionRecord[]>(EMPTY_ARRAY);
   const [leads, setLeads] = useState<ProjectLeadLinkRecord[]>(EMPTY_ARRAY);
   const [deletedProjects, setDeletedProjects] = useState<ProjectRecord[]>(EMPTY_ARRAY);
+  const [repoStatuses, setRepoStatuses] = useState<ProjectRepoStatusRecord[]>(EMPTY_ARRAY);
+  const [labGithubPatConfigured, setLabGithubPatConfiguredState] = useState<boolean>(false);
 
   const hydrate = useCallback(async () => {
     if (!labId) {
@@ -124,6 +138,8 @@ export function useProjectWorkspace(
       setProtocols(EMPTY_ARRAY);
       setLeads(EMPTY_ARRAY);
       setDeletedProjects(EMPTY_ARRAY);
+      setRepoStatuses(EMPTY_ARRAY);
+      setLabGithubPatConfiguredState(false);
       setStatus("idle");
       setError(null);
       return;
@@ -138,6 +154,13 @@ export function useProjectWorkspace(
       setExperiments(next.experiments);
       setProtocols(next.protocols);
       setLeads(next.leads);
+      setRepoStatuses(next.repoStatuses ?? EMPTY_ARRAY);
+      try {
+        setLabGithubPatConfiguredState(await rpcLabGithubPatConfigured(labId));
+      } catch {
+        // RPC missing or PAT read failed — treat as "not configured" and carry on.
+        setLabGithubPatConfiguredState(false);
+      }
       if (isAdmin) {
         try {
           const deleted = await listDeletedProjects(labId);
@@ -282,6 +305,40 @@ export function useProjectWorkspace(
     await hydrate();
   }, [hydrate, requireIdentity]);
 
+  const refreshRepoStatus = useCallback<UseProjectWorkspaceValue["refreshRepoStatus"]>(async (projectId) => {
+    requireIdentity();
+    const next = await rpcRefreshProjectRepoStatus(projectId);
+    setRepoStatuses((prev) => {
+      const without = prev.filter((row) => row.project_id !== projectId);
+      return [...without, next];
+    });
+    return next;
+  }, [requireIdentity]);
+
+  const setLabGithubPat = useCallback<UseProjectWorkspaceValue["setLabGithubPat"]>(async (pat) => {
+    const { labId: lab } = requireIdentity();
+    await rpcSetLabGithubPat(lab, pat);
+    setLabGithubPatConfiguredState(true);
+  }, [requireIdentity]);
+
+  const clearLabGithubPat = useCallback<UseProjectWorkspaceValue["clearLabGithubPat"]>(async () => {
+    const { labId: lab } = requireIdentity();
+    await rpcClearLabGithubPat(lab);
+    setLabGithubPatConfiguredState(false);
+  }, [requireIdentity]);
+
+  const refreshLabGithubPatConfigured = useCallback<UseProjectWorkspaceValue["refreshLabGithubPatConfigured"]>(async () => {
+    if (!labId) {
+      setLabGithubPatConfiguredState(false);
+      return;
+    }
+    try {
+      setLabGithubPatConfiguredState(await rpcLabGithubPatConfigured(labId));
+    } catch {
+      setLabGithubPatConfiguredState(false);
+    }
+  }, [labId]);
+
   return {
     status,
     error,
@@ -290,8 +347,14 @@ export function useProjectWorkspace(
     experiments,
     protocols,
     leads,
+    repoStatuses,
     deletedProjects,
+    labGithubPatConfigured,
     refresh: hydrate,
+    refreshRepoStatus,
+    setLabGithubPat,
+    clearLabGithubPat,
+    refreshLabGithubPatConfigured,
     createProjectDraft,
     withdrawProjectDraft,
     approveProject,
