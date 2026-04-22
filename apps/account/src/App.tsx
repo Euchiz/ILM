@@ -178,7 +178,7 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
 // ---------------------------------------------------------------------------
 
 const MembersTab = () => {
-  const { activeLab, user } = useAuth();
+  const { activeLab, user, refreshLabs } = useAuth();
   const labId = activeLab?.id ?? null;
   const tier: MembershipTier = (activeLab?.role as MembershipTier | undefined) ?? "member";
   // Strict stratification: owner > admin > member. Each user has exactly one
@@ -212,13 +212,20 @@ const MembersTab = () => {
     void load();
   }, [load]);
 
+  // After any role change, refresh both the member list (affects other rows'
+  // badges) and the AuthProvider labs array (affects the sidebar badge when
+  // the caller changed their own role).
+  const refreshAfterAction = useCallback(async () => {
+    await Promise.all([load(), refreshLabs()]);
+  }, [load, refreshLabs]);
+
   const doPromote = async (member: LabMemberRecord) => {
     if (!labId) return;
     setBusyUserId(member.user_id);
     setError(null);
     try {
       await promoteMemberToAdmin(labId, member.user_id);
-      await load();
+      await refreshAfterAction();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -232,7 +239,7 @@ const MembersTab = () => {
     setError(null);
     try {
       await demoteAdminToMember(labId, member.user_id);
-      await load();
+      await refreshAfterAction();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -248,7 +255,7 @@ const MembersTab = () => {
     setError(null);
     try {
       await removeLabMember(labId, member.user_id);
-      await load();
+      await refreshAfterAction();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
