@@ -212,17 +212,9 @@ const MembersTab = () => {
     void load();
   }, [load]);
 
-  // Optimistic local patch: apply immediately so the badge flips without
-  // waiting for the server reload (which can race with the RPC's commit
-  // visibility in some Postgrest setups). The background reload still runs
-  // as ground truth.
-  const applyLocalRole = (userId: string, nextRole: MembershipTier) => {
-    setMembers((prev) => prev.map((m) => (m.user_id === userId ? { ...m, role: nextRole } : m)));
-  };
-  const applyLocalRemove = (userId: string) => {
-    setMembers((prev) => prev.filter((m) => m.user_id !== userId));
-  };
-
+  // After any role change, refresh both the member list (affects other rows'
+  // badges) and the AuthProvider labs array (affects the sidebar badge when
+  // the caller changed their own role).
   const refreshAfterAction = useCallback(async () => {
     await Promise.all([load(), refreshLabs()]);
   }, [load, refreshLabs]);
@@ -233,7 +225,6 @@ const MembersTab = () => {
     setError(null);
     try {
       await promoteMemberToAdmin(labId, member.user_id);
-      applyLocalRole(member.user_id, "admin");
       await refreshAfterAction();
     } catch (err) {
       setError(errorMessage(err));
@@ -248,7 +239,6 @@ const MembersTab = () => {
     setError(null);
     try {
       await demoteAdminToMember(labId, member.user_id);
-      applyLocalRole(member.user_id, "member");
       await refreshAfterAction();
     } catch (err) {
       setError(errorMessage(err));
@@ -265,7 +255,6 @@ const MembersTab = () => {
     setError(null);
     try {
       await removeLabMember(labId, member.user_id);
-      applyLocalRemove(member.user_id);
       await refreshAfterAction();
     } catch (err) {
       setError(errorMessage(err));
