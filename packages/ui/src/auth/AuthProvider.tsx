@@ -88,23 +88,29 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     [supabase]
   );
 
-  const loadLabs = useCallback(async (): Promise<LabWithRole[]> => {
-    // lab_memberships RLS: only rows for labs the user belongs to
-    const { data, error: err } = await supabase
-      .from("lab_memberships")
-      .select("role, labs:lab_id(id, name, slug, created_by)")
-      .order("created_at", { ascending: true });
-    if (err) throw err;
+  const loadLabs = useCallback(
+    async (userId: string): Promise<LabWithRole[]> => {
+      // RLS lets any member read every membership row in labs they belong to,
+      // so we MUST filter by user_id here — otherwise the current user would
+      // see co-members' rows as if they were their own, conflating roles.
+      const { data, error: err } = await supabase
+        .from("lab_memberships")
+        .select("role, labs:lab_id(id, name, slug, created_by)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true });
+      if (err) throw err;
 
-    type LabRow = Omit<LabWithRole, "role">;
-    type Row = { role: LabWithRole["role"]; labs: LabRow | LabRow[] | null };
-    return ((data as unknown as Row[]) ?? [])
-      .map((row) => {
-        const lab = Array.isArray(row.labs) ? row.labs[0] : row.labs;
-        return lab ? { ...lab, role: row.role } : null;
-      })
-      .filter((row): row is LabWithRole => row !== null);
-  }, [supabase]);
+      type LabRow = Omit<LabWithRole, "role">;
+      type Row = { role: LabWithRole["role"]; labs: LabRow | LabRow[] | null };
+      return ((data as unknown as Row[]) ?? [])
+        .map((row) => {
+          const lab = Array.isArray(row.labs) ? row.labs[0] : row.labs;
+          return lab ? { ...lab, role: row.role } : null;
+        })
+        .filter((row): row is LabWithRole => row !== null);
+    },
+    [supabase]
+  );
 
   const refreshAll = useCallback(
     async (nextSession: Session | null) => {
@@ -122,7 +128,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         } catch (claimErr) {
           console.warn("[ilm] claim_pending_invitations failed", claimErr);
         }
-        const nextLabs = await loadLabs();
+        const nextLabs = await loadLabs(nextSession.user.id);
         setProfile(nextProfile);
         setLabs(nextLabs);
         setStatus("signed-in");
@@ -234,9 +240,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   );
 
   const refreshLabs = useCallback(async () => {
-    const next = await loadLabs();
+    if (!user) return;
+    const next = await loadLabs(user.id);
     setLabs(next);
-  }, [loadLabs]);
+  }, [loadLabs, user]);
 
   const createLab = useCallback(
     async (name: string, slug?: string): Promise<LabWithRole> => {
