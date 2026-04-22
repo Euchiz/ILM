@@ -6,7 +6,7 @@ Rewrite this file when priorities change. It always describes *the current plann
 
 ## Stage: Funding Manager schema + adapter
 
-**Why now.** With membership surfaces shipped in the Account app, the remaining auth-shell stubs (`funding-manager`, `supply-manager`) are the biggest gap. Funding first because it's a cleaner domain model (grants / budgets / allocations / expenses) and because project-manager already has experimental expense fields that funding should take over.
+**Why now.** Account app is feature-complete (flat two-panel layout, strict owner/admin/member tier hierarchy, invitations + join requests + share links, auto-claim on sign-in, real-time badge updates). The remaining auth-shell stubs (`funding-manager`, `supply-manager`) are the biggest gap. Funding first because it's a cleaner domain model (grants / budgets / allocations / expenses) and because project-manager already has experimental expense fields that funding should take over.
 
 ### Backend
 

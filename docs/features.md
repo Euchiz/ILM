@@ -20,11 +20,19 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - **Self-serve join flow**: `lab_join_requests` table + `request_lab_join` / `approve_lab_join` / `reject_lab_join` / `cancel_lab_join` / `lookup_lab_by_id` RPCs. Rejection requires a comment; one pending request per user per lab.
 - **LabPicker empty state**: create-new-lab or paste-invite-link.
 
-## Account shell (`apps/account`)
+## Account app (`apps/account`) — complete
 
 - Dedicated app at `/account/`, reachable by clicking the login status box in any other app.
-- Dashboard mounts `LabSettingsPanel` (owner promote/demote), `LabMembersPanel` (invite + remove), `LabJoinRequestsPanel` (approve/reject pending requests with required comment), and `LabShareLinkPanel` (copyable `/account/join/<uuid>` URL).
-- Join-by-link route at `/account/join/<lab-uuid>`: signed-out users see auth shell; signed-in members get "Open this lab"; non-members see lab name preview + "Request to join" form with optional message and self-cancel.
+- **Flat two-panel layout**: left sidebar with profile, active lab tier (owner / admin / member) + capability blurb, project counts, and a "Join or create another lab…" shortcut that reopens `LabPicker` without clearing the current active lab. Right main area with tabbed Lab Management (Members / Invitations & Requests).
+- **Strict tier hierarchy** (owner > admin > member; one tier per user per lab, enforced by PK on `lab_memberships`):
+  - Admins + owner can promote members to admin and remove members.
+  - Only the owner can demote admins to member or remove admins.
+  - Owner is immutable via RPCs (`promote_member_to_admin`, `demote_admin_to_member`, `remove_lab_member`).
+- **Invitations & requests** in one tab: invite-by-email with role choice, pending-invitation list, copyable `/account/join/<uuid>` share link, and join-request queue with approve / reject-with-required-comment.
+- **Auto-claim on sign-in**: `claim_pending_invitations` RPC converts matching-email pending invitations to memberships when the user signs in.
+- **Join-by-link route** at `/account/join/<lab-uuid>`: signed-out users hit the auth shell; existing members get "Open this lab"; non-members see a lab-name preview + "Request to join" form with optional message + self-cancel.
+- **GitHub Pages SPA fallback** routed to the Account shell so deep links like `/account/join/<uuid>` resolve.
+- **Real-time badge updates**: role changes refresh both the members roster and the `AuthProvider` labs array so the sidebar tier badge updates without a reload.
 - Shared `AccountLinkCard` in `@ilm/ui` renders the login status box consistently across placeholder apps (`funding-manager`, `supply-manager`).
 
 ## Protocol Manager (Stage 3b — production)
