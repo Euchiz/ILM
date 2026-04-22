@@ -1600,7 +1600,6 @@ export const App = ({ page }: AppProps) => {
               <span>{stepCount} steps</span>
               <span>{activeProtocolLabel}</span>
               <span>{editor?.draftId || !editor?.protocolId ? "Working draft" : "Published protocol"}</span>
-              <span>{saveStatusLabel}</span>
             </div>
           </div>
 
