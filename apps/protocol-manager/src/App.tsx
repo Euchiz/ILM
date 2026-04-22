@@ -436,7 +436,8 @@ export const App = ({ page }: AppProps) => {
   const focusedStep = focusedStepLocation?.step ?? null;
   const visibleReviewsTab = submissions.length > 0;
   const activeProject = projects.find((project) => project.id === editor?.projectId) ?? null;
-  const activeProtocolLabel = viewMode === "step" ? "Inline editor" : viewMode === "preview" ? "Rendered preview" : "Transfer desk";
+  const activeProtocolLabel =
+    viewMode === "summary" ? "Protocol summary" : viewMode === "step" ? "Inline editor" : viewMode === "preview" ? "Rendered preview" : "Transfer desk";
   const saveStatusLabel =
     !editor?.draftId
       ? "Local working copy"
@@ -1629,7 +1630,190 @@ export const App = ({ page }: AppProps) => {
             </article>
           ) : null}
 
-          {viewMode === "step" ? (
+          {viewMode === "summary" ? (
+            <div className="protocol-summary-view">
+              <article className="protocol-content-card protocol-content-card-accent protocol-content-card-hero">
+                <div className="protocol-card-heading">
+                  <h3>Draft Workflow</h3>
+                  <span>Project assignment, draft state, and review routing</span>
+                </div>
+                <div className="protocol-form-grid protocol-form-grid-wide">
+                  <label className="protocol-project-field">
+                    Project
+                    <select className="field" value={editor?.projectId ?? ""} onChange={(event) => handleProjectChange(event.target.value)} disabled={projects.length === 0}>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                          {project.approvalRequired ? " - review required" : " - auto publish"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="protocol-switch-row">
+                    <div>
+                      <strong>Archived</strong>
+                      <span>{protocolMeta.lifecycleStatus === "archived" ? "Hidden from active operations." : "Included in active operations."}</span>
+                    </div>
+                    <span className="protocol-switch-control">
+                      <input
+                        type="checkbox"
+                        checked={protocolMeta.lifecycleStatus === "archived"}
+                        onChange={(event) => handleLifecycleStatusChange(event.target.checked ? "archived" : "active")}
+                      />
+                      <span className="protocol-switch-slider" aria-hidden="true" />
+                    </span>
+                  </label>
+
+                  <label className="protocol-switch-row">
+                    <div>
+                      <strong>Validated</strong>
+                      <span>{protocolMeta.validationStatus === "validated" ? "Validation is complete." : "Validation is still proposed."}</span>
+                    </div>
+                    <span className="protocol-switch-control">
+                      <input
+                        type="checkbox"
+                        checked={protocolMeta.validationStatus === "validated"}
+                        onChange={(event) => handleValidationStatusChange(event.target.checked ? "validated" : "proposed")}
+                      />
+                      <span className="protocol-switch-slider" aria-hidden="true" />
+                    </span>
+                  </label>
+
+                  <div className="protocol-switch-row">
+                    <div>
+                      <strong>Draft state</strong>
+                      <span>{editor?.draftId ? `Saved in Supabase ${formatRelativeTime(lastSavedAt)}.` : "No server draft yet. The next save creates one."}</span>
+                    </div>
+                    <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(saveState === "error" ? "withdrawn" : displayReviewStatus)}`}>{saveStatusLabel}</span>
+                  </div>
+
+                  <div className="protocol-switch-row">
+                    <div>
+                      <strong>Submission route</strong>
+                      <span>
+                        {activeProject?.approvalRequired === false
+                          ? "General publishes immediately after submit."
+                          : "This project freezes a submission and routes it to project leads."}
+                      </span>
+                    </div>
+                    <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(activeProject?.approvalRequired === false ? "approved" : "pending")}`}>
+                      {activeProject?.approvalRequired === false ? "auto publish" : "review gate"}
+                    </span>
+                  </div>
+                </div>
+              </article>
+
+              <article className="protocol-content-card">
+                <div className="protocol-card-heading">
+                  <h3>Portfolio Snapshot</h3>
+                  <span>{publishedProtocols.length} published protocol(s) in this lab</span>
+                </div>
+                <div className="protocol-summary-grid protocol-portfolio-grid">
+                  <div className="protocol-portfolio-project">
+                    <span>Project</span>
+                    <strong>{resolveProjectName(editor?.projectId ?? generalProjectId)}</strong>
+                    <small>Current project grouping</small>
+                  </div>
+                  <div className={`protocol-status-panel protocol-status-panel-${getStatusTone(displayReviewStatus)}`}>
+                    <span>Reviewed / reviewing</span>
+                    <strong>
+                      {totalReviewed} / {totalReviewing}
+                    </strong>
+                    <small>Workspace review split</small>
+                  </div>
+                  <div className={`protocol-status-panel protocol-status-panel-${getStatusTone(protocolMeta.lifecycleStatus)}`}>
+                    <span>Active / archived</span>
+                    <strong>
+                      {totalActive} / {totalArchived}
+                    </strong>
+                    <small>Published lifecycle split</small>
+                  </div>
+                  <div className={`protocol-status-panel protocol-status-panel-${getStatusTone(protocolMeta.validationStatus)}`}>
+                    <span>Validated / proposed</span>
+                    <strong>
+                      {totalValidated} / {totalProposed}
+                    </strong>
+                    <small>Published validation split</small>
+                  </div>
+                </div>
+              </article>
+
+              <article className="protocol-content-card">
+                <div className="protocol-card-heading">
+                  <h3>Current Protocol</h3>
+                  <span>{doc.protocol.id}</span>
+                </div>
+                <label className="protocol-inline-field">
+                  One-line description
+                  <input
+                    className="field"
+                    value={doc.protocol.description ?? ""}
+                    maxLength={160}
+                    placeholder="Add a short one-line description for this protocol"
+                    onChange={(event) => handleProtocolDescriptionChange(event.target.value)}
+                  />
+                </label>
+                <div className="protocol-summary-grid">
+                  <div>
+                    <span>Sections</span>
+                    <strong>{sectionCount}</strong>
+                    <small>All nested sections included</small>
+                  </div>
+                  <div>
+                    <span>Steps</span>
+                    <strong>{stepCount}</strong>
+                    <small>All nested steps included</small>
+                  </div>
+                  <div>
+                    <span>Workflow</span>
+                    <strong>{displayReviewStatus}</strong>
+                    <small>Derived from the review queue</small>
+                  </div>
+                  <div>
+                    <span>Draft location</span>
+                    <strong>{editor?.draftId ? "Server draft" : editor?.protocolId ? "Published copy" : "Local only"}</strong>
+                    <small>Where your working copy currently lives</small>
+                  </div>
+                </div>
+              </article>
+
+              {pendingSubmissions.length > 0 ? (
+                <article className="protocol-content-card">
+                  <div className="protocol-card-heading">
+                    <h3>Pending Review Queue</h3>
+                    <span>{pendingSubmissions.length} submission(s) awaiting action</span>
+                  </div>
+                  <div className="protocol-compact-list">
+                    {pendingSubmissions.slice(0, 5).map((submission) => (
+                      <div className="protocol-compact-row" key={submission.id}>
+                        <div>
+                          <strong>{submission.document.protocol.title}</strong>
+                          <span>{submission.projectName}</span>
+                          <span>Submitted by {submission.submitterLabel}</span>
+                        </div>
+                        <div className="protocol-inline-actions">
+                          <button type="button" onClick={() => void handleOpenSubmission(submission)}>
+                            Open
+                          </button>
+                          {canReviewProject(submission.projectId) ? (
+                            <>
+                              <button type="button" onClick={() => void handleApproveSubmission(submission)}>
+                                Approve
+                              </button>
+                              <button className="protocol-danger-action" type="button" onClick={() => void handleRejectSubmission(submission)}>
+                                Reject
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ) : null}
+            </div>
+          ) : viewMode === "step" ? (
             <section className="protocol-tab-panel" aria-label="Protocol editor workspace">
               <div className="protocol-card-heading">
                 <h3>
@@ -2205,6 +2389,9 @@ export const App = ({ page }: AppProps) => {
               <p className="protocol-subbar-description">Protocol-specific views for authoring, inspection, rendering, and transfer.</p>
             </div>
             <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
+              <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
+                Summary
+              </button>
               <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
                 Step
               </button>

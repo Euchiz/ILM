@@ -1914,6 +1914,13 @@ label {
   min-height: 0;
 }
 
+.protocol-tab-panel {
+  height: auto;
+  min-height: fit-content;
+  align-self: start;
+  overflow: visible;
+}
+
 .protocol-editor-canvas,
 .protocol-summary-view {
   grid-template-columns: repeat(2, minmax(0, 1fr));
