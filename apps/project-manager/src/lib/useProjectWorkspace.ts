@@ -14,6 +14,7 @@ import {
   recycleProject as rpcRecycleProject,
   rejectProject as rpcRejectProject,
   restoreProject as rpcRestoreProject,
+  submitProjectForReview as rpcSubmitProjectForReview,
   updateExperiment as rpcUpdateExperiment,
   updateMilestone as rpcUpdateMilestone,
   updateProject as rpcUpdateProject,
@@ -45,6 +46,7 @@ export interface UseProjectWorkspaceValue extends ProjectWorkspaceSnapshot {
   }) => Promise<ProjectRecord>;
   withdrawProjectDraft: (projectId: string) => Promise<void>;
   approveProject: (projectId: string) => Promise<ProjectRecord>;
+  submitProjectForReview: (projectId: string) => Promise<ProjectRecord>;
   rejectProject: (projectId: string) => Promise<void>;
   recycleProject: (projectId: string) => Promise<ProjectRecord>;
   restoreProject: (projectId: string) => Promise<ProjectRecord>;
@@ -183,6 +185,13 @@ export function useProjectWorkspace(
     return updated;
   }, [hydrate, requireIdentity]);
 
+  const submitProjectForReview = useCallback<UseProjectWorkspaceValue["submitProjectForReview"]>(async (projectId) => {
+    requireIdentity();
+    const updated = await rpcSubmitProjectForReview(projectId);
+    await hydrate();
+    return updated;
+  }, [hydrate, requireIdentity]);
+
   const rejectProject = useCallback<UseProjectWorkspaceValue["rejectProject"]>(async (projectId) => {
     requireIdentity();
     await rpcRejectProject(projectId);
@@ -285,6 +294,7 @@ export function useProjectWorkspace(
     createProjectDraft,
     withdrawProjectDraft,
     approveProject,
+    submitProjectForReview,
     rejectProject,
     recycleProject,
     restoreProject,

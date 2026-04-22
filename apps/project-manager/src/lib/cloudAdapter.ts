@@ -13,6 +13,8 @@ export interface ProjectRecord {
   status: string | null;
   state: ProjectState;
   deleted_at: string | null;
+  review_requested_at: string | null;
+  review_requested_by: string | null;
   approval_required: boolean;
   created_by: string | null;
   updated_by: string | null;
@@ -76,7 +78,7 @@ export interface ProjectWorkspaceSnapshot {
 const client = () => getSupabaseClient();
 
 const PROJECT_FIELDS =
-  "id, lab_id, name, description, status, state, deleted_at, approval_required, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, name, description, status, state, deleted_at, review_requested_at, review_requested_by, approval_required, created_by, updated_by, created_at, updated_at";
 
 const MILESTONE_FIELDS =
   "id, lab_id, project_id, sort_order, title, description, due_date, status, created_by, updated_by, created_at, updated_at";
@@ -151,6 +153,14 @@ export async function withdrawProjectDraft(projectId: string): Promise<void> {
 export async function approveProject(projectId: string): Promise<ProjectRecord> {
   const { data, error } = await client()
     .rpc("approve_project", { p_project_id: projectId })
+    .single();
+  if (error) throw error;
+  return data as ProjectRecord;
+}
+
+export async function submitProjectForReview(projectId: string): Promise<ProjectRecord> {
+  const { data, error } = await client()
+    .rpc("submit_project_for_review", { p_project_id: projectId })
     .single();
   if (error) throw error;
   return data as ProjectRecord;

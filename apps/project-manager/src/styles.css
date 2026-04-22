@@ -281,6 +281,27 @@ a { color: inherit; }
   letter-spacing: 0.1em;
 }
 
+.pm-collapsible-section {
+  background: var(--pm-panel);
+  border: 1px solid var(--pm-line);
+  border-radius: 14px;
+  padding: 0.85rem 1rem 1rem;
+}
+.pm-collapsible-section summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: var(--pm-ink);
+  font-family: "Noto Serif", Georgia, serif;
+  font-size: 1rem;
+}
+.pm-collapsible-section summary::-webkit-details-marker { display: none; }
+.pm-collapsible-section[open] summary {
+  margin-bottom: 0.9rem;
+}
+
 /* =========================================================
    Summary + library cards
 ========================================================= */
