@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { AppSwitcher, SubmissionHistoryLink, useAuth } from "@ilm/ui";
+import { AppSwitcher, SubmissionHistoryLink, appUrl, useAuth } from "@ilm/ui";
 import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
 import { getSupabaseClient, nowIso, safeJsonParse } from "@ilm/utils";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
@@ -257,7 +257,8 @@ const buildProjectGroups = (protocols: PublishedProtocolRecord[]): ProjectGroup[
 };
 
 export const App = ({ page }: AppProps) => {
-  const { activeLab, profile, status: authStatus, signOut, user } = useAuth();
+  const { activeLab, profile, status: authStatus, user } = useAuth();
+  const accountHref = appUrl("account/", APP_BASE_URL);
   const supabase = useMemo(() => getSupabaseClient(), []);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const mainGridRef = useRef<HTMLDivElement | null>(null);
@@ -2473,7 +2474,12 @@ export const App = ({ page }: AppProps) => {
                   <span>New Protocol</span>
                 </button>
 
-                <section className="protocol-side-account" aria-label="Signed-in account and lab context">
+                <a
+                  href={accountHref}
+                  className="protocol-side-account"
+                  aria-label="Open account and lab settings"
+                  title="Open account & lab settings"
+                >
                   <div className="protocol-side-account-header">
                     <span className="material-symbols-outlined protocol-side-account-icon" aria-hidden="true">
                       account_circle
@@ -2486,10 +2492,8 @@ export const App = ({ page }: AppProps) => {
                     <span>{activeLab?.name ?? "No active lab"}</span>
                     <span>{activeLab?.role ?? "member"}</span>
                   </div>
-                  <button type="button" className="protocol-side-account-action" onClick={() => void signOut()}>
-                    Log out
-                  </button>
-                </section>
+                  <span className="protocol-side-account-action">Manage account →</span>
+                </a>
               </div>
             </aside>
 

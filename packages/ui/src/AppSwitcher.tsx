@@ -1,4 +1,10 @@
-export type AppId = "home" | "protocol-manager" | "project-manager" | "supply-manager" | "funding-manager";
+export type AppId =
+  | "home"
+  | "protocol-manager"
+  | "project-manager"
+  | "supply-manager"
+  | "funding-manager"
+  | "account";
 
 type AppLink = {
   id: AppId;
@@ -14,7 +20,15 @@ const APP_LINKS: AppLink[] = [
   { id: "funding-manager", label: "Funding", href: "funding-manager/" },
 ];
 
-const APP_ROOT_SEGMENTS = new Set(APP_LINKS.map((link) => link.href).filter(Boolean));
+// Root segments recognized when walking back to the site root. Includes apps
+// that aren't rendered in the nav (e.g. "account/") so siblings still resolve.
+const APP_ROOT_SEGMENTS = new Set<string>([
+  "protocol-manager/",
+  "project-manager/",
+  "supply-manager/",
+  "funding-manager/",
+  "account/",
+]);
 
 const resolveSiteRoot = (baseUrl: string) => {
   const base = baseUrl.trim() || "/";
@@ -29,6 +43,8 @@ const resolveSiteRoot = (baseUrl: string) => {
 };
 
 const buildAppUrl = (href: string, baseUrl: string) => new URL(href || ".", resolveSiteRoot(baseUrl)).toString();
+
+export const appUrl = (href: string, baseUrl: string) => buildAppUrl(href, baseUrl);
 
 export const AppSwitcher = ({
   currentApp,

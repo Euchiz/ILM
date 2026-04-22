@@ -1,9 +1,10 @@
-import { AppSwitcher, LabMembersPanel, useAuth } from "@ilm/ui";
+import { AccountLinkCard, AppSwitcher, useAuth } from "@ilm/ui";
+import "@ilm/ui/auth.css";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
 export const App = () => {
-  const { activeLab, profile, signOut } = useAuth();
+  const { activeLab, profile } = useAuth();
 
   return (
     <main className="manager-shell">
@@ -17,9 +18,6 @@ export const App = () => {
         </div>
         <div className="manager-header-actions">
           <AppSwitcher currentApp="supply-manager" baseUrl={APP_BASE_URL} />
-          <button type="button" className="manager-ghost-button" onClick={() => void signOut()}>
-            Sign out
-          </button>
         </div>
       </header>
 
@@ -73,7 +71,7 @@ export const App = () => {
         </article>
 
         <div className="manager-card manager-card-hero manager-admin-stack">
-          <LabMembersPanel />
+          <AccountLinkCard baseUrl={APP_BASE_URL} />
         </div>
       </section>
     </main>

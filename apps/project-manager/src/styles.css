@@ -144,6 +144,15 @@ a { color: inherit; }
   padding: 0.8rem 0.9rem;
   display: grid;
   gap: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.pm-side-account:hover,
+.pm-side-account:focus-visible {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.2);
+  outline: none;
 }
 .pm-side-account-head { display: grid; gap: 0.1rem; }
 .pm-side-account-head strong { font-size: 0.88rem; color: var(--pm-ink); }
