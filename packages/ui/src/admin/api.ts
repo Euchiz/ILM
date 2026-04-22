@@ -196,3 +196,9 @@ export const cancelLabJoin = async (requestId: string) => {
   const { error } = await client().rpc("cancel_lab_join", { p_request_id: requestId });
   if (error) throw error;
 };
+
+export const claimPendingInvitations = async (): Promise<number> => {
+  const { data, error } = await client().rpc("claim_pending_invitations");
+  if (error) throw error;
+  return (data as number) ?? 0;
+};

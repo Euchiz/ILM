@@ -6,6 +6,7 @@ export {
   approveLabJoin,
   assignProjectLead,
   cancelLabJoin,
+  claimPendingInvitations,
   demoteAdminToMember,
   inviteMemberToLab,
   listLabInvitations,
