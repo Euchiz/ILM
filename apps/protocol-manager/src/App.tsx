@@ -662,11 +662,6 @@ export const App = ({ page }: AppProps) => {
     return persistEditorDraft(editorRef.current, { announce: true, createIfMissing: true });
   }, [persistEditorDraft]);
 
-  const saveActiveDraft = useCallback(async () => {
-    if (!editorRef.current) return null;
-    return persistEditorDraft(editorRef.current, { announce: true, createIfMissing: true });
-  }, [persistEditorDraft]);
-
   const importParsed = (value: unknown) => {
     const result = validateProtocolDocument(value, { mode: importMode });
     if (!result.success || !result.data) {
