@@ -405,12 +405,21 @@ export const App = ({ page }: AppProps) => {
     editor?.protocolId && findPublishedProtocol(workspace, editor.protocolId)
       ? getProtocolReviewState(findPublishedProtocol(workspace, editor.protocolId) as PublishedProtocolRecord, pendingSubmissions)
       : "reviewing";
-  const projectGroups = useMemo(() => buildProjectGroups(publishedProtocols, pendingSubmissions), [pendingSubmissions, publishedProtocols]);
+  const archivedProtocols = useMemo(
+    () => publishedProtocols.filter((protocol) => getProtocolMetadata(protocol.document).lifecycleStatus === "archived"),
+    [publishedProtocols]
+  );
+  const activePublishedProtocols = useMemo(
+    () => publishedProtocols.filter((protocol) => getProtocolMetadata(protocol.document).lifecycleStatus !== "archived"),
+    [publishedProtocols]
+  );
+  const projectGroups = useMemo(() => buildProjectGroups(activePublishedProtocols, pendingSubmissions), [activePublishedProtocols, pendingSubmissions]);
+  const archivedProjectGroups = useMemo(() => buildProjectGroups(archivedProtocols, pendingSubmissions), [archivedProtocols, pendingSubmissions]);
   const totalProjects = projects.length;
   const totalProtocols = publishedProtocols.length;
   const totalReviewed = publishedProtocols.filter((protocol) => getProtocolReviewState(protocol, pendingSubmissions) === "reviewed").length;
   const totalReviewing = totalProtocols - totalReviewed;
-  const totalArchived = publishedProtocols.filter((protocol) => getProtocolMetadata(protocol.document).lifecycleStatus === "archived").length;
+  const totalArchived = archivedProtocols.length;
   const totalActive = totalProtocols - totalArchived;
   const totalValidated = publishedProtocols.filter((protocol) => getProtocolMetadata(protocol.document).validationStatus === "validated").length;
   const totalProposed = totalProtocols - totalValidated;
@@ -432,7 +441,9 @@ export const App = ({ page }: AppProps) => {
     viewMode === "summary" ? "Protocol summary" : viewMode === "step" ? "Single-step focus" : viewMode === "preview" ? "Rendered preview" : "Transfer desk";
   const openEditorLabel = selection.type === "protocol" ? "Edit protocol" : selection.type === "section" ? "Edit section" : "Edit step";
   const saveStatusLabel =
-    saveState === "saving"
+    !editor?.draftId
+      ? "Local working copy"
+      : saveState === "saving"
       ? "Saving draft..."
       : saveState === "saved"
         ? `Saved ${formatRelativeTime(lastSavedAt)}`
@@ -581,8 +592,9 @@ export const App = ({ page }: AppProps) => {
   };
 
   const persistEditorDraft = useCallback(
-    async (target: ActiveEditor | null, options?: { announce?: boolean }) => {
+    async (target: ActiveEditor | null, options?: { announce?: boolean; createIfMissing?: boolean }) => {
       if (!target || !activeLab || !user) return null;
+      if (!target.draftId && !options?.createIfMissing) return null;
       if (!target.projectId) throw new Error("Choose a project before saving.");
 
       const preparedDocument = normalizeEditorDocument(target.document, target.projectId);
@@ -632,7 +644,7 @@ export const App = ({ page }: AppProps) => {
   );
 
   useEffect(() => {
-    if (page !== "protocol-manager" || autosaveTick === 0 || !editor) return;
+    if (page !== "protocol-manager" || autosaveTick === 0 || !editor || !editor.draftId) return;
 
     const timer = window.setTimeout(() => {
       void persistEditorDraft(editorRef.current).catch((error) => {
@@ -645,7 +657,12 @@ export const App = ({ page }: AppProps) => {
 
   const flushActiveDraft = useCallback(async () => {
     if (!editorRef.current) return null;
-    return persistEditorDraft(editorRef.current);
+    return persistEditorDraft(editorRef.current, { createIfMissing: Boolean(editorRef.current.draftId) });
+  }, [persistEditorDraft]);
+
+  const saveActiveDraft = useCallback(async () => {
+    if (!editorRef.current) return null;
+    return persistEditorDraft(editorRef.current, { announce: true, createIfMissing: true });
   }, [persistEditorDraft]);
 
   const importParsed = (value: unknown) => {
@@ -1061,7 +1078,7 @@ export const App = ({ page }: AppProps) => {
       });
       const target: ActiveEditor = { ...editor, document: preparedDocument };
       setEditor(target);
-      const draftId = await persistEditorDraft(target);
+      const draftId = await persistEditorDraft(target, { createIfMissing: true });
       if (!draftId) return;
 
       const { error } = await supabase.rpc("submit_draft", { p_draft_id: draftId });
@@ -1595,9 +1612,9 @@ export const App = ({ page }: AppProps) => {
           </div>
 
           <div className="protocol-workspace-actions">
-            <button type="button" onClick={() => void flushActiveDraft()} disabled={!editor}>
-              Save draft
-            </button>
+                <button type="button" onClick={() => void saveActiveDraft()} disabled={!editor}>
+                  Save draft
+                </button>
             <button className="protocol-primary-action" type="button" onClick={() => void handleSubmitForReview()} disabled={!editor?.projectId}>
               {activeProject?.approvalRequired === false ? "Publish to General" : "Submit for review"}
             </button>
@@ -1911,7 +1928,7 @@ export const App = ({ page }: AppProps) => {
             {sidebarTab === "overview"
               ? "Track published protocols, server-side drafts, review traffic, and deleted inventory across the active lab."
               : sidebarTab === "library"
-                ? "Browse the published protocol inventory, see which items already have drafts, and jump any record straight into VIEW."
+                ? "Browse active published protocols, see which items already have drafts, and jump any record straight into VIEW."
                 : sidebarTab === "reviews"
                   ? "Review pending submissions, withdraw your own requests, and reopen draft context when you need to keep editing."
                   : "Restore recently deleted protocols or permanently purge rows you no longer need."}
@@ -2036,6 +2053,54 @@ export const App = ({ page }: AppProps) => {
               </div>
             </article>
           ))}
+
+          {archivedProjectGroups.length > 0 ? (
+            <details className="protocol-content-card protocol-collapsible-card">
+              <summary className="protocol-collapsible-summary">
+                <span>Archived Protocols</span>
+                <span>{archivedProtocols.length}</span>
+              </summary>
+              <div className="protocol-library-grid protocol-library-grid-embedded">
+                {archivedProjectGroups.map((group) => (
+                  <article className="protocol-content-card" key={`archived-${group.project}`}>
+                    <div className="protocol-card-heading">
+                      <h3>{group.project}</h3>
+                      <span>{group.protocols.length} archived protocol(s)</span>
+                    </div>
+                    <div className="protocol-compact-list">
+                      {group.protocols.map((protocol) => {
+                        const metadata = getProtocolMetadata(protocol.document);
+                        const draft = drafts.find((candidate) => candidate.protocolId === protocol.id);
+                        return (
+                          <article className="protocol-library-card" key={protocol.id}>
+                            <button className="protocol-library-card-main" type="button" onClick={() => void openProtocolFromLibrary(protocol.id)}>
+                              <div>
+                                <strong>{protocol.document.protocol.title}</strong>
+                                <span>{protocol.document.protocol.description || "No description yet."}</span>
+                              </div>
+                              <div className="protocol-library-statuses">
+                                <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(metadata.lifecycleStatus)}`}>{metadata.lifecycleStatus}</span>
+                                <span className={`protocol-status-tag protocol-status-tag-${getStatusTone(metadata.validationStatus)}`}>{metadata.validationStatus}</span>
+                                {draft ? <span className={`protocol-status-tag protocol-status-tag-${getStatusTone("draft")}`}>draft</span> : null}
+                              </div>
+                            </button>
+                            <div className="protocol-library-card-actions">
+                              <button className="protocol-inline-action" type="button" onClick={() => void openProtocolFromLibrary(protocol.id)}>
+                                {draft ? "Open draft" : "Open"}
+                              </button>
+                              <button className="protocol-inline-action" type="button" onClick={() => void handleDuplicateProtocol(protocol.id)}>
+                                Duplicate
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : sidebarTab === "library" ? (
         <div className="protocol-library-grid">

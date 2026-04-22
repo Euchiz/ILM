@@ -2173,6 +2173,32 @@ label {
   gap: 1.5rem;
 }
 
+.protocol-library-grid-embedded {
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.protocol-collapsible-card {
+  padding: 1rem 1.1rem;
+}
+
+.protocol-collapsible-summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: var(--ilm-green);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.protocol-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
 .protocol-library-link,
 .protocol-library-card {
   border: 1px solid #dde2da;

@@ -406,7 +406,7 @@ const NewProjectModal = ({
         </div>
         <p className="pm-modal-note">
           Creates a private draft visible to you and lab admins. You'll be auto-assigned as a project lead.
-          An admin must approve before it becomes visible to the rest of the lab.
+          It stays private until you choose to publish it for the first time.
         </p>
         {error ? <p className="pm-inline-error">{error}</p> : null}
         <label className="pm-field">
@@ -470,6 +470,7 @@ export const App = () => {
     createProjectDraft,
     withdrawProjectDraft,
     approveProject,
+    submitProjectForReview,
     rejectProject,
     recycleProject,
     restoreProject,
@@ -522,12 +523,23 @@ export const App = () => {
 
   // Project slices
   const publishedProjects = useMemo(() => projects.filter((p) => p.state === "published"), [projects]);
+  const activePublishedProjects = useMemo(
+    () => publishedProjects.filter((project) => project.status !== "archived"),
+    [publishedProjects]
+  );
+  const archivedProjects = useMemo(
+    () => publishedProjects.filter((project) => project.status === "archived"),
+    [publishedProjects]
+  );
   const draftProjects = useMemo(() => projects.filter((p) => p.state === "draft"), [projects]);
   const myDraftProjects = useMemo(
     () => draftProjects.filter((p) => p.created_by === user?.id),
     [draftProjects, user?.id]
   );
-  const pendingForReview = draftProjects; // admin visibility of all drafts
+  const pendingForReview = useMemo(
+    () => draftProjects.filter((project) => project.review_requested_at),
+    [draftProjects]
+  );
 
   // Auto-select first project when the active tab needs one
   useEffect(() => {
@@ -537,9 +549,9 @@ export const App = () => {
       return;
     }
     if (!activeProjectId || !projects.some((p) => p.id === activeProjectId)) {
-      setActiveProjectId(publishedProjects[0]?.id ?? projects[0].id);
+      setActiveProjectId(activePublishedProjects[0]?.id ?? publishedProjects[0]?.id ?? projects[0].id);
     }
-  }, [sidebarTab, projects, publishedProjects, activeProjectId]);
+  }, [sidebarTab, projects, activePublishedProjects, publishedProjects, activeProjectId]);
 
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeProjectId) ?? null,
@@ -595,7 +607,6 @@ export const App = () => {
 
   const activeProjectMilestones = activeProject ? milestonesByProject.get(activeProject.id) ?? [] : [];
   const activeProjectExperiments = activeProject ? experimentsByProject.get(activeProject.id) ?? [] : [];
-  const isActiveProjectLead = activeProject ? (leadsByProject.get(activeProject.id) ?? []).includes(user?.id ?? "") : false;
   const activeUnassignedExperiments = useMemo(
     () => activeProjectExperiments.filter((experiment) => !experiment.milestone_id),
     [activeProjectExperiments]
@@ -676,6 +687,18 @@ export const App = () => {
       }
     },
     [approveProject]
+  );
+
+  const handleSubmitProjectForReview = useCallback(
+    async (project: ProjectRecord) => {
+      setActionError(null);
+      try {
+        await submitProjectForReview(project.id);
+      } catch (err) {
+        setActionError(errorMessage(err));
+      }
+    },
+    [submitProjectForReview]
   );
 
   const handleReject = useCallback(
@@ -1005,6 +1028,15 @@ export const App = () => {
     return <span className="pm-state-tag pm-state-tag-published">Published</span>;
   };
 
+  const projectReviewTag = (project: ProjectRecord) => {
+    if (project.state !== "draft") return null;
+    return project.review_requested_at ? (
+      <span className="pm-status-tag pm-status-tag-active">In review</span>
+    ) : (
+      <span className="pm-status-tag pm-status-tag-planning">Private draft</span>
+    );
+  };
+
   const projectCard = (project: ProjectRecord, opts: { showReviewActions?: boolean } = {}) => {
     const leadNames = leadNamesForProject(project.id);
     const ms = milestonesByProject.get(project.id) ?? [];
@@ -1020,6 +1052,7 @@ export const App = () => {
           </div>
           <div className="pm-library-card-tags">
             {projectStateTag(project)}
+            {projectReviewTag(project)}
             <span className={`pm-status-tag pm-status-tag-${(project.status || "planning").replace(/\s+/g, "_")}`}>
               {statusLabel(project.status || "planning")}
             </span>
@@ -1057,6 +1090,11 @@ export const App = () => {
               </button>
             </>
           ) : null}
+          {project.state === "draft" && !project.review_requested_at && isMine && !isAdmin ? (
+            <button type="button" className="pm-text-button" onClick={() => void handleSubmitProjectForReview(project)}>
+              Publish for review
+            </button>
+          ) : null}
           {project.state === "draft" && (isMine || isAdmin) ? (
             <button type="button" className="pm-text-button" onClick={() => void handleWithdraw(project)}>
               Withdraw
@@ -1092,8 +1130,8 @@ export const App = () => {
         </article>
         <article className="pm-summary-card">
           <span className="pm-summary-kicker">Published projects</span>
-          <strong>{publishedProjects.length}</strong>
-          <small>{myDraftProjects.length} of your drafts pending</small>
+          <strong>{activePublishedProjects.length}</strong>
+          <small>{archivedProjects.length} archived</small>
         </article>
         <article className="pm-summary-card">
           <span className="pm-summary-kicker">Milestones</span>
@@ -1103,20 +1141,20 @@ export const App = () => {
         <article className="pm-summary-card">
           <span className="pm-summary-kicker">Review queue</span>
           <strong>{pendingForReview.length}</strong>
-          <small>{isAdmin ? "You can approve from the Review tab" : "Admins handle reviews"}</small>
+          <small>{isAdmin ? "Submitted drafts awaiting approval" : "Only submitted drafts enter review"}</small>
         </article>
       </section>
 
       <section className="pm-panel-section">
         <div className="pm-panel-section-head">
           <h3>Recent projects</h3>
-          <span>{publishedProjects.length} published</span>
+          <span>{activePublishedProjects.length} active</span>
         </div>
-        {publishedProjects.length === 0 ? (
+        {activePublishedProjects.length === 0 ? (
           <p className="pm-empty">No published projects yet.</p>
         ) : (
           <div className="pm-card-grid">
-            {publishedProjects.slice(0, 6).map((p) => projectCard(p))}
+            {activePublishedProjects.slice(0, 6).map((p) => projectCard(p))}
           </div>
         )}
       </section>
@@ -1136,7 +1174,7 @@ export const App = () => {
       <section className="pm-panel-section">
         <div className="pm-panel-section-head">
           <h3>My drafts</h3>
-          <span>{myDraftProjects.length} in review</span>
+          <span>{myDraftProjects.filter((project) => project.review_requested_at).length} submitted</span>
         </div>
         {myDraftProjects.length === 0 ? (
           <p className="pm-empty">You have no pending drafts. Use "+ New Project" to start one.</p>
@@ -1148,14 +1186,26 @@ export const App = () => {
       <section className="pm-panel-section">
         <div className="pm-panel-section-head">
           <h3>Published</h3>
-          <span>{publishedProjects.length} live</span>
+          <span>{activePublishedProjects.length} active</span>
         </div>
-        {publishedProjects.length === 0 ? (
+        {activePublishedProjects.length === 0 ? (
           <p className="pm-empty">No published projects yet.</p>
         ) : (
-          <div className="pm-card-grid">{publishedProjects.map((p) => projectCard(p))}</div>
+          <div className="pm-card-grid">{activePublishedProjects.map((p) => projectCard(p))}</div>
         )}
       </section>
+
+      {archivedProjects.length > 0 ? (
+        <details className="pm-collapsible-section">
+          <summary>
+            <span>Archived</span>
+            <span>{archivedProjects.length}</span>
+          </summary>
+          <div className="pm-card-grid">
+            {archivedProjects.map((project) => projectCard(project))}
+          </div>
+        </details>
+      ) : null}
 
       {isAdmin && deletedProjects.length > 0 ? (
         <section className="pm-panel-section">
@@ -1194,17 +1244,19 @@ export const App = () => {
       <header className="pm-panel-header">
         <div>
           <h2>Review</h2>
-          <p>Project drafts awaiting admin approval.</p>
+          <p>Only drafts that have been explicitly submitted for first publication appear here.</p>
         </div>
       </header>
       {actionError ? <p className="pm-page-error">{actionError}</p> : null}
       {!isAdmin ? (
         <section className="pm-panel-section">
           <p className="pm-empty">
-            You're a member of this lab. Lab admins handle project approvals; your own drafts remain visible here only to you.
+            You're a member of this lab. Drafts stay private until you choose Publish for review.
           </p>
-          {myDraftProjects.length > 0 ? (
-            <div className="pm-card-grid">{myDraftProjects.map((p) => projectCard(p))}</div>
+          {myDraftProjects.filter((project) => project.review_requested_at).length > 0 ? (
+            <div className="pm-card-grid">
+              {myDraftProjects.filter((project) => project.review_requested_at).map((p) => projectCard(p))}
+            </div>
           ) : null}
         </section>
       ) : pendingForReview.length === 0 ? (
@@ -1228,12 +1280,18 @@ export const App = () => {
           unassignedExperiments={activeUnassignedExperiments}
           selection={outlineSelection}
           canManage={canManageRoadmap}
-          onSelectMilestone={(milestoneId) => setOutlineSelection({ kind: "milestone", id: milestoneId })}
+          onSelectMilestone={(milestoneId) => {
+            setOutlineSelection({ kind: "milestone", id: milestoneId });
+            setViewSubTab("edit");
+          }}
           onOpenMilestone={(milestoneId) => {
             setOutlineSelection({ kind: "milestone", id: milestoneId });
             setViewSubTab("edit");
           }}
-          onSelectExperiment={(experimentId) => setOutlineSelection({ kind: "experiment", id: experimentId })}
+          onSelectExperiment={(experimentId) => {
+            setOutlineSelection({ kind: "experiment", id: experimentId });
+            setViewSubTab("edit");
+          }}
           onOpenExperiment={(experimentId) => {
             setOutlineSelection({ kind: "experiment", id: experimentId });
             setViewSubTab("edit");
@@ -1290,15 +1348,15 @@ export const App = () => {
               <div>
                 <strong>Draft workflow</strong>
                 <p>
-                  Save ongoing work privately, abort the draft, or send it forward for review.
-                  Project lead and admin submissions publish immediately.
+                  Save ongoing work privately, abort the draft, or publish it for the first time.
+                  Published projects update directly afterwards without re-entering review.
                 </p>
               </div>
               <div className="pm-inline-actions">
                 <button
                   type="button"
                   className="pm-text-button"
-                  onClick={() => window.alert("Draft changes are already saved as you edit.")}
+                  onClick={() => window.alert("Draft changes are already reflected in your private workspace.")}
                 >
                   Save draft
                 </button>
@@ -1309,15 +1367,14 @@ export const App = () => {
                   type="button"
                   className="pm-primary-button"
                   onClick={() => {
-                    if (isAdmin || isActiveProjectLead) {
+                    if (isAdmin) {
                       void handleApprove(activeProject);
                       return;
                     }
-                    setSidebarTab("review");
-                    window.alert("This draft is ready in the review queue for lab admins.");
+                    void handleSubmitProjectForReview(activeProject);
                   }}
                 >
-                  {isAdmin || isActiveProjectLead ? "Publish now" : "Publish for review"}
+                  {isAdmin ? "Publish now" : "Publish for review"}
                 </button>
               </div>
             </section>
