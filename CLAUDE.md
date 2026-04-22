@@ -95,23 +95,11 @@ user-editable metadata or frontend checks.
 - Zero-lab / multi-lab / single-lab auto-open behavior
 - Invitations remain dashboard-admin only for now
 
-**Stage 3 — Storage cutover (protocol-manager) with review-gated publishing**
-See `docs/stage-3-plan.md` for the full plan. Summary:
-- Published `protocols` are read-only to everyone except via RPC. Every
-  edit goes through a **draft → submit → review → publish** flow.
-- New tables: `protocol_drafts` (per-user sandbox), `protocol_submissions`
-  (frozen snapshots), `project_leads` (admins designate reviewers).
-- `projects.approval_required` toggle; each lab auto-gets a "General"
-  project with `approval_required=false` so edits there publish directly.
-- Hard delete with 30-day recycle bin (`protocols.deleted_at`).
-- `protocol_revisions` is written **only on approval**.
-- Shipped in two PRs: 3a (schema + RPCs + RLS), 3b (UI cutover, drafts,
-  submissions panel, recycle bin, localStorage→cloud migration banner).
-
-**Stage 4 — Extend to other apps**
-- Wire the same auth/lab shell into `funding-manager`, `project-manager`,
-  `supply-manager` using normalized tables (not `document_json`) when their
-  schemas land
+**Living docs**
+- `docs/features.md` — cumulative summary of what's shipped (update after each
+  meaningful PR).
+- `docs/next-stage.md` — current planned next stage (rewrite when priorities
+  change). Read this before starting a new session.
 
 ### Non-negotiables
 - Static frontend only; no custom backend server
