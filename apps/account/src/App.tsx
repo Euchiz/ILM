@@ -46,39 +46,61 @@ const isUuid = (value: string): boolean =>
 // Left panel
 // ---------------------------------------------------------------------------
 
-type ProjectCounts = { total: number; drafts: number; pendingReview: number };
+type ProjectCounts = { led: number; drafts: number; pendingReview: number };
 
-const useProjectCounts = (labId: string | null): ProjectCounts | null => {
+// User-specific project stats within the active lab:
+//   led            = published projects where the user is creator OR a project lead
+//   drafts         = the user's own unsubmitted drafts
+//   pendingReview  = the user's own drafts with a review submission pending
+const useProjectCounts = (labId: string | null, userId: string | null): ProjectCounts | null => {
   const [counts, setCounts] = useState<ProjectCounts | null>(null);
   useEffect(() => {
-    if (!labId) {
+    if (!labId || !userId) {
       setCounts(null);
       return;
     }
     let cancelled = false;
     const supabase = getSupabaseClient();
-    supabase
-      .from("projects")
-      .select("id, state, review_requested_at")
-      .eq("lab_id", labId)
-      .then(({ data, error }) => {
+    (async () => {
+      try {
+        const [projectsRes, leadsRes] = await Promise.all([
+          supabase
+            .from("projects")
+            .select("id, state, review_requested_at, created_by")
+            .eq("lab_id", labId),
+          supabase
+            .from("project_leads")
+            .select("project_id, projects!inner(lab_id, state)")
+            .eq("user_id", userId)
+            .eq("projects.lab_id", labId)
+            .eq("projects.state", "published"),
+        ]);
         if (cancelled) return;
-        if (error || !data) {
-          setCounts({ total: 0, drafts: 0, pendingReview: 0 });
+        if (projectsRes.error || !projectsRes.data) {
+          setCounts({ led: 0, drafts: 0, pendingReview: 0 });
           return;
         }
-        type Row = { state: string; review_requested_at: string | null };
-        const rows = data as Row[];
+        type Row = { id: string; state: string; review_requested_at: string | null; created_by: string | null };
+        const rows = projectsRes.data as Row[];
+        const ledAsCreator = new Set(
+          rows.filter((r) => r.state === "published" && r.created_by === userId).map((r) => r.id)
+        );
+        const ledAsLead = new Set(((leadsRes.data as { project_id: string }[] | null) ?? []).map((r) => r.project_id));
+        const led = new Set([...ledAsCreator, ...ledAsLead]).size;
+        const myDrafts = rows.filter((r) => r.state === "draft" && r.created_by === userId);
         setCounts({
-          total: rows.filter((r) => r.state === "published").length,
-          drafts: rows.filter((r) => r.state === "draft").length,
-          pendingReview: rows.filter((r) => r.state === "draft" && r.review_requested_at !== null).length,
+          led,
+          drafts: myDrafts.length,
+          pendingReview: myDrafts.filter((r) => r.review_requested_at !== null).length,
         });
-      });
+      } catch {
+        if (!cancelled) setCounts({ led: 0, drafts: 0, pendingReview: 0 });
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [labId]);
+  }, [labId, userId]);
   return counts;
 };
 
@@ -98,7 +120,7 @@ const TIER_DESCRIPTION: Record<MembershipTier, string> = {
 
 const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
   const { profile, user, activeLab, signOut } = useAuth();
-  const counts = useProjectCounts(activeLab?.id ?? null);
+  const counts = useProjectCounts(activeLab?.id ?? null, user?.id ?? null);
   const displayName = profile?.display_name ?? user?.email ?? "Signed in";
   const email = profile?.email ?? user?.email ?? "";
   const tier: MembershipTier | null = (activeLab?.role as MembershipTier | undefined) ?? null;
@@ -138,11 +160,11 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
       </section>
 
       <section className="acct-side-section">
-        <h2>Projects in this lab</h2>
+        <h2>Your projects in this lab</h2>
         <div className="acct-stat-row">
           <div className="acct-stat">
-            <span className="acct-stat-value">{counts?.total ?? "–"}</span>
-            <span className="acct-stat-label">Published</span>
+            <span className="acct-stat-value">{counts?.led ?? "–"}</span>
+            <span className="acct-stat-label">Led</span>
           </div>
           <div className="acct-stat">
             <span className="acct-stat-value">{counts?.pendingReview ?? "–"}</span>
@@ -150,7 +172,7 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
           </div>
           <div className="acct-stat">
             <span className="acct-stat-value">{counts?.drafts ?? "–"}</span>
-            <span className="acct-stat-label">Drafts</span>
+            <span className="acct-stat-label">My drafts</span>
           </div>
         </div>
       </section>
