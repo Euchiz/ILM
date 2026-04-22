@@ -24,9 +24,21 @@ export interface ProjectRecord {
   review_requested_by: string | null;
   approval_required: boolean;
   submission_history: SubmissionHistoryEntryRecord[] | null;
+  github_repo_url: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectRepoStatusRecord {
+  project_id: string;
+  lab_id: string;
+  pushed_at: string | null;
+  default_branch: string | null;
+  html_url: string | null;
+  error: string | null;
+  fetched_at: string;
   updated_at: string;
 }
 
@@ -81,12 +93,16 @@ export interface ProjectWorkspaceSnapshot {
   experiments: ExperimentRecord[];
   protocols: ProtocolOptionRecord[];
   leads: ProjectLeadLinkRecord[];
+  repoStatuses: ProjectRepoStatusRecord[];
 }
 
 const client = () => getSupabaseClient();
 
 const PROJECT_FIELDS =
-  "id, lab_id, name, description, status, state, deleted_at, review_requested_at, review_requested_by, approval_required, submission_history, created_by, updated_by, created_at, updated_at";
+  "id, lab_id, name, description, status, state, deleted_at, review_requested_at, review_requested_by, approval_required, submission_history, github_repo_url, created_by, updated_by, created_at, updated_at";
+
+const REPO_STATUS_FIELDS =
+  "project_id, lab_id, pushed_at, default_branch, html_url, error, fetched_at, updated_at";
 
 const MILESTONE_FIELDS =
   "id, lab_id, project_id, sort_order, title, description, due_date, status, created_by, updated_by, created_at, updated_at";
@@ -95,12 +111,13 @@ const EXPERIMENT_FIELDS =
   "id, lab_id, project_id, milestone_id, sort_order, protocol_id, title, notes, status, started_at, completed_at, created_by, updated_by, created_at, updated_at";
 
 export async function listProjectWorkspace(labId: string): Promise<ProjectWorkspaceSnapshot> {
-  const [projectsResult, milestonesResult, experimentsResult, protocolsResult, leadsResult] = await Promise.all([
+  const [projectsResult, milestonesResult, experimentsResult, protocolsResult, leadsResult, repoStatusesResult] = await Promise.all([
     client().from("projects").select(PROJECT_FIELDS).eq("lab_id", labId).order("name", { ascending: true }),
     client().from("milestones").select(MILESTONE_FIELDS).eq("lab_id", labId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     client().from("experiments").select(EXPERIMENT_FIELDS).eq("lab_id", labId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     client().from("protocols").select("id, project_id, title, updated_at").eq("lab_id", labId).order("updated_at", { ascending: false }),
     client().from("project_leads").select("project_id, user_id, projects!inner(lab_id)").eq("projects.lab_id", labId),
+    client().from("project_repo_status").select(REPO_STATUS_FIELDS).eq("lab_id", labId),
   ]);
 
   if (projectsResult.error) throw projectsResult.error;
@@ -108,6 +125,8 @@ export async function listProjectWorkspace(labId: string): Promise<ProjectWorksp
   if (experimentsResult.error) throw experimentsResult.error;
   if (protocolsResult.error) throw protocolsResult.error;
   if (leadsResult.error) throw leadsResult.error;
+  // repo_status is optional infrastructure — tolerate missing table / RLS hiccups
+  // so the library still loads if the GitHub migration hasn't been applied yet.
 
   const leads = ((leadsResult.data ?? []) as Array<{ project_id: string; user_id: string }>).map((row) => ({
     project_id: row.project_id,
@@ -120,6 +139,7 @@ export async function listProjectWorkspace(labId: string): Promise<ProjectWorksp
     experiments: (experimentsResult.data as ExperimentRecord[]) ?? [],
     protocols: (protocolsResult.data as ProtocolOptionRecord[]) ?? [],
     leads,
+    repoStatuses: repoStatusesResult.error ? [] : ((repoStatusesResult.data as ProjectRepoStatusRecord[]) ?? []),
   };
 }
 
@@ -219,21 +239,57 @@ export async function updateProject(args: {
   description?: string;
   status?: string;
   approvalRequired: boolean;
+  githubRepoUrl?: string | null;
 }): Promise<ProjectRecord> {
+  const update: Record<string, unknown> = {
+    name: args.name,
+    description: args.description?.trim() || null,
+    status: args.status?.trim() || null,
+    approval_required: args.approvalRequired,
+    updated_by: args.userId,
+  };
+  if (args.githubRepoUrl !== undefined) {
+    const trimmed = args.githubRepoUrl?.trim();
+    update.github_repo_url = trimmed ? trimmed : null;
+  }
   const { data, error } = await client()
     .from("projects")
-    .update({
-      name: args.name,
-      description: args.description?.trim() || null,
-      status: args.status?.trim() || null,
-      approval_required: args.approvalRequired,
-      updated_by: args.userId,
-    })
+    .update(update)
     .eq("id", args.projectId)
     .select(PROJECT_FIELDS)
     .single();
   if (error) throw error;
   return data as ProjectRecord;
+}
+
+// ---------------------------------------------------------------------------
+// GitHub integration — repo status + lab PAT management
+// ---------------------------------------------------------------------------
+
+export async function refreshProjectRepoStatus(projectId: string): Promise<ProjectRepoStatusRecord> {
+  const { data, error } = await client().functions.invoke<ProjectRepoStatusRecord>(
+    "fetch-github-activity",
+    { body: { project_id: projectId } }
+  );
+  if (error) throw error;
+  if (!data) throw new Error("Edge function returned no data");
+  return data;
+}
+
+export async function setLabGithubPat(labId: string, pat: string): Promise<void> {
+  const { error } = await client().rpc("set_lab_github_pat", { p_lab_id: labId, p_pat: pat });
+  if (error) throw error;
+}
+
+export async function clearLabGithubPat(labId: string): Promise<void> {
+  const { error } = await client().rpc("clear_lab_github_pat", { p_lab_id: labId });
+  if (error) throw error;
+}
+
+export async function labGithubPatConfigured(labId: string): Promise<boolean> {
+  const { data, error } = await client().rpc("lab_github_pat_configured", { p_lab_id: labId });
+  if (error) throw error;
+  return Boolean(data);
 }
 
 // ---------------------------------------------------------------------------
