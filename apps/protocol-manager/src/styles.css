@@ -1297,7 +1297,8 @@ label {
   gap: 0.25rem;
 }
 
-.protocol-subbar-description {
+.protocol-subbar-description,
+.protocol-subbar .rl-subbar__description {
   margin: 0;
   color: #6f756d;
   font-size: 0.78rem;
@@ -1382,7 +1383,7 @@ label {
 .protocol-body {
   display: grid;
   grid-template-columns: 220px 1fr;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   overflow: hidden;
 }
@@ -2451,8 +2452,16 @@ label {
 
   .protocol-body {
     display: block;
+    flex: none;
     height: auto;
     min-height: 0;
+    overflow: visible;
+  }
+
+  .protocol-shell.rl-shell,
+  .protocol-shell .rl-shell-main {
+    height: auto;
+    min-height: 100vh;
     overflow: visible;
   }
 

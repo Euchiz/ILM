@@ -2394,7 +2394,7 @@ export const App = ({ page }: AppProps) => {
       {page === "home" ? (
         homeView
       ) : (
-        <main className="protocol-shell">
+        <AppShell className="protocol-shell">
           <AppTopbar
             className="protocol-topbar"
             brand={
@@ -2548,7 +2548,7 @@ export const App = ({ page }: AppProps) => {
               </div>
             </div>
           ) : null}
-        </main>
+        </AppShell>
       )}
     </>
   );

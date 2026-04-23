@@ -159,6 +159,9 @@
   padding-bottom: 0;
   background: rgba(249, 248, 244, 0.92);
 }
+.acct-subbar .rl-subbar__tabs {
+  margin-left: 0;
+}
 .acct-tabs {
   display: flex;
   gap: 0.3rem;
