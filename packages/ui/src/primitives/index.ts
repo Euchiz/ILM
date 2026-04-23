@@ -38,3 +38,16 @@ export {
   type EmptyStateProps,
   type ErrorBannerProps,
 } from "./Feedback";
+export {
+  AppShell,
+  AppTopbar,
+  AppSubbar,
+  AppContent,
+  AppWordmark,
+  AppSidebarSection,
+  type AppShellProps,
+  type AppTopbarProps,
+  type AppSubbarProps,
+  type AppContentProps,
+  type AppWordmarkProps,
+} from "./AppShell";
