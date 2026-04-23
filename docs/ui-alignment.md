@@ -59,14 +59,25 @@ Deferred to first real demand under the "first use local, second use promote" ru
 - `className` pass-through for ad-hoc overrides.
 - Variant slots backed by CSS custom properties (`--rl-btn-bg`, `--rl-panel-bg`, `--rl-badge-fg`, `--rl-modal-width`, ...) so apps restyle a single usage without forking the primitive.
 
-### Phase C — Shared app shell (~0.5 day)
+### Phase C — Shared app shell ✅ shipped
 
-Single `<AppShell>` in `@ilm/ui` owning:
-- Top bar: product name, lab switcher, `AppSwitcher`, `AccountLinkCard`.
-- Consistent page container (max-width, padding, breakpoints).
-- Slot for app-specific tabs/nav.
+Shell primitives live in `packages/ui/src/primitives/AppShell.tsx`, styles in
+`packages/ui/src/primitives/primitives.css`, all scoped under `.rl-shell*` /
+`.rl-topbar*` / `.rl-subbar*` / `.rl-content*` / `.rl-wordmark*`.
 
-Protocol, Project, Account each have their own variant today — collapse them.
+Shipped:
+- `AppShell` — full-viewport grid with optional `sidebar` slot + `main` column; collapses to a single column under 900px.
+- `AppTopbar` — `brand` / `kicker` / `title` / `subtitle` / `actions` slots; fits `AppSwitcher`, `AccountLinkCard`, and lab-context controls.
+- `AppSubbar` — optional secondary strip with `kicker` / `description` / `tabs` slots for app-specific nav.
+- `AppContent` — consistent page container with shared padding, `narrow` and `flush` modifiers, and a max-width ceiling.
+- `AppWordmark` — product mark button (`glyph` + product / module lines) for returning to the module home.
+- `AppSidebarSection` — labelled section inside the sidebar.
+
+All variant slots are backed by CSS custom properties (`--rl-shell-sidebar-width`, `--rl-shell-topbar-bg`, `--rl-shell-content-max`, ...) so apps restyle locally without forking the primitive.
+
+**First consumer.** Supply Manager (Stage 4c's placeholder shell) is now built directly on `AppShell` + `AppTopbar` + `AppContent` + shared `Panel` / `CardGrid` / `SectionHeader` primitives. Its `styles.css` is down to ~55 lines of truly supply-specific compositions (stat grid, hero card).
+
+Protocol, Project, and Account each still have their own shell variant; those collapse in Phase D.
 
 ### Phase D — Migrate legacy apps
 
