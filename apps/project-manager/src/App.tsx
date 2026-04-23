@@ -480,6 +480,7 @@ export const App = () => {
   const { activeLab, profile, user } = useAuth();
   const accountHref = appUrl("account/", APP_BASE_URL);
   const isAdmin = activeLab?.role === "owner" || activeLab?.role === "admin";
+  const isOwner = activeLab?.role === "owner";
   const workspace = useProjectWorkspace(activeLab?.id ?? null, user?.id ?? null, isAdmin);
   const {
     status,
@@ -1223,9 +1224,9 @@ export const App = () => {
           ) : (
             <div
               className="pm-library-card-repo pm-library-card-repo-muted"
-              title={isAdmin
+              title={isOwner
                 ? "Add a lab GitHub PAT in Library → GitHub integration to enable monitoring."
-                : "Ask a lab admin to configure a GitHub PAT to enable monitoring."}
+                : "Ask the lab owner to configure a GitHub PAT to enable monitoring."}
             >
               <a
                 href={project.github_repo_url}
@@ -1309,7 +1310,7 @@ export const App = () => {
       </header>
       {actionError ? <p className="pm-page-error">{actionError}</p> : null}
 
-      {isAdmin ? (
+      {isOwner ? (
         <LabGithubPatPanel
           configured={labGithubPatConfigured}
           onSet={setLabGithubPat}
@@ -2028,6 +2029,11 @@ const LabGithubPatPanel = ({
         <span>{configured ? "PAT configured" : "Not configured"}</span>
       </summary>
       <div className="pm-panel-section-body" style={{ display: "grid", gap: "0.6rem", paddingTop: "0.6rem" }}>
+        <p className="pm-muted-note" style={{ fontSize: "0.8rem" }}>
+          <strong>Lab owner only:</strong> this section is visible to and editable by the lab owner. Admins and
+          members cannot see or change the PAT — they can only trigger refreshes from project cards once it's
+          configured.
+        </p>
         <p className="pm-muted-note" style={{ fontSize: "0.8rem" }}>
           Paste a fine-grained GitHub Personal Access Token with read-only access to the repos you link from projects.
           The token is stored in the lab row and is only readable by the <code>fetch-github-activity</code> edge
