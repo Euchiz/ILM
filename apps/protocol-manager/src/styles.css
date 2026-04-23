@@ -1,5 +1,6 @@
 @import "../../../packages/ui/src/tokens.css";
 @import "../../../packages/ui/src/reset.css";
+@import "../../../packages/ui/src/primitives/primitives.css";
 
 button {
   border: 1px solid var(--rl-line);
@@ -1179,19 +1180,27 @@ label {
   color: #9ba097;
 }
 
-.protocol-shell {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
-  min-height: 100vh;
+/* Protocol's shell locks the viewport height so the body can scroll
+   independently. The main column (rl-shell-main) must do the same when
+   Protocol's shell is in use. */
+.protocol-shell.rl-shell {
   height: 100vh;
+  overflow: hidden;
   background: #f9f8f4;
+}
+.protocol-shell .rl-shell-main {
+  min-height: 0;
+  height: 100vh;
   overflow: hidden;
 }
 
-.protocol-shell-home {
-  display: block;
+.protocol-shell-home.rl-shell,
+.protocol-shell-home .rl-shell-main {
   height: auto;
+  min-height: 100vh;
   overflow: visible;
+}
+.protocol-shell-home.rl-shell {
   background:
     radial-gradient(circle at top right, rgba(48, 103, 71, 0.08), transparent 28%),
     linear-gradient(180deg, #f9f8f4 0%, #f4f5ef 100%);
@@ -1288,7 +1297,8 @@ label {
   gap: 0.25rem;
 }
 
-.protocol-subbar-description {
+.protocol-subbar-description,
+.protocol-subbar .rl-subbar__description {
   margin: 0;
   color: #6f756d;
   font-size: 0.78rem;
@@ -1373,7 +1383,7 @@ label {
 .protocol-body {
   display: grid;
   grid-template-columns: 220px 1fr;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   overflow: hidden;
 }
@@ -2442,8 +2452,16 @@ label {
 
   .protocol-body {
     display: block;
+    flex: none;
     height: auto;
     min-height: 0;
+    overflow: visible;
+  }
+
+  .protocol-shell.rl-shell,
+  .protocol-shell .rl-shell-main {
+    height: auto;
+    min-height: 100vh;
     overflow: visible;
   }
 

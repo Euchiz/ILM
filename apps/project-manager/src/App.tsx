@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  AppContent,
+  AppShell,
+  AppSidebarSection,
   AppSwitcher,
+  AppTopbar,
   ProjectLeadsPanel,
   SubmissionHistoryLink,
   appUrl,
@@ -1660,82 +1664,80 @@ export const App = () => {
 
   const signedInLabel = profile?.display_name || profile?.email || "Signed in";
 
-  return (
-    <div className="pm-shell">
-      <aside className="pm-side-rail" aria-label="Project manager navigation">
-        <div className="pm-side-rail-header">
-          <strong>Project Manager</strong>
-          <small>Stage 4.A</small>
-        </div>
-        <nav className="pm-side-rail-nav" aria-label="Primary">
-          <button
-            type="button"
-            className={`pm-rail-item${sidebarTab === "overview" ? " active" : ""}`}
-            onClick={() => setSidebarTab("overview")}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            className={`pm-rail-item${sidebarTab === "library" ? " active" : ""}`}
-            onClick={() => setSidebarTab("library")}
-          >
-            Library
-          </button>
-          <button
-            type="button"
-            className={`pm-rail-item${sidebarTab === "review" ? " active" : ""}`}
-            onClick={() => setSidebarTab("review")}
-          >
-            Review
-            {pendingForReview.length > 0 ? (
-              <span className="pm-rail-badge">{pendingForReview.length}</span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className={`pm-rail-item${sidebarTab === "view" ? " active" : ""}`}
-            onClick={() => setSidebarTab("view")}
-            disabled={!activeProject}
-          >
-            View
-          </button>
-        </nav>
-        <div className="pm-side-rail-footer">
-          <button
-            type="button"
-            className="pm-rail-item pm-rail-item-strong"
-            onClick={() => setNewProjectOpen(true)}
-          >
-            + New project
-          </button>
-          <a
-            href={accountHref}
-            className="pm-side-account"
-            title="Open account & lab settings"
-          >
-            <div className="pm-side-account-head">
-              <strong>{signedInLabel}</strong>
-              <span>{profile?.email}</span>
-            </div>
-            <div className="pm-side-account-meta">
-              <span>{activeLab?.name ?? "No lab"}</span>
-              <span>{activeLab?.role ?? "member"}</span>
-            </div>
-            <span className="pm-side-account-action">Manage account →</span>
-          </a>
-        </div>
-      </aside>
-
-      <main className="pm-main">
-        <header className="pm-topbar">
-          <div className="pm-topbar-copy">
-            <p className="pm-kicker">Project Manager</p>
-            <h1>
-              {sidebarTab === "view" && activeProject ? activeProject.name : statusLabel(sidebarTab)}
-            </h1>
+  const sidebar = (
+    <>
+      <div className="pm-side-rail-header">
+        <strong>Project Manager</strong>
+        <small>Stage 4.A</small>
+      </div>
+      <AppSidebarSection className="pm-side-rail-nav" aria-label="Primary">
+        <button
+          type="button"
+          className={`pm-rail-item${sidebarTab === "overview" ? " active" : ""}`}
+          onClick={() => setSidebarTab("overview")}
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          className={`pm-rail-item${sidebarTab === "library" ? " active" : ""}`}
+          onClick={() => setSidebarTab("library")}
+        >
+          Library
+        </button>
+        <button
+          type="button"
+          className={`pm-rail-item${sidebarTab === "review" ? " active" : ""}`}
+          onClick={() => setSidebarTab("review")}
+        >
+          Review
+          {pendingForReview.length > 0 ? (
+            <span className="pm-rail-badge">{pendingForReview.length}</span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          className={`pm-rail-item${sidebarTab === "view" ? " active" : ""}`}
+          onClick={() => setSidebarTab("view")}
+          disabled={!activeProject}
+        >
+          View
+        </button>
+      </AppSidebarSection>
+      <div className="pm-side-rail-footer">
+        <button
+          type="button"
+          className="pm-rail-item pm-rail-item-strong"
+          onClick={() => setNewProjectOpen(true)}
+        >
+          + New project
+        </button>
+        <a
+          href={accountHref}
+          className="pm-side-account"
+          title="Open account & lab settings"
+        >
+          <div className="pm-side-account-head">
+            <strong>{signedInLabel}</strong>
+            <span>{profile?.email}</span>
           </div>
-          <div className="pm-topbar-actions">
+          <div className="pm-side-account-meta">
+            <span>{activeLab?.name ?? "No lab"}</span>
+            <span>{activeLab?.role ?? "member"}</span>
+          </div>
+          <span className="pm-side-account-action">Manage account →</span>
+        </a>
+      </div>
+    </>
+  );
+
+  return (
+    <AppShell sidebar={sidebar} sidebarAriaLabel="Project manager navigation" className="pm-shell">
+      <AppTopbar
+        kicker="Project Manager"
+        title={sidebarTab === "view" && activeProject ? activeProject.name : statusLabel(sidebarTab)}
+        actions={
+          <>
             <AppSwitcher currentApp="project-manager" baseUrl={APP_BASE_URL} />
             <button
               type="button"
@@ -1745,18 +1747,18 @@ export const App = () => {
             >
               {status === "loading" ? "Refreshing..." : "Refresh"}
             </button>
-          </div>
-        </header>
+          </>
+        }
+      />
 
-        {error ? <p className="pm-page-error">{error}</p> : null}
+      {error ? <p className="pm-page-error">{error}</p> : null}
 
-        <div className="pm-main-body">
-          {sidebarTab === "overview" ? overviewPanel : null}
-          {sidebarTab === "library" ? libraryPanel : null}
-          {sidebarTab === "review" ? reviewPanel : null}
-          {sidebarTab === "view" ? viewPanel : null}
-        </div>
-      </main>
+      <AppContent className="pm-main-body">
+        {sidebarTab === "overview" ? overviewPanel : null}
+        {sidebarTab === "library" ? libraryPanel : null}
+        {sidebarTab === "review" ? reviewPanel : null}
+        {sidebarTab === "view" ? viewPanel : null}
+      </AppContent>
 
       {newProjectOpen ? (
         <NewProjectModal
@@ -1764,7 +1766,7 @@ export const App = () => {
           onCreate={handleCreateProject}
         />
       ) : null}
-    </div>
+    </AppShell>
   );
 };
 
