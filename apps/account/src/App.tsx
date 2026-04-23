@@ -144,7 +144,7 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
           <>
             <h3>{activeLab.name}</h3>
             <span className={`acct-lab-role ${tier}`}>{TIER_LABEL[tier]}</span>
-            <small style={{ color: "var(--acct-muted)" }}>{TIER_DESCRIPTION[tier]}</small>
+            <small style={{ color: "var(--rl-muted)" }}>{TIER_DESCRIPTION[tier]}</small>
           </>
         ) : (
           <h3>No lab selected</h3>
@@ -179,7 +179,7 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
 
       <section className="acct-side-section">
         <h2>Working status</h2>
-        <span style={{ fontSize: "0.85rem", color: "var(--acct-muted)" }}>
+        <span style={{ fontSize: "0.85rem", color: "var(--rl-muted)" }}>
           {activeLab && tier
             ? `Signed in as ${TIER_LABEL[tier]} of ${activeLab.name}. Use the top-right switcher to open another app.`
             : "Pick a lab to get started."}
@@ -530,7 +530,7 @@ const InvitationsTab = () => {
 
         {pendingInvitations.length > 0 ? (
           <div className="acct-invitations">
-            <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--acct-muted)" }}>
+            <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--rl-muted)" }}>
               {pendingInvitations.length} pending
             </div>
             {pendingInvitations.map((invitation) => (
