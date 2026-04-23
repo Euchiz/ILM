@@ -30,7 +30,7 @@
   border-bottom: 1px solid var(--rl-hairline);
 }
 .acct-side-header strong {
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -111,7 +111,7 @@
   text-align: center;
 }
 .acct-stat-value {
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.25rem;
   color: var(--rl-ink);
   line-height: 1;
@@ -193,7 +193,7 @@
 }
 .acct-topbar-copy h1 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.6rem;
   color: var(--rl-ink);
 }
