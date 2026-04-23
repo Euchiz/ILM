@@ -345,7 +345,7 @@ label {
   border: 1px solid rgba(39, 39, 39, 0.1);
   border-radius: 999px;
   color: #677166;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.64rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -488,7 +488,7 @@ label {
   padding: 0;
   background: transparent;
   font-size: 0.74rem;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
 }
 
 .outline-step-pill.selected .outline-step-index,
@@ -797,7 +797,7 @@ label {
   width: 3rem;
   height: 3rem;
   border: 1px solid var(--rl-line);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.9rem;
   letter-spacing: 0.2em;
 }
@@ -807,7 +807,7 @@ label {
 .dashboard-card-header h2,
 .dashboard-core-node p {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
 }
 
 .dashboard-brand-title {
@@ -837,7 +837,7 @@ label {
 .protocol-workspace-meta,
 .protocol-inline-link,
 .protocol-panel-header span {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
@@ -1029,7 +1029,7 @@ label {
 }
 
 .dashboard-metric-row strong {
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 2.2rem;
   font-style: italic;
   font-weight: 900;
@@ -1116,7 +1116,7 @@ label {
 }
 
 .dashboard-core-node strong {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.8rem;
   color: var(--rl-green);
   letter-spacing: 0.18em;
@@ -1248,7 +1248,7 @@ label {
 
 .protocol-wordmark-module {
   color: #6f756d;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -1292,7 +1292,7 @@ label {
   margin: 0;
   color: #6f756d;
   font-size: 0.78rem;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1480,7 +1480,7 @@ label {
 .protocol-side-account-header strong,
 .protocol-side-account-meta span,
 .protocol-side-account-action {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -1534,7 +1534,7 @@ label {
 
 .home-hero-title {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: clamp(2.6rem, 5.2vw, 4.3rem);
   line-height: 0.98;
   letter-spacing: -0.04em;
@@ -1646,7 +1646,7 @@ label {
 
 .protocol-page-header h1 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: clamp(2.2rem, 4vw, 3.4rem);
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -1655,7 +1655,7 @@ label {
 .protocol-page-kicker {
   margin: 0 0 0.45rem;
   color: #6f756d;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -1690,7 +1690,7 @@ label {
 .protocol-card-heading h3,
 .protocol-panel-header h3 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
 }
 
 .protocol-outline-header h2 {
@@ -1996,7 +1996,7 @@ label {
 
 .protocol-data-table th {
   color: #7a8179;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -2121,7 +2121,7 @@ label {
 .protocol-summary-grid span,
 .protocol-timeline-stage span {
   color: #7b817a;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -2130,7 +2130,7 @@ label {
 .protocol-summary-grid strong,
 .protocol-timeline-stage strong {
   font-size: 1.3rem;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
 }
 
 .protocol-summary-grid small,
@@ -2185,7 +2185,7 @@ label {
   align-items: center;
   cursor: pointer;
   color: var(--rl-green);
-  font-family: "Space Grotesk", sans-serif;
+  font-family: var(--rl-font-sans);
   font-size: 0.95rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2275,7 +2275,7 @@ label {
   align-items: center;
   padding: 0.22rem 0.48rem;
   border: 1px solid transparent;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -2312,7 +2312,7 @@ label {
   align-items: center;
   border: 1px solid #d6ddd3;
   padding: 0.22rem 0.45rem;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--rl-font-mono);
   font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -2388,7 +2388,7 @@ label {
 }
 
 .protocol-new-choice strong {
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.1rem;
   color: var(--rl-green);
 }
@@ -2397,7 +2397,7 @@ label {
   color: #5b6459;
   text-transform: none;
   letter-spacing: normal;
-  font-family: "Space Grotesk", Arial, sans-serif;
+  font-family: var(--rl-font-sans);
 }
 
 .protocol-tab-panel .section-intro {

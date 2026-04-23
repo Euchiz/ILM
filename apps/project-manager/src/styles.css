@@ -30,7 +30,7 @@
   border-bottom: 1px solid var(--rl-hairline);
 }
 .pm-side-rail-header strong {
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -170,7 +170,7 @@
 }
 .pm-topbar-copy h1 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.7rem;
   color: var(--rl-ink);
 }
@@ -229,7 +229,7 @@
 }
 .pm-panel-header h2 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.35rem;
 }
 .pm-panel-header p { margin: 0.15rem 0 0; color: var(--rl-muted); }
@@ -250,7 +250,7 @@
 }
 .pm-panel-section-head h3 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.05rem;
 }
 .pm-panel-section-head span {
@@ -273,7 +273,7 @@
   align-items: center;
   cursor: pointer;
   color: var(--rl-ink);
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1rem;
 }
 .pm-collapsible-section summary::-webkit-details-marker { display: none; }
@@ -304,7 +304,7 @@
   letter-spacing: 0.12em;
 }
 .pm-summary-card strong {
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.35rem;
   color: var(--rl-ink);
 }
@@ -333,7 +333,7 @@
 }
 .pm-library-card-head strong {
   display: block;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -514,7 +514,7 @@
 }
 .pm-outline-root strong {
   display: block;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -748,7 +748,7 @@
 }
 .pm-draft-actions strong {
   display: block;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 0.98rem;
 }
 .pm-draft-actions p {
@@ -817,7 +817,7 @@
 }
 .pm-roadmap-section-head h3 {
   margin: 0.18rem 0 0.18rem;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.1rem;
 }
 .pm-roadmap-section-head p {
@@ -882,7 +882,7 @@
 }
 .pm-form-head h3 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.02rem;
 }
 .pm-form-head small { color: var(--rl-muted); font-size: 0.78rem; }
@@ -996,7 +996,7 @@
 }
 .pm-modal-head h2 {
   margin: 0;
-  font-family: "Noto Serif", Georgia, serif;
+  font-family: var(--rl-font-serif);
   font-size: 1.2rem;
 }
 .pm-modal-note {
