@@ -39,22 +39,25 @@ Promote `@ilm/ui` into a real design system: tokens + reset + primitives + app s
 
 **Payoff:** mechanical find-replace; makes Phase B primitives shareable without collisions.
 
-### Phase B — Extract primitives (~1–2 days)
+### Phase B — Extract primitives ✅ shipped
 
-Source of truth: Protocol Manager (most mature, 2810 lines of CSS), cross-referenced against Project Manager where patterns differ — pick the better variant, don't pick Protocol by default. Add to `packages/ui/src/primitives/`, each with colocated CSS scoped under a single class prefix (`.rl-btn`, `.rl-card`):
+Primitives live in `packages/ui/src/primitives/`, styles in `packages/ui/src/primitives/primitives.css` (exported as `@ilm/ui/primitives.css`), all scoped under `.rl-*`. Sourced from Project Manager (forms, panels, tabs, modal, feedback) and Protocol Manager (buttons, status badges).
 
-- `Button` — variants: primary / secondary / ghost / danger; sizes sm/md.
-- `Input`, `Textarea`, `Select`, `FormField` (label + error + helper).
-- `Card`, `Panel`, `SectionHeader`.
-- `Tabs`, `TabList`, `TabPanel`.
-- `Modal`, `Drawer`, `ConfirmDialog`.
-- `Table` (sticky header, empty state, loading row).
-- `Badge`, `Tag`, `StatusPill` (draft / submitted / published / rejected).
-- `EmptyState`, `ErrorBanner`, `InlineToast`.
+Shipped:
+- `Button` — variants: primary / secondary / ghost / danger / ink; sizes sm/md; `block` modifier.
+- `FormField` + `Input`, `Textarea`, `Select`, `CheckboxField`, `FormRow` — label + hint + error contract; `invalid` prop swaps to error styling.
+- `Panel`, `SectionHeader`, `CardGrid` — bordered container + titled section header + responsive card grid.
+- `Tabs`, `TabButton`, `TabPanel` — controlled tabs with `aria-selected`.
+- `Modal`, `ConfirmDialog` — backdrop + dialog with narrow/default/wide widths; Esc/backdrop dismiss; `ConfirmDialog` wraps Modal with primary/danger tone.
+- `Table`, `TableEmpty`, `TableLoading` — sticky header, hover row, empty + loading rows.
+- `Badge` (tones: neutral/info/success/warning/danger) + `StatusPill` (workflow statuses: draft/submitted/reviewing/reviewed/published/validated/active/archived/rejected/failed/blocked/proposed/cancelled/deleted/neutral).
+- `EmptyState`, `ErrorBanner`, `InlineError`, `InlineNote`.
+
+Deferred to first real demand under the "first use local, second use promote" rule: `Drawer`, `InlineToast`, table column-sort affordances, `Tag` as a distinct primitive from `Badge`.
 
 **Extension contract** — every primitive exposes:
 - `className` pass-through for ad-hoc overrides.
-- Variant slots backed by CSS custom properties (e.g. `--rl-btn-bg`, `--rl-btn-border`) so apps restyle without forking.
+- Variant slots backed by CSS custom properties (`--rl-btn-bg`, `--rl-panel-bg`, `--rl-badge-fg`, `--rl-modal-width`, ...) so apps restyle a single usage without forking the primitive.
 
 ### Phase C — Shared app shell (~0.5 day)
 

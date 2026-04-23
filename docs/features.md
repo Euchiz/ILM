@@ -57,6 +57,11 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - Personnel tab shows `ProjectLeadsPanel` and the roster. Lab-wide owner settings now live in the Account app.
 - **GitHub repo link per project**: optional `github_repo_url` on projects, editable from the Edit tab. Library cards show "last push {relative time}" in the bottom-right corner when a repo is linked, with a one-click refresh button. Status is cached in `project_repo_status` and fetched on demand by the `fetch-github-activity` edge function using a lab-scoped PAT (admin-managed, stored service-role-only on `labs.github_pat`, never sent to the browser).
 
+## Shared UI kit (Stage 4c-pre)
+
+- **Phase A — tokens + reset.** `@ilm/ui/tokens.css` owns the full `--rl-*` design-token set (colors, type scale, spacing, radii, z-index, motion); `@ilm/ui/reset.css` factors out the boilerplate each app's `styles.css` used to repeat. Per-app `--acct-*` / `--pm-*` / `--ilm-*` alias layers are gone.
+- **Phase B — primitives.** `@ilm/ui` now exports `Button`, `FormField` + `Input` / `Textarea` / `Select` / `CheckboxField` + `FormRow`, `Panel` + `SectionHeader` + `CardGrid`, `Tabs` + `TabButton` + `TabPanel`, `Modal` + `ConfirmDialog`, `Table` + `TableEmpty` + `TableLoading`, `Badge` + `StatusPill`, `EmptyState` + `ErrorBanner` + `InlineError` + `InlineNote`. Styles ship in `@ilm/ui/primitives.css`; every primitive exposes CSS custom properties (`--rl-btn-bg`, `--rl-panel-bg`, `--rl-badge-fg`, ...) so apps can restyle a single usage without forking the primitive. Existing apps keep their local CSS until Phase D — Supply Manager (Stage 4c) is the first consumer.
+
 ## Audit & security
 
 - `audit_log` table captures state transitions only (submit / approve / reject / recycle / restore / purge). Draft edits and roadmap reorders are not logged.

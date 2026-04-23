@@ -8,6 +8,7 @@
     ".": "./src/index.tsx",
     "./tokens.css": "./src/tokens.css",
     "./reset.css": "./src/reset.css",
+    "./primitives.css": "./src/primitives/primitives.css",
     "./auth.css": "./src/auth/auth.css"
   },
   "dependencies": {
