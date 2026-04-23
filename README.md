@@ -4,22 +4,24 @@ Integrated Lab Manager is a modular monorepo for structured lab operations softw
 
 ## Current status
 
-Two apps are production-ready on Supabase with RLS-enforced, review-gated workflows:
+Three apps are production-ready on Supabase with RLS-enforced workflows:
 
-- **Protocol Manager** (Stage 3b) — visual protocol designer with typed steps, draft → submit → review → publish flow, append-only revisions, and a 30-day recycle bin.
-- **Project Manager** (Stage 4a) — project lifecycle with milestones, experiments, roadmap drag-reorder, project leads, and the same review-gated publish flow.
+- **Protocol Manager** (Stage 3) — visual protocol designer with typed steps, draft → submit → review → publish flow, append-only revisions, and a 30-day recycle bin.
+- **Account** (Stage 4a) — dedicated `/account/` app for profile, lab membership, invitations, join requests, and share links. Strict tier hierarchy (owner > admin > member).
+- **Project Manager** (Stage 4b) — project lifecycle with milestones, experiments, roadmap drag-reorder, project leads, review-gated publish flow, and per-project GitHub repo activity.
 
-**Funding Manager** and **Supply Manager** are scaffolded shells (auth + lab switcher + members panel) awaiting Stage 4b/4c schema design.
+**Supply Manager** (Stage 4c) is the current in-flight stage — see [`docs/next-stage.md`](docs/next-stage.md). **Funding Manager** (Stage 4d) is deferred. Both are scaffolded auth shells today.
 
 ## Monorepo layout
 
 ```text
 integrated-lab-manager/
 ├─ apps/
-│  ├─ protocol-manager/      # Stage 3b — production
-│  ├─ project-manager/       # Stage 4a — production
-│  ├─ supply-manager/        # Stage 4c — stub (auth shell only)
-│  └─ funding-manager/       # Stage 4b — stub (auth shell only)
+│  ├─ protocol-manager/      # Stage 3  — production
+│  ├─ account/               # Stage 4a — production
+│  ├─ project-manager/       # Stage 4b — production
+│  ├─ supply-manager/        # Stage 4c — in flight (auth shell only)
+│  └─ funding-manager/       # Stage 4d — deferred (auth shell only)
 ├─ packages/
 │  ├─ ai-import/             # AI import instructions + helpers
 │  ├─ types/                 # shared protocol TypeScript model

@@ -54,13 +54,12 @@ singularity exec --bind /mnt/isilon/wang_lab/zac/projects/ILM:/work docker://nod
 singularity exec --bind /mnt/isilon/wang_lab/zac/projects/ILM:/work docker://node:24-slim sh -c "cd /work && npm run dev"
 ```
 
-## Supabase Migration Plan (in-flight, 2026-04)
+## Supabase Migration (Stage 4c — Supply Manager next)
 
-Migrating ILM from browser-only storage (localStorage) to Supabase Postgres +
-Supabase Auth, while keeping the frontend deployable to GitHub Pages (no custom
-backend). Auth model: each user has a personal account; users belong to one or
-more shared `labs` via `lab_memberships`; all data is scoped to a lab and
-protected by RLS.
+ILM has moved from browser-only storage to Supabase Postgres + Supabase Auth,
+while staying deployable to GitHub Pages (no custom backend). Auth model: each
+user has a personal account; users belong to one or more shared `labs` via
+`lab_memberships`; all data is scoped to a lab and protected by RLS.
 
 ### Data model
 
@@ -68,38 +67,33 @@ Relational tables (preferred for structured data):
 - `profiles` — one row per `auth.users` user (display_name, email)
 - `labs` — shared workspace (name, slug, created_by)
 - `lab_memberships` — (lab_id, user_id, role in {owner,admin,member})
-- `projects` — lab-scoped projects (name, description, status)
-- `protocols` — lab-scoped protocol records, structured columns +
-  `document_json jsonb` for the protocol body. `document_json` is the ONLY
-  jsonb payload; other domains (projects, supply, funding) should use
-  normalized columns.
+- `projects` — lab-scoped projects (name, description, status) + milestones, experiments, project_leads
+- `protocols` — lab-scoped, structured columns + `document_json jsonb` for
+  the protocol body. `document_json` is the ONLY jsonb payload; other domains
+  (projects, supply, funding) use normalized columns.
 - `protocol_revisions` — append-only snapshot of protocol `document_json`
 
 RLS on all tables; authorization driven by `lab_memberships`, never by
 user-editable metadata or frontend checks.
 
-### Staged implementation
+### Stage status
 
-**Stage 1 — Foundation (current)**
-- `supabase/migrations/` with schema, triggers (`updated_at`), RLS policies
-- `packages/utils` exposes a Supabase browser client reading
-  `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (fail loudly if missing)
-- Root README / docs: how to create a Supabase project, env var setup,
-  GitHub Pages deployment notes, service-role key warning
-- No runtime wiring of the client into apps yet
+**Done**
+- **Stage 1 — Foundation**: migrations, RLS, Supabase client in `packages/utils`, env/deploy docs.
+- **Stage 2 — Auth shell**: sign in/up/out, `AuthProvider`, protected routes, lab picker + create-lab onboarding.
+- **Stage 3 — Protocol Manager**: visual editor, draft → submit → review → publish, append-only revisions, recycle bin.
+- **Stage 4a — Account app**: dedicated `/account/` app, tier hierarchy (owner > admin > member), invitations + join requests, share links, auto-claim.
+- **Stage 4b — Project Manager**: projects/milestones/experiments, project leads, review gate, recycle bin, GitHub repo activity per project.
 
-**Stage 2 — Auth shell**
-- `packages/ui`: auth screens (sign up, sign in, sign out, password reset),
-  `AuthProvider` + session state, protected-route wrapper
-- Lab selection + "create lab" onboarding (creator becomes `owner`)
-- Zero-lab / multi-lab / single-lab auto-open behavior
-- Invitations remain dashboard-admin only for now
+**Current**
+- **Stage 4c — Supply Manager**: stock + orders + storage locations. See `docs/next-stage.md`.
 
-**Living docs**
-- `docs/features.md` — cumulative summary of what's shipped (update after each
-  meaningful PR).
-- `docs/next-stage.md` — current planned next stage (rewrite when priorities
-  change). Read this before starting a new session.
+**Deferred**
+- **Stage 4d — Funding Manager**: grants / budgets / allocations / expenses.
+
+### Living docs
+- `docs/features.md` — cumulative summary of what's shipped. Update after each meaningful PR.
+- `docs/next-stage.md` — current planned next stage. Rewrite when priorities change. Read before starting a new session.
 
 ### Non-negotiables
 - Static frontend only; no custom backend server

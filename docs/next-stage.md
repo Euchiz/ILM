@@ -4,9 +4,9 @@ Rewrite this file when priorities change. It always describes *the current plann
 
 ---
 
-## Stage: Supply Manager — stock + orders (Stage 4b)
+## Stage: Supply Manager — stock + orders (Stage 4c)
 
-**Why now.** Account app is done. Day-to-day bench work depends on knowing what reagents/consumables are on hand and what's on order; funding/accounting can wait. Supply is also a prerequisite for linking experiments to actual consumption. The `supply-manager` app is currently an auth shell with no schema.
+**Why now.** Protocol Manager (Stage 3), Account (Stage 4a), and Project Manager (Stage 4b) are in production. Day-to-day bench work depends on knowing what reagents/consumables are on hand and what's on order; funding/accounting (Stage 4d) can wait. Supply is also a prerequisite for linking experiments to actual consumption. The `supply-manager` app is currently an auth shell with no schema.
 
 **Scope for this stage.** Three capabilities:
 
@@ -53,7 +53,7 @@ Tabs in `apps/supply-manager`:
 
 - Register `supply-manager` build in `.github/workflows/deploy-protocol-manager-pages.yml`.
 - Mount `AccountLinkCard` in the supply-manager shell (already present in the stub — just ensure it survives the rewrite).
-- Update `docs/features.md` with a "Supply Manager (Stage 4b)" section on ship.
+- Update `docs/features.md` with a "Supply Manager (Stage 4c)" section on ship.
 
 ### Tradeoffs
 
@@ -65,7 +65,7 @@ Tabs in `apps/supply-manager`:
 
 ## After this stage
 
-- **Stage 4c — Supply Manager v2.** Per-receipt lot/expiry tracking, supplier/catalog import, per-experiment consumption logging (links `experiments` to `stock_movements`).
 - **Stage 4d — Funding Manager.** `grants / budgets / allocations / expenses` with RLS + SECURITY DEFINER RPCs + audit. Takes over the experimental expense fields currently on `projects`. Deferred because accounting is not blocking day-to-day lab use.
+- **Stage 4e — Supply Manager v2.** Per-receipt lot/expiry tracking, supplier/catalog import, per-experiment consumption logging (links `experiments` to `stock_movements`).
 - **Rotatable share-link token.** Today the Account share link embeds a raw lab UUID. A signed HMAC with a server-stored secret + a "rotate" button in the share-link section would make leaked links revocable.
 - **Deferred housekeeping.** Fractional `sort_order`, layout polish (InfoTab responsive grid, roadmap card ellipsis, recycle-bin visual differentiation), dead-code simplify pass.

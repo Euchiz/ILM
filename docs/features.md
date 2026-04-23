@@ -20,7 +20,18 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - **Self-serve join flow**: `lab_join_requests` table + `request_lab_join` / `approve_lab_join` / `reject_lab_join` / `cancel_lab_join` / `lookup_lab_by_id` RPCs. Rejection requires a comment; one pending request per user per lab.
 - **LabPicker empty state**: create-new-lab or paste-invite-link.
 
-## Account app (`apps/account`) — complete
+## Protocol Manager (Stage 3 — production)
+
+- Visual protocol editor with typed steps (reagent, instrument, parameter, observation, wait, decision).
+- Draft → submit → review → publish flow. Drafts are per-user (`protocol_drafts`), submissions are frozen snapshots (`protocol_submissions`), published copies live in `protocols`, append-only `protocol_revisions` on approval.
+- Projects carry `approval_required`; the auto-created "General" project publishes immediately on submit.
+- Hard delete with 30-day recycle bin (`protocols.deleted_at`).
+- Per-draft `submission_history` log, opened from a script-size link left of the Summary tab (drafts only).
+- Reviewer rejection requires a non-empty comment; submitter comment on submit is optional.
+- localStorage → cloud migration banner for pre-Supabase data.
+- Save-draft button becomes an "Autosaved" caption while editing an existing draft; it stays as an explicit commit button when editing on top of a published protocol.
+
+## Account app (Stage 4a — production)
 
 - Dedicated app at `/account/`, reachable by clicking the login status box in any other app.
 - **Flat two-panel layout**: left sidebar with profile, active lab tier (owner / admin / member) + capability blurb, project counts, and a "Join or create another lab…" shortcut that reopens `LabPicker` without clearing the current active lab. Right main area with tabbed Lab Management (Members / Invitations & Requests).
@@ -35,18 +46,7 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - **Real-time badge updates**: role changes refresh both the members roster and the `AuthProvider` labs array so the sidebar tier badge updates without a reload.
 - Shared `AccountLinkCard` in `@ilm/ui` renders the login status box consistently across placeholder apps (`funding-manager`, `supply-manager`).
 
-## Protocol Manager (Stage 3b — production)
-
-- Visual protocol editor with typed steps (reagent, instrument, parameter, observation, wait, decision).
-- Draft → submit → review → publish flow. Drafts are per-user (`protocol_drafts`), submissions are frozen snapshots (`protocol_submissions`), published copies live in `protocols`, append-only `protocol_revisions` on approval.
-- Projects carry `approval_required`; the auto-created "General" project publishes immediately on submit.
-- Hard delete with 30-day recycle bin (`protocols.deleted_at`).
-- Per-draft `submission_history` log, opened from a script-size link left of the Summary tab (drafts only).
-- Reviewer rejection requires a non-empty comment; submitter comment on submit is optional.
-- localStorage → cloud migration banner for pre-Supabase data.
-- Save-draft button becomes an "Autosaved" caption while editing an existing draft; it stays as an explicit commit button when editing on top of a published protocol.
-
-## Project Manager (Stage 4a — production)
+## Project Manager (Stage 4b — production)
 
 - Projects, milestones, experiments; drag-reorder roadmap with 1024-gap `sort_order`.
 - Project leads (`project_leads`) independent of admin role.
@@ -64,5 +64,6 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 
 ## Known gaps (see `next-stage.md`)
 
-- `funding-manager` and `supply-manager` are auth-shell stubs with no schema or adapter.
+- `supply-manager` (Stage 4c) is the current in-flight stage — auth-shell stub today, schema + adapter + screens still to build.
+- `funding-manager` (Stage 4d) is deferred — auth-shell stub with no schema or adapter.
 - Share-link token is a raw lab UUID; a rotatable HMAC token is a deferred follow-up.
