@@ -1,56 +1,12 @@
 @import "../../../packages/ui/src/tokens.css";
-
-:root {
-  color: var(--rl-ink-2);
-  background: var(--rl-paper);
-  font-family: var(--rl-font-sans);
-  line-height: 1.55;
-  --ilm-ink: var(--rl-ink);
-  --ilm-muted: var(--rl-muted);
-  --ilm-line: var(--rl-line);
-  --ilm-panel: var(--rl-surface);
-  --ilm-soft: var(--rl-soft);
-  --ilm-soft-2: var(--rl-soft-2);
-  --ilm-green: var(--rl-green);
-  --ilm-green-2: var(--rl-green-2);
-  --ilm-green-soft: var(--rl-green-soft);
-  --ilm-warn: var(--rl-warn);
-  --ilm-warn-bg: var(--rl-warn-bg);
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: #f9f8f4;
-  color: var(--ilm-ink);
-  font-family: "Space Grotesk", Arial, sans-serif;
-}
-
-a {
-  color: inherit;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+@import "../../../packages/ui/src/reset.css";
 
 button {
-  border: 1px solid var(--ilm-line);
+  border: 1px solid var(--rl-line);
   background: rgba(255, 255, 255, 0.94);
   border-radius: 0;
   padding: 0.6rem 1rem;
-  color: var(--ilm-ink);
-  cursor: pointer;
+  color: var(--rl-ink);
   transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
@@ -415,7 +371,7 @@ label {
 .outline-node-icon {
   display: inline-flex;
   align-items: center;
-  color: var(--ilm-green);
+  color: var(--rl-green);
   flex: 0 0 auto;
 }
 
@@ -826,7 +782,7 @@ label {
   gap: 2rem;
   align-items: center;
   padding-bottom: 1.6rem;
-  border-bottom: 2px solid var(--ilm-ink);
+  border-bottom: 2px solid var(--rl-ink);
 }
 
 .dashboard-brand {
@@ -840,7 +796,7 @@ label {
   place-items: center;
   width: 3rem;
   height: 3rem;
-  border: 1px solid var(--ilm-line);
+  border: 1px solid var(--rl-line);
   font-family: "JetBrains Mono", monospace;
   font-size: 0.9rem;
   letter-spacing: 0.2em;
@@ -888,7 +844,7 @@ label {
 
 .dashboard-brand-subtitle {
   margin: 0.2rem 0 0;
-  color: var(--ilm-muted);
+  color: var(--rl-muted);
   font-size: 0.76rem;
 }
 
@@ -906,8 +862,8 @@ label {
 }
 
 .dashboard-nav a.active {
-  color: var(--ilm-ink);
-  border-bottom: 2px solid var(--ilm-ink);
+  color: var(--rl-ink);
+  border-bottom: 2px solid var(--rl-ink);
 }
 
 .dashboard-actions {
@@ -928,7 +884,7 @@ label {
 .dashboard-connection-badge span {
   display: inline-flex;
   align-items: center;
-  background: var(--ilm-ink);
+  background: var(--rl-ink);
   color: white;
   padding: 0.55rem 0.8rem;
 }
@@ -1005,7 +961,7 @@ label {
 .dashboard-metric-card,
 .dashboard-schematic {
   position: relative;
-  background: var(--ilm-panel);
+  background: var(--rl-surface);
   border: 1px solid #dde1da;
 }
 
@@ -1021,7 +977,7 @@ label {
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: var(--ilm-ink);
+  border-color: var(--rl-ink);
   border-style: solid;
 }
 
@@ -1088,7 +1044,7 @@ label {
 .dashboard-meter span {
   display: block;
   height: 100%;
-  background: var(--ilm-ink);
+  background: var(--rl-ink);
 }
 
 .dashboard-meter.muted span {
@@ -1151,18 +1107,18 @@ label {
 .dashboard-core-mark {
   font-size: 3.8rem;
   line-height: 1;
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .dashboard-core-node p {
   font-size: 1.1rem;
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .dashboard-core-node strong {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.8rem;
-  color: var(--ilm-green);
+  color: var(--rl-green);
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -1170,7 +1126,7 @@ label {
 .dashboard-node {
   padding: 0.9rem 1.25rem;
   font-size: 0.86rem;
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .dashboard-node-top {
@@ -1356,8 +1312,8 @@ label {
 }
 
 .protocol-tab-link.active {
-  color: var(--ilm-ink);
-  border-bottom: 1px solid var(--ilm-green);
+  color: var(--rl-ink);
+  border-bottom: 1px solid var(--rl-green);
 }
 
 .protocol-danger-action {
@@ -1398,7 +1354,7 @@ label {
   position: absolute;
   width: 10px;
   height: 10px;
-  border-color: var(--ilm-green);
+  border-color: var(--rl-green);
   border-style: solid;
 }
 
@@ -1462,13 +1418,13 @@ label {
 }
 
 .protocol-rail-item.active {
-  color: var(--ilm-green);
+  color: var(--rl-green);
   background: #e9ece5;
-  border-left: 2px solid var(--ilm-green);
+  border-left: 2px solid var(--rl-green);
 }
 
 .protocol-rail-item-strong {
-  background: var(--ilm-green);
+  background: var(--rl-green);
   color: white;
 }
 
@@ -1518,7 +1474,7 @@ label {
 .protocol-side-account-header strong,
 .home-highlights strong,
 .home-module-footer span {
-  color: var(--ilm-ink);
+  color: var(--rl-ink);
 }
 
 .protocol-side-account-header strong,
@@ -1546,7 +1502,7 @@ label {
 }
 
 .protocol-side-account-meta span:first-child {
-  color: var(--ilm-ink);
+  color: var(--rl-ink);
   font-size: 0.72rem;
 }
 
@@ -1666,7 +1622,7 @@ label {
 }
 
 .protocol-resize-handle:hover::before {
-  background: var(--ilm-green);
+  background: var(--rl-green);
 }
 
 .protocol-main-panel {
@@ -1740,7 +1696,7 @@ label {
 .protocol-outline-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-outline-header button {
@@ -1928,8 +1884,8 @@ label {
 }
 
 .protocol-view-toggle.active {
-  background: var(--ilm-green);
-  border-color: var(--ilm-green);
+  background: var(--rl-green);
+  border-color: var(--rl-green);
   color: #ffffff;
 }
 
@@ -1984,7 +1940,7 @@ label {
 }
 
 .protocol-content-card-accent {
-  border-top: 4px solid var(--ilm-green);
+  border-top: 4px solid var(--rl-green);
 }
 
 .protocol-content-card-hero {
@@ -2010,7 +1966,7 @@ label {
 .protocol-card-heading h3,
 .protocol-panel-header h3 {
   font-size: 1.15rem;
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-card-heading span,
@@ -2049,7 +2005,7 @@ label {
 .protocol-data-table td:last-child,
 .protocol-summary-grid strong,
 .protocol-timeline-stage strong {
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-form-grid {
@@ -2087,7 +2043,7 @@ label {
 }
 
 .protocol-switch-row strong {
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-switch-row span {
@@ -2130,7 +2086,7 @@ label {
 }
 
 .protocol-switch-control input:checked + .protocol-switch-slider {
-  background: var(--ilm-green);
+  background: var(--rl-green);
 }
 
 .protocol-switch-control input:checked + .protocol-switch-slider::after {
@@ -2187,13 +2143,13 @@ label {
 }
 
 .protocol-callout-warning {
-  background: var(--ilm-warn-bg);
+  background: var(--rl-warn-bg);
   border-color: #d7bca1;
 }
 
 .protocol-callout-warning .protocol-card-heading h3,
 .protocol-callout-warning p {
-  color: var(--ilm-warn);
+  color: var(--rl-warn);
 }
 
 .protocol-observation-copy {
@@ -2228,7 +2184,7 @@ label {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  color: var(--ilm-green);
+  color: var(--rl-green);
   font-family: "Space Grotesk", sans-serif;
   font-size: 0.95rem;
   letter-spacing: 0.08em;
@@ -2252,7 +2208,7 @@ label {
 
 .protocol-library-link strong,
 .protocol-library-card strong {
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-library-card-main > div:first-child {
@@ -2382,7 +2338,7 @@ label {
 }
 
 .protocol-compact-row strong {
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-compact-row span,
@@ -2434,7 +2390,7 @@ label {
 .protocol-new-choice strong {
   font-family: "Noto Serif", Georgia, serif;
   font-size: 1.1rem;
-  color: var(--ilm-green);
+  color: var(--rl-green);
 }
 
 .protocol-new-choice span {

@@ -75,11 +75,16 @@
   --rl-space-7: 48px;
   --rl-space-8: 64px;
 
-  /* ---------- Radii (mostly zero — chrome is sharp) ---------- */
-  --rl-radius-sharp: 0;
-  --rl-radius-soft:  14px;   /* Protocol Manager composer cards */
+  /* ---------- Radii ---------- */
+  --rl-radius-sharp:   0;
+  --rl-radius-xs:      6px;
+  --rl-radius-sm:      8px;
+  --rl-radius-md:      12px;
+  --rl-radius-soft:    14px;   /* Protocol Manager composer cards */
+  --rl-radius-lg:      18px;
   --rl-radius-soft-lg: 22px;
-  --rl-radius-pill:  999px;
+  --rl-radius-xl:      24px;
+  --rl-radius-pill:    999px;
 
   /* ---------- Borders ---------- */
   --rl-border-hairline: 0.5px solid var(--rl-outline-variant);
@@ -92,6 +97,20 @@
   --rl-shadow-float:        0 22px 48px rgba(83, 73, 56, 0.18);
   --rl-shadow-soft:         0 12px 30px rgba(83, 73, 56, 0.08);
   --rl-shadow-step:         0 0 15px rgba(79, 111, 82, 0.05);
+
+  /* ---------- Z-index layers ---------- */
+  --rl-z-base:      1;
+  --rl-z-raised:    10;
+  --rl-z-sticky:    20;
+  --rl-z-dropdown:  40;
+  --rl-z-overlay:   50;
+  --rl-z-modal:     100;
+
+  /* ---------- Motion ---------- */
+  --rl-dur-fast: 120ms;
+  --rl-dur-base: 140ms;
+  --rl-dur-slow: 200ms;
+  --rl-ease:     ease;
 }
 
 /* ============================================================
