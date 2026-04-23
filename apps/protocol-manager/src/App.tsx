@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { AppSwitcher, SubmissionHistoryLink, appUrl, useAuth } from "@ilm/ui";
+import {
+  AppShell,
+  AppSubbar,
+  AppSwitcher,
+  AppTopbar,
+  SubmissionHistoryLink,
+  appUrl,
+  useAuth,
+} from "@ilm/ui";
 import type { ProtocolBlock, ProtocolDocument, ProtocolSection, ProtocolStep } from "@ilm/types";
 import { getSupabaseClient, nowIso, safeJsonParse } from "@ilm/utils";
 import { AI_IMPORT_INSTRUCTIONS_TEXT } from "@ilm/ai-import";
@@ -1383,20 +1391,22 @@ export const App = ({ page }: AppProps) => {
   const signedInLabel = profile?.display_name || profile?.email || user?.email || "Signed-in user";
 
   const homeView = (
-    <main className="protocol-shell protocol-shell-home">
-      <header className="protocol-topbar">
-        <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
-          <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
-            biotech
-          </span>
-          <span className="protocol-wordmark-stack">
-            <span className="protocol-wordmark-text">Integrated Lab Manager</span>
-            <span className="protocol-wordmark-module">Operations Hub</span>
-          </span>
-        </button>
-
-        <AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />
-      </header>
+    <AppShell className="protocol-shell protocol-shell-home">
+      <AppTopbar
+        className="protocol-topbar"
+        brand={
+          <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
+            <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
+              biotech
+            </span>
+            <span className="protocol-wordmark-stack">
+              <span className="protocol-wordmark-text">Integrated Lab Manager</span>
+              <span className="protocol-wordmark-module">Operations Hub</span>
+            </span>
+          </button>
+        }
+        actions={<AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />}
+      />
 
       <section className="home-main">
         <article className="protocol-content-card protocol-content-card-accent home-hero-card">
@@ -1506,7 +1516,7 @@ export const App = ({ page }: AppProps) => {
           </div>
         </section>
       </section>
-    </main>
+    </AppShell>
   );
 
   const viewWorkspace = (
@@ -2385,49 +2395,54 @@ export const App = ({ page }: AppProps) => {
         homeView
       ) : (
         <main className="protocol-shell">
-          <header className="protocol-topbar">
-            <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
-              <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
-                biotech
-              </span>
-              <span className="protocol-wordmark-stack">
-                <span className="protocol-wordmark-text">Integrated Lab Manager</span>
-                <span className="protocol-wordmark-module">Protocol Manager</span>
-              </span>
-            </button>
+          <AppTopbar
+            className="protocol-topbar"
+            brand={
+              <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
+                <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
+                  biotech
+                </span>
+                <span className="protocol-wordmark-stack">
+                  <span className="protocol-wordmark-text">Integrated Lab Manager</span>
+                  <span className="protocol-wordmark-module">Protocol Manager</span>
+                </span>
+              </button>
+            }
+            actions={
+              <div className="protocol-topbar-controls">
+                <AppSwitcher currentApp="protocol-manager" baseUrl={APP_BASE_URL} />
+              </div>
+            }
+          />
 
-            <div className="protocol-topbar-controls">
-              <AppSwitcher currentApp="protocol-manager" baseUrl={APP_BASE_URL} />
-            </div>
-          </header>
-
-          <section className="protocol-subbar">
-            <div className="protocol-subbar-copy">
-              <p className="protocol-page-kicker">Module Workspace</p>
-              <p className="protocol-subbar-description">Protocol-specific views for authoring, inspection, rendering, and transfer.</p>
-            </div>
-            <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
-              {editor?.draftId ? (
-                <SubmissionHistoryLink
-                  visible
-                  history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
-                  linkLabel="Submission history"
-                />
-              ) : null}
-              <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
-                Summary
-              </button>
-              <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
-                Step
-              </button>
-              <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
-                Preview
-              </button>
-              <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
-                Transfer
-              </button>
-            </div>
-          </section>
+          <AppSubbar
+            className="protocol-subbar"
+            kicker="Module Workspace"
+            description="Protocol-specific views for authoring, inspection, rendering, and transfer."
+            tabs={
+              <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
+                {editor?.draftId ? (
+                  <SubmissionHistoryLink
+                    visible
+                    history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
+                    linkLabel="Submission history"
+                  />
+                ) : null}
+                <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
+                  Summary
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
+                  Step
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
+                  Preview
+                </button>
+                <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
+                  Transfer
+                </button>
+              </div>
+            }
+          />
 
           <div className="protocol-body">
             <aside className="protocol-side-rail" aria-label="Protocol manager navigation">

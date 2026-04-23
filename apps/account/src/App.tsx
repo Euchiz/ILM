@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
+  AppContent,
+  AppShell,
+  AppSidebarSection,
+  AppSubbar,
   AppSwitcher,
+  AppTopbar,
   AuthScreen,
   LabPicker,
+  TabButton,
   approveLabJoin,
   buildLabShareUrl,
   cancelLabJoin,
@@ -118,7 +124,7 @@ const TIER_DESCRIPTION: Record<MembershipTier, string> = {
   member: "Read-only in the lab management surface.",
 };
 
-const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
+const SidePanelContent = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
   const { profile, user, activeLab, signOut } = useAuth();
   const counts = useProjectCounts(activeLab?.id ?? null, user?.id ?? null);
   const displayName = profile?.display_name ?? user?.email ?? "Signed in";
@@ -126,20 +132,18 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
   const tier: MembershipTier | null = (activeLab?.role as MembershipTier | undefined) ?? null;
 
   return (
-    <aside className="acct-side" aria-label="Account summary">
+    <>
       <div className="acct-side-header">
         <strong>Account</strong>
         <small>Integrated Lab Manager</small>
       </div>
 
-      <section className="acct-side-section acct-side-profile">
-        <h2>Profile</h2>
+      <AppSidebarSection title="Profile" className="acct-side-section acct-side-profile">
         <strong>{displayName}</strong>
         <span>{email}</span>
-      </section>
+      </AppSidebarSection>
 
-      <section className="acct-side-section acct-lab-switcher">
-        <h2>Active Lab</h2>
+      <AppSidebarSection title="Active Lab" className="acct-side-section acct-lab-switcher">
         {activeLab && tier ? (
           <>
             <h3>{activeLab.name}</h3>
@@ -151,16 +155,15 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
         )}
         <button
           type="button"
-          className="acct-text-button"
+          className="rl-btn rl-btn--secondary rl-btn--sm"
           style={{ marginTop: "0.35rem", alignSelf: "flex-start" }}
           onClick={onOpenLabPicker}
         >
           Join or create another lab…
         </button>
-      </section>
+      </AppSidebarSection>
 
-      <section className="acct-side-section">
-        <h2>Your projects in this lab</h2>
+      <AppSidebarSection title="Your projects in this lab" className="acct-side-section">
         <div className="acct-stat-row">
           <div className="acct-stat">
             <span className="acct-stat-value">{counts?.led ?? "–"}</span>
@@ -175,23 +178,26 @@ const SidePanel = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
             <span className="acct-stat-label">My drafts</span>
           </div>
         </div>
-      </section>
+      </AppSidebarSection>
 
-      <section className="acct-side-section">
-        <h2>Working status</h2>
+      <AppSidebarSection title="Working status" className="acct-side-section">
         <span style={{ fontSize: "0.85rem", color: "var(--rl-muted)" }}>
           {activeLab && tier
             ? `Signed in as ${TIER_LABEL[tier]} of ${activeLab.name}. Use the top-right switcher to open another app.`
             : "Pick a lab to get started."}
         </span>
-      </section>
+      </AppSidebarSection>
 
       <div className="acct-side-footer">
-        <button type="button" className="acct-text-button" onClick={() => void signOut()}>
+        <button
+          type="button"
+          className="rl-btn rl-btn--secondary rl-btn--sm"
+          onClick={() => void signOut()}
+        >
           Sign out
         </button>
       </div>
-    </aside>
+    </>
   );
 };
 
@@ -681,40 +687,34 @@ const AccountDashboard = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) 
   }, [labId, canManageMembers, tab]);
 
   return (
-    <div className="acct-shell">
-      <SidePanel onOpenLabPicker={onOpenLabPicker} />
-      <main className="acct-main">
-        <header className="acct-topbar">
-          <div className="acct-topbar-copy">
-            <p className="acct-kicker">Account</p>
-            <h1>Lab Management</h1>
-          </div>
-          <div className="acct-topbar-actions">
-            <AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />
-          </div>
-        </header>
-        <nav className="acct-tabs" aria-label="Lab management tabs">
-          <button
-            type="button"
-            className={`acct-tab${tab === "members" ? " active" : ""}`}
-            onClick={() => setTab("members")}
-          >
-            Members
-          </button>
-          <button
-            type="button"
-            className={`acct-tab${tab === "invitations" ? " active" : ""}`}
-            onClick={() => setTab("invitations")}
-          >
-            Invitations & Requests
-            {pendingCount > 0 ? <span className="acct-tab-badge">{pendingCount}</span> : null}
-          </button>
-        </nav>
-        <div className="acct-main-body">
-          {tab === "members" ? <MembersTab /> : <InvitationsTab />}
-        </div>
-      </main>
-    </div>
+    <AppShell
+      sidebar={<SidePanelContent onOpenLabPicker={onOpenLabPicker} />}
+      sidebarAriaLabel="Account summary"
+      className="acct-shell"
+    >
+      <AppTopbar
+        kicker="Account"
+        title="Lab Management"
+        actions={<AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />}
+      />
+      <AppSubbar
+        className="acct-subbar"
+        tabs={
+          <nav className="acct-tabs" aria-label="Lab management tabs">
+            <TabButton active={tab === "members"} onClick={() => setTab("members")}>
+              Members
+            </TabButton>
+            <TabButton active={tab === "invitations"} onClick={() => setTab("invitations")}>
+              Invitations &amp; Requests
+              {pendingCount > 0 ? <span className="acct-tab-badge">{pendingCount}</span> : null}
+            </TabButton>
+          </nav>
+        }
+      />
+      <AppContent className="acct-main-body">
+        {tab === "members" ? <MembersTab /> : <InvitationsTab />}
+      </AppContent>
+    </AppShell>
   );
 };
 

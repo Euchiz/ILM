@@ -77,17 +77,17 @@ All variant slots are backed by CSS custom properties (`--rl-shell-sidebar-width
 
 **First consumer.** Supply Manager (Stage 4c's placeholder shell) is now built directly on `AppShell` + `AppTopbar` + `AppContent` + shared `Panel` / `CardGrid` / `SectionHeader` primitives. Its `styles.css` is down to ~55 lines of truly supply-specific compositions (stat grid, hero card).
 
-Protocol, Project, and Account each still have their own shell variant; those collapse in Phase D.
+### Phase D — Migrate legacy apps ✅ shipped (shell migration)
 
-### Phase D — Migrate legacy apps
+Account, Project Manager, and Protocol Manager now all compose their outer shell from `@ilm/ui` primitives instead of per-app shell CSS:
 
-Supply Manager is *not* part of this phase — it's built directly on A+B+C during Stage 4c and is the kit's first consumer. Phase D migrates the three pre-existing apps, ordered by risk:
+- **Account** — `AppShell` with sidebar slot, `AppTopbar`, `AppSubbar` (tabs), `AppContent`, and `AppSidebarSection` for the left-panel boxes. The app-local `.acct-shell`, `.acct-main`, `.acct-topbar`, and `.acct-main-body` rules are gone; only `--rl-shell-sidebar-*` overrides + the inner card/section bits remain.
+- **Project Manager** — `AppShell` with sidebar slot, `AppTopbar`, `AppContent`, and `AppSidebarSection` for the rail nav. `.pm-shell`, `.pm-main`, `.pm-topbar*`, and `.pm-main-body` have collapsed into token overrides + a thin `gap` tweak.
+- **Protocol Manager** — `AppShell` (no sidebar), `AppTopbar`, and `AppSubbar` for both the home view and the module workspace. The app-local `.protocol-shell` keeps its viewport-locking behaviour via `.rl-shell-main` overrides since Protocol's body region (sidebar + workspace under the subbar) still uses a unique grid that doesn't fit `AppShell`'s sidebar slot. The distinctive serif italic wordmark stays as app-local markup rather than `AppWordmark`, which is styled for a green-square glyph.
 
-1. **Account** — 454 lines, smallest legacy surface.
-2. **Project Manager** — 1060 lines.
-3. **Protocol Manager** — 2810 lines, highest risk. Last.
+Supply Manager was *not* part of this phase — it was built on A+B+C during Stage 4c and is the kit's first consumer.
 
-Each migration: replace app-local classes with primitives, delete dead CSS, visual parity check in browser.
+What remains app-local (and should stay that way for now): Protocol Manager's two-column body layout (side rail + workspace under the subbar), all three apps' bespoke sidebar / rail visuals, and everything below the shell (cards, tables, editors).
 
 ### Phase E — Document (~0.5 day)
 
