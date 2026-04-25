@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RHINE LAB Web Design Review</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap");
+
+    :root {
+      --ink: #0b0d0d;
+      --muted: #707574;
+      --line: #dfe4df;
+      --soft: #f7f8f5;
+      --green: #43a33d;
+      --green-2: #7ab86c;
+      --pale: #e9f2e5;
+      --orange: #f2993a;
+      --display: "Space Grotesk", Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #e8ebe8;
+      color: var(--ink);
+      font-family: Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .frame {
+      width: 1672px;
+      height: 941px;
+      overflow: hidden;
+      position: relative;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.95) 0 16%, rgba(255,255,255,.76) 16% 71%, rgba(255,255,255,.4) 71% 100%),
+        radial-gradient(circle at 46% 36%, rgba(119,173,92,.14), transparent 24%),
+        linear-gradient(135deg, #fbfbfa 0%, #f4f5f2 56%, #eef1ee 100%);
+      border: 0;
+      box-shadow: none;
+    }
+
+    .lab-bg {
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      width: 594px;
+      height: 420px;
+      opacity: .57;
+      background: url("segments/lab-corridor.png") center / cover no-repeat;
+      filter: saturate(.82);
+    }
+
+    .lab-bg::before,
+    .lab-bg::after {
+      content: "";
+      display: none;
+      position: absolute;
+      inset: 18% 16% 22% 12%;
+      border: 1px solid rgba(167,177,167,.45);
+      border-left: 8px solid rgba(84, 160, 77, .38);
+      transform: skewY(-14deg);
+    }
+
+    .lab-bg::after {
+      inset: 14% 1% 36% 72%;
+      border-radius: 7px;
+      border-left-width: 1px;
+      background: rgba(255,255,255,.9);
+      box-shadow: -20px 12px 38px rgba(70, 80, 74, .16);
+    }
+
+    .sidebar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 265px;
+      padding: 47px 17px 70px;
+      border-right: 1px solid #dfe2de;
+      background: rgba(249,250,248,.84);
+    }
+
+    .brand {
+      padding-left: 8px;
+      line-height: 1;
+      margin-bottom: 58px;
+    }
+
+    .brand-title {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 25px;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .brand-title span { color: #a2a8a1; font-weight: 500; margin-left: 4px; }
+
+    .brand-sub {
+      margin-top: 6px;
+      color: #666b68;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .brand-sub b { color: var(--green); font-size: 13px; }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav-item {
+      height: 43px;
+      display: grid;
+      grid-template-columns: 36px 1fr 12px;
+      align-items: center;
+      padding: 0 10px 0 13px;
+      color: #111;
+      font-family: var(--display);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      border-radius: 5px;
+    }
+
+    .nav-item.active {
+      color: var(--green);
+      background: rgba(255,255,255,.92);
+      border-color: #e4e8e3;
+      box-shadow: 0 10px 22px rgba(30, 46, 30, .04);
+    }
+
+    .ico {
+      width: 18px;
+      height: 18px;
+      display: inline-grid;
+      place-items: center;
+      border: 1.6px solid currentColor;
+      border-radius: 3px;
+      font-size: 9px;
+      line-height: 1;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-card {
+      position: absolute;
+      left: 17px;
+      bottom: 196px;
+      width: 216px;
+      height: 85px;
+      border: 1px solid #cadbca;
+      border-radius: 4px;
+      background: rgba(244, 249, 241, .78);
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      align-items: center;
+      padding: 13px;
+    }
+
+    .geo {
+      width: 38px;
+      height: 50px;
+      border: 0;
+      background: url("segments/geo-mark.png") center / contain no-repeat;
+      opacity: .72;
+    }
+
+    .status-card h4,
+    .profile h4 {
+      margin: 0 0 8px;
+      font-family: var(--display);
+      font-size: 10px;
+      letter-spacing: .02em;
+    }
+
+    .status-card p,
+    .profile p {
+      margin: 0;
+      font-size: 11px;
+      color: #478d3d;
+      text-decoration: underline;
+      text-underline-offset: 5px;
+    }
+
+    .profile {
+      position: absolute;
+      left: 17px;
+      bottom: 72px;
+      width: 231px;
+      height: 76px;
+      display: grid;
+      grid-template-columns: 55px 1fr 20px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid #d9ded8;
+      border-radius: 5px;
+      background: rgba(255,255,255,.72);
+    }
+
+    .orb {
+      width: 39px;
+      height: 39px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 39% 31%, #fff 0 20%, #246b35 24% 43%, #101817 44% 61%, #e6ede4 62% 100%);
+      box-shadow: inset -7px -8px 14px rgba(0,0,0,.24), 0 6px 18px rgba(0,0,0,.15);
+    }
+
+    .profile p {
+      color: #7e8580;
+      text-decoration: none;
+    }
+
+    .main {
+      position: absolute;
+      left: 324px;
+      right: 54px;
+      top: 38px;
+      bottom: 34px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr 304px 124px 210px;
+      align-items: center;
+      gap: 28px;
+      height: 117px;
+    }
+
+    .kicker {
+      display: inline-block;
+      padding: 3px 10px;
+      margin-bottom: 10px;
+      background: #111;
+      color: white;
+      font-family: var(--display);
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 0 2px 0 #111;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-family: var(--display);
+      font-size: 27px;
+      line-height: 1;
+      font-weight: 500;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .subtitle {
+      color: #777d79;
+      font-size: 12px;
+    }
+
+    .search {
+      height: 30px;
+      border: 1px solid #d7dcd7;
+      border-radius: 6px;
+      padding: 0 14px;
+      color: #a2a6a2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      background: rgba(255,255,255,.54);
+    }
+
+    .search span:last-child {
+      visibility: visible;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      color: #252827;
+      font-size: 16px;
+    }
+
+    .org {
+      text-align: right;
+      font-family: var(--display);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .org small {
+      display: block;
+      margin-top: 3px;
+      color: #737a75;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .pill {
+      display: inline-block;
+      margin-left: 12px;
+      padding: 3px 7px;
+      background: #111;
+      color: #fff;
+      font-size: 8px;
+      vertical-align: middle;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 300px 280px 274px 1fr;
+      grid-template-rows: 290px 236px 172px;
+      gap: 16px;
+    }
+
+    .card {
+      position: relative;
+      border: 1px solid #dce2dc;
+      border-radius: 5px;
+      background: rgba(255,255,255,.62);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+      overflow: hidden;
+    }
+
+    .hero {
+      grid-column: 1 / span 3;
+      padding: 39px 42px;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 0 33%, rgba(221,227,220,.65) 33.1% 33.3%, transparent 33.5% 66.5%, rgba(221,227,220,.55) 66.6% 66.8%, transparent 67%),
+        linear-gradient(0deg, transparent 0 50%, rgba(221,227,220,.45) 50.1% 50.3%, transparent 50.5%);
+      opacity: .75;
+    }
+
+    .hero::after {
+      content: "";
+      display: none;
+      position: absolute;
+      inset: -5px -7px -6px -4px;
+      opacity: .18;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      width: 285px;
+    }
+
+    .label {
+      display: inline-block;
+      min-width: 150px;
+      padding: 3px 7px;
+      background: rgba(255,255,255,.78);
+      color: #151716;
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .hero h2 {
+      margin: 18px 0 5px;
+      font-family: var(--display);
+      font-size: 36px;
+      line-height: 1;
+      font-weight: 500;
+    }
+
+    .hero p {
+      margin: 0;
+      color: #626864;
+      font-size: 11px;
+    }
+
+    .link {
+      margin-top: 20px;
+      color: #4c9443;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      width: 335px;
+      margin-top: 61px;
+    }
+
+    .metric {
+      border-right: 1px solid #dfe4df;
+      padding-right: 18px;
+      margin-right: 18px;
+    }
+
+    .metric:last-child { border-right: 0; }
+
+    .metric b {
+      display: block;
+      font-size: 20px;
+      font-weight: 500;
+      margin-top: 8px;
+    }
+
+    .metric span {
+      font-family: var(--display);
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric .green-big {
+      color: #6db460;
+      font-size: 21px;
+    }
+
+    .infinity {
+      display: none;
+      position: absolute;
+      inset: 12px 35px 8px 320px;
+      opacity: .94;
+    }
+
+    .infinity-asset {
+      position: absolute;
+      left: 330px;
+      top: 24px;
+      width: 555px;
+      height: 292px;
+      object-fit: contain;
+      opacity: .78;
+      mix-blend-mode: multiply;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .node-label {
+      position: absolute;
+      z-index: 2;
+      font-size: 10px;
+      line-height: 1.2;
+    }
+
+    .node-label b {
+      font-family: var(--display);
+      font-size: 8px;
+      background: rgba(255,255,255,.85);
+      padding: 2px 5px;
+    }
+
+    .node-label em {
+      display: block;
+      color: #626965;
+      font-style: normal;
+      margin-top: 2px;
+    }
+
+    .nl1 { left: 346px; top: 22px; }
+    .nl2 { right: 10px; top: 44px; }
+    .nl3 { right: 17px; bottom: 24px; }
+
+    .schedule {
+      grid-column: 4;
+      grid-row: 1;
+      padding: 24px 22px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .view {
+      position: absolute;
+      top: 22px;
+      right: 22px;
+      color: #4d9a45;
+      font-size: 8px;
+      white-space: nowrap;
+    }
+
+    .date {
+      margin: 18px 0;
+      font-size: 9px;
+      color: #404442;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: 66px 18px 1fr 8px;
+      row-gap: 22px;
+      align-items: start;
+      font-size: 10px;
+    }
+
+    .time { color: #7d837f; }
+
+    .ring {
+      width: 8px;
+      height: 8px;
+      border: 1px solid #a8aea9;
+      border-radius: 50%;
+      background: #fff;
+      position: relative;
+      margin-top: 2px;
+    }
+
+    .ring::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 8px;
+      width: 1px;
+      height: 28px;
+      background: #d4dad4;
+    }
+
+    .timeline b { display: block; margin-bottom: 3px; font-family: var(--display); font-weight: 600; }
+    .timeline span { color: #7d837f; }
+
+    .mini-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      margin-top: 5px;
+      background: var(--green);
+      box-shadow: 0 0 7px rgba(67,163,61,.6);
+    }
+
+    .mini-dot.off {
+      background: white;
+      border: 1px solid #9ca39e;
+      box-shadow: none;
+    }
+
+    .projects { padding: 20px 18px; }
+    .protocols { padding: 20px; }
+    .inventory { padding: 20px; }
+    .funding { padding: 20px; }
+
+    .donut-wrap {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      align-items: center;
+      margin-top: 28px;
+    }
+
+    .donut {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: url("segments/donut.png") center / contain no-repeat;
+      display: grid;
+      place-items: center;
+      margin-left: 10px;
+    }
+
+    .donut::before {
+      content: "24\aTOTAL";
+      white-space: pre;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: rgba(251,252,250,.02);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: 31px;
+      line-height: .9;
+    }
+
+    .legend {
+      display: grid;
+      gap: 17px;
+      font-size: 9px;
+    }
+
+    .legend b {
+      font-size: 13px;
+      margin-right: 8px;
+      font-weight: 600;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 5px;
+      height: 5px;
+      margin-right: 14px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .legend span {
+      color: #777d79;
+      display: block;
+      margin-left: 27px;
+      margin-top: 2px;
+    }
+
+    .protocol-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 20px;
+    }
+
+    .proto {
+      min-height: 36px;
+      border: 1px solid #e5e8e4;
+      border-radius: 5px;
+      background: rgba(255,255,255,.62);
+      display: grid;
+      grid-template-columns: 30px 1fr 47px;
+      align-items: center;
+      padding: 5px 9px;
+      font-size: 10px;
+    }
+
+    .proto b { display: block; }
+    .proto b { font-family: var(--display); font-weight: 600; }
+    .proto span { color: #7a817c; font-size: 8px; }
+
+    .tag {
+      justify-self: end;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: #e4f3df;
+      color: #4b9a43;
+      font-family: var(--display);
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .tag.review {
+      background: #fff0df;
+      color: #e69135;
+    }
+
+    .radar {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 151px 1fr;
+      gap: 11px;
+      align-items: center;
+    }
+
+    .radar svg {
+      display: none;
+    }
+
+    .radar-asset {
+      width: 151px;
+      height: 151px;
+      object-fit: contain;
+      mix-blend-mode: multiply;
+      opacity: .88;
+    }
+
+    .inv-stats {
+      display: grid;
+      gap: 9px;
+      font-size: 8px;
+      line-height: 1.1;
+    }
+
+    .inv-stats b {
+      font-size: 13px;
+      font-weight: 700;
+      margin-left: 11px;
+    }
+
+    .inv-stats i {
+      display: inline-block;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .money {
+      font-size: 26px;
+      margin: 21px 0 1px;
+      font-weight: 400;
+    }
+
+    .fund-sub {
+      color: #69716c;
+      font-size: 8px;
+      margin-bottom: 20px;
+    }
+
+    .fund-row {
+      display: grid;
+      grid-template-columns: 25px 1fr;
+      align-items: center;
+      gap: 8px;
+      margin: 14px 0;
+      font-size: 8px;
+    }
+
+    .fund-row b {
+      display: block;
+      font-size: 10px;
+    }
+
+    .bars {
+      position: absolute;
+      right: 21px;
+      bottom: 15px;
+      display: flex;
+      align-items: end;
+      gap: 8px;
+      height: 115px;
+      opacity: .72;
+    }
+
+    .bars i {
+      display: block;
+      width: 10px;
+      border-radius: 9px 9px 0 0;
+      background: #c5ccc5;
+    }
+
+    .bars i:nth-child(3),
+    .bars i:nth-child(6) { background: #8abd81; }
+
+    .activity {
+      grid-column: 1;
+      padding: 18px;
+    }
+
+    .activity-row {
+      display: grid;
+      grid-template-columns: 21px 1fr 8px;
+      gap: 8px;
+      align-items: start;
+      margin-top: 18px;
+      font-size: 9px;
+    }
+
+    .activity-row b { display: block; font-size: 10px; margin-bottom: 3px; }
+    .activity-row b { font-family: var(--display); font-weight: 600; }
+    .activity-row span { color: #717873; }
+
+    .resource {
+      grid-column: 2 / span 2;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 18px 0;
+    }
+
+    .resource h3 {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+    }
+
+    .select {
+      position: absolute;
+      right: 25px;
+      top: 18px;
+      border: 1px solid #dfe4df;
+      border-radius: 4px;
+      padding: 4px 12px;
+      color: #4e5551;
+      font-size: 8px;
+      background: rgba(255,255,255,.72);
+    }
+
+    .res-cell {
+      border-left: 1px solid #e2e7e2;
+      margin-top: 44px;
+      padding: 11px 19px 0;
+      font-size: 8px;
+      color: #7b827d;
+    }
+
+    .res-cell:first-of-type { border-left: 0; }
+
+    .res-cell b {
+      display: block;
+      color: #101313;
+      font-size: 21px;
+      font-weight: 500;
+      margin: 10px 0 15px;
+    }
+
+    .spark {
+      width: 72px;
+      height: 26px;
+      border-bottom: 1px solid rgba(67,163,61,.22);
+      clip-path: polygon(0 80%, 12% 75%, 20% 46%, 31% 63%, 42% 22%, 54% 58%, 66% 51%, 78% 65%, 88% 44%, 100% 69%, 100% 100%, 0 100%);
+      background: rgba(67,163,61,.35);
+      border-radius: 2px;
+    }
+
+    .spark.orange {
+      background: rgba(242,153,58,.35);
+      border-color: rgba(242,153,58,.3);
+    }
+
+    .spark.neutral {
+      background: rgba(67,163,61,.35);
+    }
+
+    .team {
+      grid-column: 4;
+      padding: 21px;
+    }
+
+    .team::before {
+      content: "";
+      display: none;
+      position: absolute;
+      inset: 0;
+      opacity: .16;
+      pointer-events: none;
+    }
+
+    .avatars {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 24px 0 19px;
+    }
+
+    .avatar,
+    .more {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 30%, #f1dfc8 0 19%, transparent 20%),
+        linear-gradient(90deg, #226737 0 40%, #dbe8d6 40% 60%, #226737 60% 100%);
+      border: 2px solid #d9ecdc;
+      box-shadow: 0 5px 10px rgba(41,95,47,.14);
+    }
+
+    .more {
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.68);
+      color: #61a957;
+      font-size: 12px;
+      border-color: #e0e7df;
+    }
+
+    .team-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid #e3e7e3;
+      padding-top: 13px;
+      gap: 11px;
+      font-size: 8px;
+      line-height: 1.12;
+      color: #717873;
+    }
+
+    .team-stats b {
+      display: block;
+      color: #111;
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .team-stats b.gold { color: #e3a437; }
+
+    .year {
+      position: absolute;
+      right: 13px;
+      top: 102px;
+      color: #4d5651;
+      font-size: 13px;
+      line-height: 1.2;
+      writing-mode: horizontal-tb;
+    }
+
+    .footer {
+      position: absolute;
+      right: 44px;
+      bottom: 34px;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .footer b { font-size: 11px; }
+
+    @media (max-width: 900px) {
+      body { padding: 0; align-items: start; }
+      .frame {
+        width: 1672px;
+        height: 941px;
+        transform: scale(calc(100vw / 1672));
+        transform-origin: top left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="frame" aria-label="RHINE LAB dashboard mockup">
+    <div class="lab-bg"></div>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-title">RHINE LAB <span>— ∞</span></div>
+        <div class="brand-sub">INTEGRATED LAB MANAGER <b>OS</b></div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <div class="nav-item active"><span class="ico">□</span><span>OVERVIEW</span><span class="dot"></span></div>
+        <div class="nav-item"><span class="ico">⌁</span><span>PROJECTS</span></div>
+        <div class="nav-item"><span class="ico">▦</span><span>PROTOCOLS</span></div>
+        <div class="nav-item"><span class="ico">◇</span><span>INVENTORY</span></div>
+        <div class="nav-item"><span class="ico">$</span><span>FUNDING</span></div>
+        <div class="nav-item"><span class="ico">□</span><span>CALENDAR</span></div>
+        <div class="nav-item"><span class="ico">⌁</span><span>TEAM</span></div>
+        <div class="nav-item"><span class="ico">╱</span><span>ANALYTICS</span></div>
+        <div class="nav-item"><span class="ico">≡</span><span>REPORTS</span></div>
+        <div class="nav-item"><span class="ico">⚙</span><span>SETTINGS</span></div>
+      </nav>
+
+      <section class="status-card">
+        <div class="geo"></div>
+        <div>
+          <h4>SYSTEM STATUS</h4>
+          <p>ALL SYSTEMS NOMINAL</p>
+        </div>
+      </section>
+
+      <section class="profile">
+        <div class="orb"></div>
+        <div>
+          <h4>Dr. A. Morgan</h4>
+          <p>Lab Director</p>
+        </div>
+        <span>⌄</span>
+      </section>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div>
+          <span class="kicker">OVERVIEW</span>
+          <h1>INTEGRATED LAB. &nbsp; INTELLIGENTLY MANAGED.</h1>
+          <div class="subtitle">Project data. Protocol systems. Resource orchestration.</div>
+        </div>
+        <div class="search"><span>Search projects, protocols, inventory...</span><span>⌕</span></div>
+        <div class="toolbar"><span>♧</span><span>✉</span><span>?</span></div>
+        <div class="org">RHINE LAB L.L.C. <span class="pill">SECTOR OS</span><small>LAB MANAGER SYSTEM</small></div>
+      </header>
+
+      <div class="grid">
+        <section class="card hero">
+          <div class="hero-copy">
+            <span class="label">LAB OPERATING STATUS</span>
+            <h2>OPTIMAL</h2>
+            <p>All systems running within normal parameters.</p>
+            <div class="link">View system health &nbsp;›</div>
+            <div class="metrics">
+              <div class="metric"><span>ACTIVE PROJECTS</span><b>24</b></div>
+              <div class="metric"><span>PROTOCOLS</span><b>128</b></div>
+              <div class="metric"><span>TEAM MEMBERS</span><b>18</b></div>
+              <div class="metric"><span>COMPLIANCE</span><b class="green-big">100%</b></div>
+            </div>
+          </div>
+          <img class="infinity-asset" src="segments/infinity.png" alt="">
+          <svg class="infinity" viewBox="0 0 560 260" aria-hidden="true">
+            <defs>
+              <filter id="softBlur"><feGaussianBlur stdDeviation="1.3"/></filter>
+              <linearGradient id="greenFlow" x1="0" x2="1">
+                <stop offset="0" stop-color="#dfe6dc"/>
+                <stop offset=".2" stop-color="#97c884"/>
+                <stop offset=".52" stop-color="#c6dfbd"/>
+                <stop offset=".82" stop-color="#97c884"/>
+                <stop offset="1" stop-color="#e7ebe5"/>
+              </linearGradient>
+            </defs>
+            <path d="M45 135 C130 25 222 30 280 130 C338 230 430 235 515 125" fill="none" stroke="#dfe5dc" stroke-width="76" opacity=".55" filter="url(#softBlur)"/>
+            <path d="M45 125 C130 235 222 230 280 130 C338 30 430 25 515 135" fill="none" stroke="#e6e9e5" stroke-width="76" opacity=".63" filter="url(#softBlur)"/>
+            <g fill="none" stroke-linecap="round">
+              <path d="M55 135 C142 28 222 35 282 132 C342 228 423 230 506 126" stroke="url(#greenFlow)" stroke-width="16" opacity=".72"/>
+              <path d="M55 125 C142 232 222 225 282 128 C342 32 423 30 506 134" stroke="#d9ded6" stroke-width="20" opacity=".55"/>
+              <path d="M86 112 C154 46 219 52 273 131 C330 212 391 218 469 160" stroke="#f3f5f2" stroke-width="52" opacity=".72"/>
+              <path d="M86 148 C154 214 219 208 273 129 C330 48 391 42 469 100" stroke="#f8f9f7" stroke-width="52" opacity=".7"/>
+            </g>
+            <g opacity=".28" stroke="#b9c0b6" stroke-width="1" fill="none">
+              <path d="M70 95 C154 9 225 33 282 126 C339 220 419 239 500 171"/>
+              <path d="M67 113 C151 22 225 41 282 128 C339 215 418 227 503 148"/>
+              <path d="M67 150 C151 238 225 219 282 132 C339 45 418 33 503 112"/>
+              <path d="M70 167 C154 251 225 227 282 134 C339 40 419 21 500 89"/>
+            </g>
+            <circle cx="151" cy="43" r="3" fill="#111"/>
+            <circle cx="446" cy="64" r="3" fill="#111"/>
+            <circle cx="458" cy="205" r="3" fill="#111"/>
+          </svg>
+          <div class="node-label nl1"><b>SYSTEMS</b><em>Synced</em></div>
+          <div class="node-label nl2"><b>PROTOCOLS</b><em>Updated</em></div>
+          <div class="node-label nl3"><b>DATA INTEGRITY</b><em>Verified</em></div>
+        </section>
+
+        <section class="card schedule">
+          <h3>UPCOMING SCHEDULE</h3><span class="view">View calendar</span>
+          <div class="date">MAY 20, 2025</div>
+          <div class="timeline">
+            <div class="time">10:00 AM</div><div class="ring"></div><div><b>Project Horizon</b><span>Weekly Sync</span></div><div class="mini-dot"></div>
+            <div class="time">11:30 AM</div><div class="ring"></div><div><b>Protocol Review</b><span>CRISPR-Guide v2.3</span></div><div class="mini-dot"></div>
+            <div class="time">2:00 PM</div><div class="ring"></div><div><b>Equipment Maintenance</b><span>Sequencer · B-204</span></div><div class="mini-dot off"></div>
+            <div class="time">4:00 PM</div><div class="ring"></div><div><b>Lab Safety Training</b><span>Quarterly Session</span></div><div class="mini-dot off"></div>
+          </div>
+        </section>
+
+        <section class="card projects">
+          <h3>PROJECTS OVERVIEW</h3><span class="view">View all projects</span>
+          <div class="donut-wrap">
+            <div class="donut"></div>
+            <div class="legend">
+              <div><i></i><b>10</b><span>In Progress</span></div>
+              <div><i style="background:#83bd77"></i><b>6</b><span>Planning</span></div>
+              <div><i style="background:#c9dec4"></i><b>5</b><span>On Hold</span></div>
+              <div><i style="background:#a8afa8"></i><b>3</b><span>Completed</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card protocols">
+          <h3>PROTOCOLS</h3><span class="view">View all protocols</span>
+          <div class="protocol-list">
+            <div class="proto"><span class="ico">⌁</span><div><b>CRISPR-Guide v2.3</b><span>Gene Editing</span></div><span class="tag">ACTIVE</span></div>
+            <div class="proto"><span class="ico">⌁</span><div><b>Protein Purification v1.8</b><span>Biochemistry</span></div><span class="tag">ACTIVE</span></div>
+            <div class="proto"><span class="ico">▣</span><div><b>Cell Culture SOP v3.2</b><span>Cell Biology</span></div><span class="tag review">REVIEW</span></div>
+            <div class="proto"><span class="ico">▤</span><div><b>Flow Cytometry v2.1</b><span>Immunology</span></div><span class="tag">ACTIVE</span></div>
+          </div>
+        </section>
+
+        <section class="card inventory">
+          <h3>INVENTORY STATUS</h3><span class="view">View inventory</span>
+          <div class="radar">
+            <img class="radar-asset" src="segments/radar.png" alt="">
+            <svg viewBox="0 0 150 150" aria-hidden="true">
+              <g transform="translate(75 75)" fill="none" stroke="#dce3db">
+                <polygon points="0,-65 56,-32 56,32 0,65 -56,32 -56,-32"/>
+                <polygon points="0,-50 43,-25 43,25 0,50 -43,25 -43,-25"/>
+                <polygon points="0,-35 30,-17 30,17 0,35 -30,17 -30,-17"/>
+                <line x1="0" y1="-70" x2="0" y2="70"/><line x1="-61" y1="-35" x2="61" y2="35"/><line x1="-61" y1="35" x2="61" y2="-35"/>
+                <polygon points="0,-51 40,-15 33,29 0,44 -45,22 -34,-28" fill="#78b96b" opacity=".35" stroke="#78b96b"/>
+                <polygon points="0,-35 28,-10 23,20 0,30 -31,15 -23,-19" fill="#5aa44d" opacity=".45" stroke="#5aa44d"/>
+              </g>
+              <polygon points="75,57 91,66 91,84 75,93 59,84 59,66" fill="#f8faf7" stroke="#9da69f"/>
+              <path d="M75 57v36M59 66l32 18M91 66L59 84" stroke="#9da69f"/>
+            </svg>
+            <div class="inv-stats">
+              <div><i></i><b>412</b><br>Reagents<br>· Well stocked</div>
+              <div><i style="background:#96c287"></i><b>126</b><br>Consumables<br>· Adequate</div>
+              <div><i style="background:#aeb5ae"></i><b>28</b><br>Equipment<br>· Maintenance</div>
+              <div><i style="background:#f2993a"></i><b>7</b><br>Critical Low<br>· Reorder</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card funding">
+          <h3>FUNDING OVERVIEW</h3><span class="view">View funding</span>
+          <div class="money">$2.48M</div>
+          <div class="fund-sub">TOTAL ACTIVE FUNDING</div>
+          <div class="fund-row"><span class="ico">$</span><div><b>$1.32M</b>Active Grants</div></div>
+          <div class="fund-row"><span class="ico">□</span><div><b>$0.66M</b>Pending</div></div>
+          <div class="fund-row"><span class="ico">▧</span><div><b>$0.48M</b>Expiring (90 days)</div></div>
+          <div class="bars"><i style="height:35px"></i><i style="height:50px"></i><i style="height:72px"></i><i style="height:28px"></i><i style="height:60px"></i><i style="height:98px"></i></div>
+        </section>
+
+        <section class="card activity">
+          <h3>ACTIVITY FEED</h3><span class="select">All activity⌄</span>
+          <div class="activity-row"><span class="ico">⊙</span><div><b>Protocol CRISPR-Guide v2.3 was updated</b><span>by Dr. Lee · 2h ago</span></div><span class="mini-dot"></span></div>
+          <div class="activity-row"><span class="ico">⊙</span><div><b>New reagent shipment received</b><span>PO #86421 · 5h ago</span></div><span class="mini-dot"></span></div>
+          <div class="activity-row"><span class="ico">⊙</span><div><b>Project Horizon milestone completed</b><span>Data analysis phase · 1d ago</span></div><span class="mini-dot"></span></div>
+        </section>
+
+        <section class="card resource">
+          <h3>RESOURCE UTILIZATION</h3><span class="select">This week⌄</span>
+          <div class="res-cell">EQUIPMENT<b>72%</b><div class="spark"></div></div>
+          <div class="res-cell">LAB CAPACITY<b>68%</b><div class="spark neutral"></div></div>
+          <div class="res-cell">STORAGE USAGE<b>54%</b><div class="spark neutral"></div></div>
+          <div class="res-cell">BUDGET BURN<b>46%</b><div class="spark orange"></div></div>
+        </section>
+
+        <section class="card team">
+          <h3>TEAM OVERVIEW</h3><span class="view">View team</span>
+          <div class="avatars">
+            <div class="avatar"></div><div class="avatar"></div><div class="avatar"></div><div class="avatar"></div><div class="avatar"></div><div class="avatar"></div><div class="avatar"></div><div class="more">+12</div>
+          </div>
+          <div class="team-stats">
+            <div><b>18</b>Active Members</div>
+            <div><b>5</b>Departments</div>
+            <div><b class="gold">3</b>Locations</div>
+            <div><b>100%</b>Compliance Training</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div class="year">20<br>25</div>
+    <div class="footer">POWERED BY <b>RHINE LAB</b> ▬</div>
+  </main>
+</body>
+</html>

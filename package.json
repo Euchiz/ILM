@@ -11,5 +11,10 @@
     "dev": "npm run -w @ilm/protocol-manager dev",
     "lint": "npm run --workspaces lint",
     "typecheck": "npm run --workspaces typecheck"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.0",
+    "supabase": "^2.93.1"
   }
 }
