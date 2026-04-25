@@ -1,5 +1,5 @@
 /* ============================================================
-   @ilm/ui — Primitives
+   @ilm/ui primitives
    Imported by apps after tokens.css + reset.css.
    All classes are scoped under the .rl-* prefix. Every primitive
    exposes CSS custom properties (--rl-btn-bg, --rl-card-bg, ...) so
@@ -33,7 +33,7 @@
   color: var(--rl-btn-fg);
   border-radius: var(--rl-btn-radius);
   padding: var(--rl-btn-pad-y) var(--rl-btn-pad-x);
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-display);
   font-size: var(--rl-btn-font-size);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -120,6 +120,7 @@
   color: var(--rl-fg-2);
 }
 .rl-field-label {
+  font-family: var(--rl-font-display);
   font-weight: 500;
   color: var(--rl-fg-2);
 }
@@ -146,7 +147,7 @@
   padding: 0.55rem 0.75rem;
   background: var(--rl-surface);
   color: var(--rl-ink);
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-body);
   font-size: 0.9rem;
   transition: border-color var(--rl-dur-base) var(--rl-ease), box-shadow var(--rl-dur-base) var(--rl-ease);
 }
@@ -213,15 +214,17 @@
 }
 .rl-section-header__title {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 .rl-section-header__meta {
+  font-family: var(--rl-font-display);
   font-size: 0.75rem;
+  font-weight: 600;
   color: var(--rl-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
 }
 
 .rl-card-grid {
@@ -253,7 +256,7 @@
   background: transparent;
   border: none;
   padding: 0.35rem 0;
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-display);
   font-size: 0.82rem;
   color: var(--rl-muted);
   letter-spacing: 0.04em;
@@ -324,7 +327,7 @@
 }
 .rl-modal-head h2 {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.2rem;
 }
 .rl-modal-close {
@@ -364,7 +367,7 @@
   background: var(--rl-soft);
   text-align: left;
   padding: 0.6rem 0.8rem;
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -401,6 +404,7 @@
   align-items: center;
   padding: 0.18rem 0.55rem;
   border-radius: var(--rl-radius-pill);
+  font-family: var(--rl-font-display);
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -415,17 +419,17 @@
 .rl-badge--danger  { --rl-badge-bg: var(--rl-error-c); --rl-badge-fg: var(--rl-error-deep); --rl-badge-border: #f2b3af; }
 .rl-badge--neutral { --rl-badge-bg: #ece7dc; --rl-badge-fg: #5b584f; --rl-badge-border: #d5cfc1; }
 
-/* StatusPill — workflow statuses extracted from Protocol + Project */
+/* StatusPill workflow statuses extracted from Protocol + Project */
 .rl-status {
   display: inline-flex;
   align-items: center;
   padding: 0.22rem 0.6rem;
   border-radius: var(--rl-radius-pill);
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-weight: 700;
+  font-weight: 600;
   border: 1px solid transparent;
 }
 .rl-status--draft      { background: #fbf2e4; color: #8a4900; border-color: #d7bca1; }
@@ -460,7 +464,7 @@
   padding: 1.5rem;
 }
 .rl-empty-title {
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.1rem;
   color: var(--rl-ink);
   margin: 0 0 0.3rem;
@@ -519,7 +523,7 @@
   min-height: 100vh;
   background: var(--rl-paper);
   color: var(--rl-ink);
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-body);
 }
 .rl-shell--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
@@ -542,10 +546,10 @@
 }
 .rl-shell-sidebar__section-title {
   margin: 0;
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rl-muted);
 }
@@ -581,18 +585,18 @@
 }
 .rl-topbar__kicker {
   margin: 0;
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rl-muted);
 }
 .rl-topbar__title {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: clamp(1.4rem, 2.2vw, 1.85rem);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--rl-ink);
   line-height: 1.15;
 }
@@ -627,10 +631,10 @@
 }
 .rl-subbar__kicker {
   margin: 0;
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rl-muted);
 }
@@ -710,17 +714,17 @@
   line-height: 1.1;
 }
 .rl-wordmark__product {
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rl-muted);
 }
 .rl-wordmark__module {
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--rl-ink);
 }
 

@@ -2,7 +2,7 @@
 @import "../../../packages/ui/src/reset.css";
 @import "../../../packages/ui/src/primitives/primitives.css";
 
-/* Shell — tighter sidebar + soft backdrop matches prior Account look. */
+/* Shell: tighter sidebar + soft backdrop matches prior Account look. */
 .acct-shell {
   --rl-shell-sidebar-width: 320px;
   --rl-shell-sidebar-bg: var(--rl-soft);
@@ -24,7 +24,7 @@
   border-bottom: 1px solid var(--rl-hairline);
 }
 .acct-side-header strong {
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -97,7 +97,7 @@
   text-align: center;
 }
 .acct-stat-value {
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.25rem;
   color: var(--rl-ink);
   line-height: 1;

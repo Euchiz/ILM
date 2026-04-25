@@ -1,69 +1,113 @@
 /* ============================================================
-   Rhine Lab ILM — Colors & Type
-   Source of truth: apps/protocol-manager/src/styles.css
-                    + stitch dashboard + protocol editor
+   Viridian Blue Labs / ILM design tokens
+
+   Product direction: neo-skeuomorphic futurism for connected
+   bioscience work. Keep the historical --rl-* variables as
+   compatibility aliases while new UI can read the role-based
+   --ilm-* tokens directly.
    ============================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
 
 :root {
-  /* ---------- Surfaces ---------- */
-  --rl-paper:              #f9f8f4;   /* app canvas */
-  --rl-paper-alt:          #fbfbf8;   /* dashboard shell */
-  --rl-surface:            #ffffff;   /* elevated panels */
-  --rl-surface-2:          #f3f3f3;   /* container-low */
-  --rl-surface-3:          #e8e8e8;   /* container-high */
-  --rl-soft:               #f1f2ee;   /* Protocol Manager soft fill */
-  --rl-soft-2:             #e7e9e3;
-  --rl-lab-gray:           #f0f0f0;   /* Stitch lab-gray */
+  /* ---------- Product color roles ---------- */
+  --ilm-canvas:            #f7f9f7;
+  --ilm-canvas-alt:        #f1f6f4;
+  --ilm-surface:           #ffffff;
+  --ilm-surface-glass:     rgba(255, 255, 255, 0.78);
+  --ilm-surface-soft:      #edf4f1;
+  --ilm-surface-raised:    #e5eeea;
 
-  /* ---------- Ink ---------- */
-  --rl-ink:                #1b1b1b;   /* charcoal */
-  --rl-ink-2:              #171717;
-  --rl-muted:              #6d736a;
-  --rl-muted-2:            #818780;
-  --rl-outline:            #737971;
-  --rl-outline-variant:    #c2c8bf;
-  --rl-line:               #d6d9d2;
-  --rl-hairline:           #cbd1c8;
+  --ilm-ink:               #14201f;
+  --ilm-ink-2:             #0f1716;
+  --ilm-muted:             #60716e;
+  --ilm-muted-2:           #7b8a86;
+  --ilm-outline:           #72807c;
+  --ilm-line:              #d9e3df;
+  --ilm-hairline:          #c9d7d2;
 
-  /* ---------- Brand greens ---------- */
-  --rl-green:              #37563b;   /* primary (deep) */
-  --rl-green-2:            #4f6f52;   /* primary container / glow color */
-  --rl-green-3:            #466649;   /* surface-tint */
-  --rl-green-soft:         #dbe9d6;
-  --rl-green-sec:          #54633d;   /* secondary */
-  --rl-green-sec-c:        #d5e6b5;   /* secondary-container */
-  --rl-green-fixed:        #c8ecc8;
-  --rl-green-fixed-dim:    #acd0ad;
+  --ilm-viridian:          #2f7d72;
+  --ilm-viridian-2:        #4e9f92;
+  --ilm-viridian-3:        #28675f;
+  --ilm-viridian-soft:     #dff1ec;
+  --ilm-blue:              #5c7d8f;
+  --ilm-blue-soft:         #dcecf3;
+  --ilm-mint:              #c9eee2;
+  --ilm-mint-dim:          #a8d6ca;
 
-  /* ---------- Warm accents ---------- */
-  --rl-tertiary:           #794100;   /* tertiary (rust) */
-  --rl-tertiary-c:         #ffe1cb;   /* tertiary-container */
-  --rl-warn:               #8a4900;
-  --rl-warn-bg:            #fbf2e4;
-  --rl-warn-border:        #d7bca1;
+  --ilm-amber:             #9a5b1e;
+  --ilm-amber-soft:        #fff2df;
+  --ilm-amber-line:        #e0bd8d;
+  --ilm-red:               #b42318;
+  --ilm-red-soft:          #ffded8;
+  --ilm-red-deep:          #8f170f;
+  --ilm-success:           #2f7d72;
+  --ilm-success-deep:      #225c55;
 
-  /* ---------- Status ---------- */
-  --rl-error:              #ba1a1a;
-  --rl-error-c:            #ffdad6;
-  --rl-error-deep:         #93000a;
-  --rl-danger-text:        #b42318;
-  --rl-success:            #16a34a;
-  --rl-success-deep:       #304632;
+  --ilm-fg-1:              var(--ilm-ink);
+  --ilm-fg-2:              #2d3b39;
+  --ilm-fg-3:              var(--ilm-muted);
+  --ilm-fg-4:              #9aa7a3;
 
-  /* ---------- Type scale roles ---------- */
-  --rl-fg-1:               var(--rl-ink);
-  --rl-fg-2:               #343434;
-  --rl-fg-3:               var(--rl-muted);
-  --rl-fg-4:               #9aa097;
+  /* ---------- Typography roles ---------- */
+  --ilm-font-body:         Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --ilm-font-display:      "Space Grotesk", Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --ilm-font-mono:         "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --ilm-font-icon:         "Material Symbols Outlined";
 
-  /* ---------- Families ---------- */
-  --rl-font-serif:         "Noto Serif", Georgia, "Times New Roman", serif;
-  --rl-font-sans:          "Space Grotesk", system-ui, -apple-system, sans-serif;
-  --rl-font-mono:          "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --rl-font-icon:          "Material Symbols Outlined";
+  /* ---------- Compatibility aliases used by current code ---------- */
+  --rl-paper:              var(--ilm-canvas);
+  --rl-paper-alt:          var(--ilm-canvas-alt);
+  --rl-surface:            var(--ilm-surface);
+  --rl-surface-2:          var(--ilm-surface-soft);
+  --rl-surface-3:          var(--ilm-surface-raised);
+  --rl-soft:               var(--ilm-surface-soft);
+  --rl-soft-2:             var(--ilm-surface-raised);
+  --rl-lab-gray:           var(--ilm-canvas-alt);
+
+  --rl-ink:                var(--ilm-ink);
+  --rl-ink-2:              var(--ilm-ink-2);
+  --rl-muted:              var(--ilm-muted);
+  --rl-muted-2:            var(--ilm-muted-2);
+  --rl-outline:            var(--ilm-outline);
+  --rl-outline-variant:    var(--ilm-hairline);
+  --rl-line:               var(--ilm-line);
+  --rl-hairline:           var(--ilm-hairline);
+
+  --rl-green:              var(--ilm-viridian);
+  --rl-green-2:            var(--ilm-viridian-2);
+  --rl-green-3:            var(--ilm-viridian-3);
+  --rl-green-soft:         var(--ilm-viridian-soft);
+  --rl-green-sec:          var(--ilm-blue);
+  --rl-green-sec-c:        var(--ilm-blue-soft);
+  --rl-green-fixed:        var(--ilm-mint);
+  --rl-green-fixed-dim:    var(--ilm-mint-dim);
+
+  --rl-tertiary:           var(--ilm-amber);
+  --rl-tertiary-c:         var(--ilm-amber-soft);
+  --rl-warn:               var(--ilm-amber);
+  --rl-warn-bg:            var(--ilm-amber-soft);
+  --rl-warn-border:        var(--ilm-amber-line);
+
+  --rl-error:              var(--ilm-red);
+  --rl-error-c:            var(--ilm-red-soft);
+  --rl-error-deep:         var(--ilm-red-deep);
+  --rl-danger-text:        var(--ilm-red);
+  --rl-success:            var(--ilm-success);
+  --rl-success-deep:       var(--ilm-success-deep);
+
+  --rl-fg-1:               var(--ilm-fg-1);
+  --rl-fg-2:               var(--ilm-fg-2);
+  --rl-fg-3:               var(--ilm-fg-3);
+  --rl-fg-4:               var(--ilm-fg-4);
+
+  --rl-font-body:          var(--ilm-font-body);
+  --rl-font-display:       var(--ilm-font-display);
+  --rl-font-serif:         var(--ilm-font-display);
+  --rl-font-sans:          var(--ilm-font-body);
+  --rl-font-mono:          var(--ilm-font-mono);
+  --rl-font-icon:          var(--ilm-font-icon);
 
   /* ---------- Spacing ---------- */
   --rl-space-1: 4px;
@@ -79,10 +123,10 @@
   --rl-radius-sharp:   0;
   --rl-radius-xs:      6px;
   --rl-radius-sm:      8px;
-  --rl-radius-md:      12px;
-  --rl-radius-soft:    14px;   /* Protocol Manager composer cards */
-  --rl-radius-lg:      18px;
-  --rl-radius-soft-lg: 22px;
+  --rl-radius-md:      10px;
+  --rl-radius-soft:    12px;
+  --rl-radius-lg:      16px;
+  --rl-radius-soft-lg: 20px;
   --rl-radius-xl:      24px;
   --rl-radius-pill:    999px;
 
@@ -92,11 +136,11 @@
   --rl-border-ink:      2px solid var(--rl-ink);
 
   /* ---------- Shadows ---------- */
-  --rl-shadow-glow-primary: 0 0 8px #4f6f52;
-  --rl-shadow-ambient:      0 0 24px rgba(79, 111, 82, 0.18);
-  --rl-shadow-float:        0 22px 48px rgba(83, 73, 56, 0.18);
-  --rl-shadow-soft:         0 12px 30px rgba(83, 73, 56, 0.08);
-  --rl-shadow-step:         0 0 15px rgba(79, 111, 82, 0.05);
+  --rl-shadow-glow-primary: 0 0 12px rgba(78, 159, 146, 0.34);
+  --rl-shadow-ambient:      0 18px 48px rgba(59, 99, 91, 0.13);
+  --rl-shadow-float:        0 24px 64px rgba(40, 69, 65, 0.18);
+  --rl-shadow-soft:         0 14px 34px rgba(40, 69, 65, 0.08);
+  --rl-shadow-step:         0 0 18px rgba(78, 159, 146, 0.08);
 
   /* ---------- Z-index layers ---------- */
   --rl-z-base:      1;
@@ -113,23 +157,23 @@
   --rl-ease:     ease;
 }
 
-/* ============================================================
-   Base
-   ============================================================ */
-
-html, body {
+html,
+body {
   background: var(--rl-paper);
   color: var(--rl-fg-1);
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-body);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
-::selection { background: var(--rl-ink); color: #fff; }
+::selection {
+  background: var(--rl-ink);
+  color: #fff;
+}
 
 span.material-symbols-outlined,
 .material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
   font-family: var(--rl-font-icon) !important;
   font-weight: normal !important;
   font-style: normal !important;
@@ -138,7 +182,7 @@ span.material-symbols-outlined,
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-  -webkit-font-feature-settings: 'liga';
+  -webkit-font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
 }
 
@@ -147,75 +191,80 @@ span.material-symbols-outlined,
    ============================================================ */
 
 .rl-display {
-  font-family: var(--rl-font-serif);
-  font-weight: 900;
-  font-size: clamp(3rem, 5.6vw, 4.7rem);
-  line-height: 0.96;
-  letter-spacing: -0.06em;
-  text-transform: uppercase;
+  font-family: var(--rl-font-display);
+  font-weight: 600;
+  font-size: clamp(2.8rem, 5vw, 4.4rem);
+  line-height: 0.98;
+  letter-spacing: 0;
   margin: 0;
 }
 
-.rl-display--italic { font-style: italic; font-weight: 900; }
+.rl-display--italic {
+  font-style: normal;
+  font-weight: 600;
+}
 
 .rl-h1 {
-  font-family: var(--rl-font-serif);
-  font-size: clamp(2.3rem, 4vw, 3.6rem);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-family: var(--rl-font-display);
+  font-size: clamp(2rem, 3.4vw, 3.1rem);
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 0;
 }
 
 .rl-h2 {
-  font-family: var(--rl-font-serif);
-  font-size: 1.65rem;
-  font-weight: 700;
-  color: var(--rl-green);
+  font-family: var(--rl-font-display);
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--rl-ink);
   margin: 0;
 }
 
 .rl-h3 {
-  font-family: var(--rl-font-serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--rl-green);
+  font-family: var(--rl-font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--rl-ink);
   margin: 0;
 }
 
 .rl-body {
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-body);
   font-size: 0.95rem;
   color: var(--rl-fg-1);
   line-height: 1.6;
 }
 
 .rl-body-lg {
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-body);
   font-size: 1.02rem;
   color: var(--rl-fg-2);
-  line-height: 1.9;
+  line-height: 1.8;
 }
 
 .rl-label {
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-display);
   font-size: 0.78rem;
+  font-weight: 600;
   color: var(--rl-fg-2);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .rl-meta {
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.72rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   color: var(--rl-muted);
 }
 
 .rl-meta--tight {
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-display);
   font-size: 0.68rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.20em;
+  letter-spacing: 0.1em;
   color: var(--rl-fg-4);
 }
 
@@ -225,28 +274,31 @@ span.material-symbols-outlined,
 }
 
 .rl-figure {
-  font-family: var(--rl-font-serif);
-  font-weight: 900;
-  font-style: italic;
-  font-size: 2.2rem;
+  font-family: var(--rl-font-display);
+  font-weight: 600;
+  font-size: 2.1rem;
   line-height: 1;
 }
 
 .rl-code-chip {
-  font-family: var(--rl-font-mono);
-  font-size: 0.75rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
   padding: 0.22rem 0.55rem;
   background: var(--rl-ink);
   color: #fff;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
 }
 
 /* ============================================================
-   Bracket corner accent — apply .rl-brackets to any positioned box
+   Thin scientific linework helpers
    ============================================================ */
 
-.rl-brackets { position: relative; }
+.rl-brackets {
+  position: relative;
+}
+
 .rl-brackets::before,
 .rl-brackets::after {
   content: "";
@@ -257,93 +309,36 @@ span.material-symbols-outlined,
   border-style: solid;
   pointer-events: none;
 }
-.rl-brackets::before { top: -1px;    left: -1px;   border-width: 2px 0 0 2px; }
-.rl-brackets::after  { right: -1px;  bottom: -1px; border-width: 0 2px 2px 0; }
+
+.rl-brackets::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+
+.rl-brackets::after {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 2px 2px 0;
+}
 
 .rl-brackets--green::before,
-.rl-brackets--green::after { border-color: var(--rl-green-2); }
+.rl-brackets--green::after {
+  border-color: var(--rl-green-2);
+}
 
 .rl-brackets--hairline::before,
-.rl-brackets--hairline::after { border-width: 1px 0 0 1px; }
-.rl-brackets--hairline::after { border-width: 0 1px 1px 0; }
-
-/* ============================================================
-   Primitives
-   ============================================================ */
-
-.rl-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  border: 1px solid var(--rl-outline);
-  background: transparent;
-  color: var(--rl-fg-1);
-  border-radius: 0;
-  padding: 0.55rem 1rem;
-  font-family: var(--rl-font-mono);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-  transition: background 140ms ease, box-shadow 140ms ease, color 140ms ease;
-}
-.rl-btn:hover { background: var(--rl-lab-gray); }
-.rl-btn--primary {
-  background: var(--rl-green-2);
-  border-color: var(--rl-green-2);
-  color: #fff;
-}
-.rl-btn--primary:hover { box-shadow: var(--rl-shadow-glow-primary); background: var(--rl-green-2); }
-.rl-btn--ink {
-  background: var(--rl-ink);
-  border-color: var(--rl-ink);
-  color: #fff;
+.rl-brackets--hairline::after {
+  border-width: 1px 0 0 1px;
 }
 
-.rl-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 0.5px solid var(--rl-outline-variant);
-  padding: 0.55rem 0;
-  font-family: var(--rl-font-sans);
-  font-size: 0.9rem;
-  color: var(--rl-fg-1);
+.rl-brackets--hairline::after {
+  border-width: 0 1px 1px 0;
 }
-.rl-input:focus {
-  outline: none;
-  border-bottom-color: var(--rl-green-2);
-  box-shadow: 0 2px 0 0 var(--rl-green-2);
-}
-
-.rl-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.7rem;
-  background: var(--rl-green-sec-c);
-  color: var(--rl-success-deep);
-  font-family: var(--rl-font-mono);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-.rl-chip--warn { background: var(--rl-tertiary-c); color: var(--rl-tertiary); }
-.rl-chip--error { background: var(--rl-error-c); color: var(--rl-error-deep); }
-.rl-chip--ink { background: var(--rl-ink); color: #fff; }
-
-.rl-card {
-  position: relative;
-  background: var(--rl-surface);
-  border: 1px solid rgba(27, 27, 27, 0.10);
-  padding: 1.5rem;
-}
-
-.rl-divider { height: 0; border: none; border-top: 0.5px solid var(--rl-outline-variant); }
 
 .rl-paper-grid {
   background-image:
-    linear-gradient(#e5e7eb 1px, transparent 1px),
-    linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+    linear-gradient(rgba(79, 111, 82, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 111, 82, 0.08) 1px, transparent 1px);
   background-size: 40px 40px;
 }

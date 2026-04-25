@@ -1,9 +1,6 @@
 /* ============================================================
-   Rhine Lab ILM — Shared reset / base
-   Imported by every app after tokens.css. Owns the boilerplate
-   each app's styles.css used to repeat: box-sizing, body bg,
-   form element font inheritance, button cursor, link color.
-   Assumes tokens.css is already loaded.
+   Viridian Blue ILM shared reset / base
+   Imported by every app after tokens.css.
    ============================================================ */
 
 html {
@@ -18,7 +15,7 @@ body {
   margin: 0;
   background: var(--rl-paper);
   color: var(--rl-ink);
-  font-family: var(--rl-font-sans);
+  font-family: var(--rl-font-body);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }

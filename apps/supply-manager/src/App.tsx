@@ -18,9 +18,9 @@ export const App = () => {
   return (
     <AppShell>
       <AppTopbar
-        kicker="Stage 4 Foundation"
+        kicker="Integrated Lab Manager"
         title="Supply Manager"
-        subtitle="Vendors, reagents, inventory counts, and order flow will cut over here once the normalized supply schema lands."
+        subtitle="Items, stock, orders, storage locations, and reorder alerts will connect bench operations to projects and protocols."
         actions={<AppSwitcher currentApp="supply-manager" baseUrl={APP_BASE_URL} />}
       />
       <AppContent>
@@ -47,11 +47,11 @@ export const App = () => {
           </Panel>
 
           <Panel>
-            <SectionHeader title="Upcoming Scope" meta="PR-4.B" />
+            <SectionHeader title="Upcoming Scope" meta="Stage 4c" />
             <ul className="supply-list">
               <li>Reagent table with server-side search and stock health</li>
               <li>Order queue with status transitions and vendor links</li>
-              <li>Canonical reagent ids for later protocol references</li>
+              <li>Canonical item ids for later protocol and experiment references</li>
             </ul>
           </Panel>
 
@@ -59,8 +59,8 @@ export const App = () => {
             <SectionHeader title="Shared Shell Status" meta="Ready" />
             <ul className="supply-list">
               <li>Auth and lab selection now gate the app</li>
-              <li>Cross-app switcher links the four manager surfaces</li>
-              <li>Built on the @ilm/ui AppShell — no more one-off shell CSS</li>
+              <li>Cross-app switcher links the manager surfaces</li>
+              <li>Built on the shared Viridian Blue ILM shell and primitive system</li>
             </ul>
           </Panel>
 

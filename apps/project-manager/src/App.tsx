@@ -1734,7 +1734,7 @@ export const App = () => {
   return (
     <AppShell sidebar={sidebar} sidebarAriaLabel="Project manager navigation" className="pm-shell">
       <AppTopbar
-        kicker="Project Manager"
+        kicker="Integrated Lab Manager"
         title={sidebarTab === "view" && activeProject ? activeProject.name : statusLabel(sidebarTab)}
         actions={
           <>

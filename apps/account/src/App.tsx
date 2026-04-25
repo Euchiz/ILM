@@ -693,8 +693,8 @@ const AccountDashboard = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) 
       className="acct-shell"
     >
       <AppTopbar
-        kicker="Account"
-        title="Lab Management"
+        kicker="Integrated Lab Manager"
+        title="Account & Lab Management"
         actions={<AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />}
       />
       <AppSubbar

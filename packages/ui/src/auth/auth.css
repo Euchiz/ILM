@@ -14,11 +14,12 @@
   border: 1px solid var(--rl-line);
   border-radius: 12px;
   padding: 2rem;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--rl-shadow-soft);
 }
 
 .ilm-auth-title {
   margin: 0 0 1rem;
+  font-family: var(--rl-font-display);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -35,6 +36,7 @@
   border: 0;
   background: transparent;
   padding: 0.5rem 0.75rem;
+  font-family: var(--rl-font-display);
   font-size: 0.9rem;
   cursor: pointer;
   color: var(--rl-muted);
@@ -62,6 +64,7 @@
 }
 
 .ilm-auth-field span {
+  font-family: var(--rl-font-display);
   color: var(--rl-muted);
   font-weight: 500;
 }
@@ -84,10 +87,11 @@
 .ilm-auth-submit {
   appearance: none;
   border: 0;
-  background: var(--rl-green-2);
+  background: var(--rl-green);
   color: #ffffff;
   padding: 0.6rem 0.9rem;
   border-radius: 6px;
+  font-family: var(--rl-font-display);
   font-weight: 600;
   cursor: pointer;
   margin-top: 0.25rem;
@@ -121,6 +125,7 @@
   border: 0;
   background: transparent;
   color: var(--rl-green-2);
+  font-family: var(--rl-font-display);
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0.25rem 0.5rem;
@@ -143,6 +148,7 @@
 }
 
 .ilm-lab-section-title {
+  font-family: var(--rl-font-display);
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0.25rem 0 -0.25rem;
@@ -201,6 +207,7 @@
   background: var(--rl-surface);
   color: var(--rl-muted);
   text-decoration: none;
+  font-family: var(--rl-font-display);
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -218,10 +225,10 @@
 
 .ilm-admin-card {
   border: 1px solid var(--rl-line);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--rl-radius-lg);
+  background: var(--ilm-surface-glass);
   padding: 1.25rem;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--rl-shadow-soft);
 }
 
 .ilm-admin-header,
@@ -253,6 +260,7 @@
 .ilm-admin-header h2,
 .ilm-admin-form-header h3 {
   margin: 0;
+  font-family: var(--rl-font-display);
 }
 
 .ilm-admin-pill,
@@ -261,39 +269,45 @@
   align-items: center;
   border-radius: 999px;
   padding: 0.22rem 0.65rem;
+  font-family: var(--rl-font-display);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
 .ilm-admin-pill {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--rl-green-sec-c);
+  color: var(--rl-green-sec);
 }
 
 .ilm-admin-badge {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--rl-surface-2);
+  color: var(--rl-muted);
   text-transform: capitalize;
 }
 
 .ilm-admin-badge-owner {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--rl-green);
+  color: #ffffff;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--rl-radius-xs);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .ilm-admin-badge-admin {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--rl-green-sec-c);
+  color: var(--rl-green-sec);
 }
 
 .ilm-admin-badge-member {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--rl-surface-2);
+  color: var(--rl-muted);
 }
 
 .ilm-admin-badge-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--rl-warn-bg);
+  color: var(--rl-warn);
 }
 
 .ilm-admin-list {
@@ -307,8 +321,8 @@
 .ilm-admin-list-item {
   padding: 0.9rem 1rem;
   border: 1px solid var(--rl-line);
-  border-radius: 14px;
-  background: rgba(248, 250, 252, 0.75);
+  border-radius: var(--rl-radius-soft);
+  background: var(--rl-paper-alt);
 }
 
 .ilm-admin-list-copy {
@@ -354,7 +368,7 @@
 .ilm-admin-form select {
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--rl-line);
-  border-radius: 6px;
+  border-radius: var(--rl-radius-sm);
   font-size: 0.95rem;
   background: var(--rl-surface);
   color: var(--rl-ink);
@@ -396,33 +410,34 @@
   border: none;
   padding: 0;
   margin: 0;
-  color: var(--rl-muted, #6d736a);
-  font-family: inherit;
+  color: var(--rl-muted);
+  font-family: var(--rl-font-display);
   font-size: 0.78rem;
   line-height: 1.2;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.ilm-history-link:hover { color: var(--rl-ink, #1b1b1b); }
+.ilm-history-link:hover { color: var(--rl-ink); }
 
 .ilm-history-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(17, 17, 17, 0.45);
+  background: rgba(15, 23, 22, 0.46);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 200;
 }
 .ilm-history-sheet {
-  background: var(--rl-surface, #fff);
-  border-radius: 12px;
+  background: var(--rl-surface);
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-lg);
   width: min(560px, 90vw);
   max-height: 80vh;
   overflow: auto;
   padding: 1rem 1.25rem;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  box-shadow: var(--rl-shadow-float);
 }
 .ilm-history-head {
   display: flex;
@@ -430,9 +445,13 @@
   align-items: center;
   margin-bottom: 0.75rem;
 }
-.ilm-history-head h3 { margin: 0; font-size: 1rem; }
+.ilm-history-head h3 {
+  margin: 0;
+  font-family: var(--rl-font-display);
+  font-size: 1rem;
+}
 .ilm-history-empty {
-  color: var(--rl-muted, #6d736a);
+  color: var(--rl-muted);
   font-size: 0.9rem;
   padding: 1rem 0;
 }
@@ -445,14 +464,14 @@
   gap: 0.75rem;
 }
 .ilm-history-entry {
-  border-left: 3px solid var(--rl-line, #d6d9d2);
+  border-left: 3px solid var(--rl-line);
   padding: 0.5rem 0.75rem;
-  background: var(--rl-surface-2, #f3f3f3);
-  border-radius: 4px;
+  background: var(--rl-surface-2);
+  border-radius: var(--rl-radius-xs);
 }
-.ilm-history-entry-submitted { border-left-color: #4a6fa5; }
-.ilm-history-entry-approved { border-left-color: #4f8a4f; }
-.ilm-history-entry-rejected { border-left-color: #b3532a; }
+.ilm-history-entry-submitted { border-left-color: var(--rl-green-sec); }
+.ilm-history-entry-approved { border-left-color: var(--rl-green); }
+.ilm-history-entry-rejected { border-left-color: var(--rl-error); }
 .ilm-history-entry-head {
   display: flex;
   gap: 0.75rem;
@@ -460,43 +479,39 @@
   align-items: baseline;
   flex-wrap: wrap;
 }
-.ilm-history-entry-head strong { font-size: 0.85rem; }
-.ilm-history-actor { color: var(--rl-muted, #6d736a); margin-left: auto; }
+.ilm-history-entry-head strong {
+  font-family: var(--rl-font-display);
+  font-size: 0.85rem;
+}
+.ilm-history-actor {
+  color: var(--rl-muted);
+  margin-left: auto;
+}
 .ilm-history-comment {
   margin: 0.35rem 0 0;
   font-size: 0.88rem;
   line-height: 1.45;
   white-space: pre-wrap;
 }
-.ilm-history-no-comment { color: var(--rl-muted, #6d736a); font-style: italic; }
+.ilm-history-no-comment { color: var(--rl-muted); font-style: italic; }
 
-.ilm-admin-badge-owner {
-  background: #3a3a3a;
-  color: #fff;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-/* Account link card — shared account/lab-settings entry point */
+/* Account link card: shared account/lab-settings entry point */
 .ilm-account-link {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--rl-radius-sm);
+  border: 1px solid var(--rl-line);
+  background: var(--ilm-surface-glass);
   color: inherit;
   text-decoration: none;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--rl-dur-base) var(--rl-ease), border-color var(--rl-dur-base) var(--rl-ease);
 }
 .ilm-account-link:hover,
 .ilm-account-link:focus-visible {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.18);
+  background: var(--rl-surface);
+  border-color: var(--rl-green-2);
   outline: none;
 }
 .ilm-account-link-head {
@@ -506,16 +521,17 @@
 }
 .ilm-account-link-head span {
   font-size: 0.82rem;
-  color: var(--rl-muted, #6d736a);
+  color: var(--rl-muted);
 }
 .ilm-account-link-meta {
   display: flex;
   justify-content: space-between;
   font-size: 0.78rem;
-  color: var(--rl-muted, #6d736a);
+  color: var(--rl-muted);
 }
 .ilm-account-link-cta {
   margin-top: 0.35rem;
   font-size: 0.78rem;
-  color: #3b3be0;
+  color: var(--rl-green-2);
+  font-family: var(--rl-font-display);
 }

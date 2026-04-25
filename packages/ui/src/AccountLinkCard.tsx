@@ -1,10 +1,9 @@
-import { useAuth } from "./auth/AuthProvider";
 import { appUrl } from "./AppSwitcher";
+import { useAuth } from "./auth/AuthProvider";
 
 // A clickable account summary that links to the shared Account shell.
-// Renders the signed-in user's name + active-lab info; clicking opens
-// `<site-root>/account/` where lab settings, members, join requests,
-// and share links live.
+// It renders the signed-in user plus active-lab context so every app has
+// the same path back to membership and lab settings.
 export const AccountLinkCard = ({
   baseUrl,
   className,
@@ -15,11 +14,12 @@ export const AccountLinkCard = ({
   const { profile, user, activeLab } = useAuth();
   const label = profile?.display_name ?? user?.email ?? "Signed in";
   const href = appUrl("account/", baseUrl);
+
   return (
     <a
       href={href}
       className={className ? `ilm-account-link ${className}` : "ilm-account-link"}
-      title="Open account & lab settings"
+      title="Open account and lab settings"
     >
       <span className="ilm-account-link-head">
         <strong>{label}</strong>
@@ -29,7 +29,7 @@ export const AccountLinkCard = ({
         <span>{activeLab?.name ?? "No lab"}</span>
         <span>{activeLab?.role ?? "member"}</span>
       </span>
-      <span className="ilm-account-link-cta">Manage account →</span>
+      <span className="ilm-account-link-cta">Manage account</span>
     </a>
   );
 };

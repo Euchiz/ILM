@@ -3,7 +3,7 @@
 @import "../../../packages/ui/src/primitives/primitives.css";
 
 /* =========================================================
-   Shell — override shared AppShell tokens for Project Manager.
+   Shell: override shared AppShell tokens for Project Manager.
 ========================================================= */
 .pm-shell {
   --rl-shell-sidebar-width: 232px;
@@ -25,7 +25,7 @@
   border-bottom: 1px solid var(--rl-hairline);
 }
 .pm-side-rail-header strong {
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -192,7 +192,7 @@
 }
 .pm-panel-header h2 {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.35rem;
 }
 .pm-panel-header p { margin: 0.15rem 0 0; color: var(--rl-muted); }
@@ -213,7 +213,7 @@
 }
 .pm-panel-section-head h3 {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
 }
 .pm-panel-section-head span {
@@ -236,7 +236,7 @@
   align-items: center;
   cursor: pointer;
   color: var(--rl-ink);
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1rem;
 }
 .pm-collapsible-section summary::-webkit-details-marker { display: none; }
@@ -267,7 +267,7 @@
   letter-spacing: 0.12em;
 }
 .pm-summary-card strong {
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.35rem;
   color: var(--rl-ink);
 }
@@ -296,7 +296,7 @@
 }
 .pm-library-card-head strong {
   display: block;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -414,7 +414,7 @@
 .pm-status-tag-running { background: #fff1cb; color: #7a5f00; border-color: #ead8a4; }
 .pm-status-tag-failed { background: #ffdad6; color: #93000a; border-color: #f2b3af; }
 
-/* outline status dots — color only */
+/* outline status dots: color only */
 .pm-status-dot {
   width: 0.65rem;
   height: 0.65rem;
@@ -477,7 +477,7 @@
 }
 .pm-outline-root strong {
   display: block;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.05rem;
   color: var(--rl-ink);
 }
@@ -711,7 +711,7 @@
 }
 .pm-draft-actions strong {
   display: block;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 0.98rem;
 }
 .pm-draft-actions p {
@@ -780,7 +780,7 @@
 }
 .pm-roadmap-section-head h3 {
   margin: 0.18rem 0 0.18rem;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.1rem;
 }
 .pm-roadmap-section-head p {
@@ -845,7 +845,7 @@
 }
 .pm-form-head h3 {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.02rem;
 }
 .pm-form-head small { color: var(--rl-muted); font-size: 0.78rem; }
@@ -959,7 +959,7 @@
 }
 .pm-modal-head h2 {
   margin: 0;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
   font-size: 1.2rem;
 }
 .pm-modal-note {
@@ -969,7 +969,7 @@
 }
 
 /* =========================================================
-   Admin panel overrides — keep shared ilm-admin-* widgets
+   Admin panel overrides: keep shared ilm-admin-* widgets
    visually consistent when embedded here
 ========================================================= */
 .pm-personnel-body .ilm-admin-card {
@@ -979,7 +979,7 @@
   padding: 1rem 1.2rem;
 }
 
-/* Responsive — AppShell handles sidebar collapse at 900px. */
+/* Responsive: AppShell handles sidebar collapse at 900px. */
 @media (max-width: 900px) {
   .pm-shell > .rl-shell-sidebar {
     position: static;

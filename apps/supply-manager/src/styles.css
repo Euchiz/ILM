@@ -3,7 +3,7 @@
 @import "../../../packages/ui/src/primitives/primitives.css";
 
 /* =========================================================
-   Supply Manager — app-local styles
+   Supply Manager app-local styles
    Shell / topbar / panels / grid come from @ilm/ui primitives.
    Only genuinely supply-specific compositions live here.
 ========================================================= */
@@ -35,7 +35,7 @@
   margin-top: 0.35rem;
   color: var(--rl-ink);
   font-size: 1.2rem;
-  font-family: var(--rl-font-serif);
+  font-family: var(--rl-font-display);
 }
 
 .supply-stat-grid small {
