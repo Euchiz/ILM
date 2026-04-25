@@ -89,11 +89,14 @@ Supply Manager was *not* part of this phase — it was built on A+B+C during Sta
 
 What remains app-local (and should stay that way for now): Protocol Manager's two-column body layout (side rail + workspace under the subbar), all three apps' bespoke sidebar / rail visuals, and everything below the shell (cards, tables, editors).
 
-### Phase E — Document (~0.5 day)
+### Phase E — Document - shipped
 
-- `packages/ui/README.md` — primitive usage, props, do/don't.
-- `docs/design-system.md` — token reference, when to add a new primitive vs. extend one, the "first use local, second use promote" rule.
-- PR gate: no new one-off buttons/cards in app CSS.
+- `packages/ui/README.md` documents import order, shell usage, primitive inventory,
+  customization hooks, responsive sidebar handling, and do/don't guidance.
+- `docs/design-system.md` documents the Viridian Blue Labs direction, token
+  expectations, primitive promotion rules, and PR gates.
+- PR gate: no new one-off buttons/cards in app CSS when an `@ilm/ui` primitive
+  already covers the behavior.
 
 ## Expandability
 
