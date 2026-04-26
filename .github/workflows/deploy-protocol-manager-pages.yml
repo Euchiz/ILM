@@ -31,10 +31,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build Account (home) for Pages
+        run: npm run build -w @ilm/account
+        env:
+          VITE_BASE_PATH: /ILM/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Build Protocol Manager for Pages
         run: npm run build -w @ilm/protocol-manager
         env:
-          VITE_BASE_PATH: /ILM/
+          VITE_BASE_PATH: /ILM/protocol-manager/
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
@@ -59,28 +66,20 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Build Account for Pages
-        run: npm run build -w @ilm/account
-        env:
-          VITE_BASE_PATH: /ILM/account/
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
       - name: Assemble Pages artifact
         run: |
           rm -rf .pages-dist
-          mkdir -p .pages-dist/project-manager .pages-dist/supply-manager .pages-dist/funding-manager .pages-dist/account
-          cp -R apps/protocol-manager/dist/. .pages-dist/
+          mkdir -p .pages-dist/protocol-manager .pages-dist/project-manager .pages-dist/supply-manager .pages-dist/funding-manager
+          cp -R apps/account/dist/. .pages-dist/
+          cp -R apps/protocol-manager/dist/. .pages-dist/protocol-manager/
           cp -R apps/project-manager/dist/. .pages-dist/project-manager/
           cp -R apps/supply-manager/dist/. .pages-dist/supply-manager/
           cp -R apps/funding-manager/dist/. .pages-dist/funding-manager/
-          cp -R apps/account/dist/. .pages-dist/account/
           # SPA fallback: GitHub Pages serves /<site>/404.html for any missing
-          # path under the site, so put the Account shell there — that's the
-          # app with client-side routes (/account/join/<uuid>). The shell
-          # reads window.location.pathname and routes accordingly; assets
-          # resolve against its configured base of /ILM/account/.
-          cp .pages-dist/account/index.html .pages-dist/404.html
+          # path under the site. The Account shell now lives at the site root
+          # and owns client-side routes (`/join/<uuid>`, `#/team`, ...), so
+          # 404.html is the same shell. Assets resolve against its base /ILM/.
+          cp .pages-dist/index.html .pages-dist/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

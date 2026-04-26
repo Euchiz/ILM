@@ -11,12 +11,10 @@ if (!rootElement) {
   throw new Error("Could not find root element for Protocol Manager.");
 }
 
-const page = rootElement.dataset.page === "protocol-manager" ? "protocol-manager" : "home";
-
 createRoot(rootElement).render(
   <React.StrictMode>
     <AuthGate>
-      <App page={page} />
+      <App />
     </AuthGate>
   </React.StrictMode>
 );

@@ -198,7 +198,7 @@ const resolveSiteRoot = (baseUrl: string) => {
   return normalized === "/" ? currentBase : new URL("../", currentBase);
 };
 
-const accountUrl = () => new URL("account/", resolveSiteRoot(APP_BASE_URL)).toString();
+const accountUrl = () => resolveSiteRoot(APP_BASE_URL).toString();
 
 // ---------------------------------------------------------------------------
 // Main App

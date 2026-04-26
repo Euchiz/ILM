@@ -82,7 +82,7 @@ user-editable metadata or frontend checks.
 - **Stage 1 — Foundation**: migrations, RLS, Supabase client in `packages/utils`, env/deploy docs.
 - **Stage 2 — Auth shell**: sign in/up/out, `AuthProvider`, protected routes, lab picker + create-lab onboarding.
 - **Stage 3 — Protocol Manager**: visual editor, draft → submit → review → publish, append-only revisions, recycle bin.
-- **Stage 4a — Account app**: dedicated `/account/` app, tier hierarchy (owner > admin > member), invitations + join requests, share links, auto-claim.
+- **Stage 4a — Account / Home app**: hosts the lab-wide overview dashboard at the site root, plus tier hierarchy (owner > admin > member), invitations + join requests, share links, auto-claim under hash routes (`#/team`, `#/settings`).
 - **Stage 4b — Project Manager**: projects/milestones/experiments, project leads, review gate, recycle bin, GitHub repo activity per project.
 
 **Current**

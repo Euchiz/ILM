@@ -483,7 +483,7 @@ const NewProjectModal = ({
 
 export const App = () => {
   const { activeLab, profile, user } = useAuth();
-  const accountHref = appUrl("account/", APP_BASE_URL);
+  const accountHref = appUrl("", APP_BASE_URL);
   const isAdmin = activeLab?.role === "owner" || activeLab?.role === "admin";
   const isOwner = activeLab?.role === "owner";
   const workspace = useProjectWorkspace(activeLab?.id ?? null, user?.id ?? null, isAdmin);
