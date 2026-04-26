@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AuthScreen,
   LabPicker,
-  appUrl,
+  LabShell,
+  LabTopbar,
   cancelLabJoin,
   lookupLabById,
   requestLabJoin,
   useAuth,
   type LabLookupResult,
+  type LabNavId,
 } from "@ilm/ui";
 import { OverviewView } from "./views/OverviewView";
 import { TeamView } from "./views/TeamView";
@@ -81,195 +83,7 @@ const useHomeRoute = (): HomeRoute => {
 };
 
 // ---------------------------------------------------------------------------
-// Sidebar
-// ---------------------------------------------------------------------------
-
-type NavTone = "internal" | "external" | "soon";
-
-type NavItem = {
-  id: string;
-  label: string;
-  glyph: ReactNode;
-  href: string;
-  tone: NavTone;
-  match?: (route: HomeRoute) => boolean;
-};
-
-const SIDEBAR_GROUPS: { items: NavItem[] }[] = [
-  {
-    items: [
-      {
-        id: "overview",
-        label: "Overview",
-        glyph: <span className="ovw-nav-glyph">▢</span>,
-        href: ROUTE_HASHES.overview || "#/",
-        tone: "internal",
-        match: (r) => r.kind === "overview",
-      },
-      {
-        id: "projects",
-        label: "Projects",
-        glyph: <span className="ovw-nav-glyph">⊞</span>,
-        href: appUrl("project-manager/", APP_BASE_URL),
-        tone: "external",
-      },
-      {
-        id: "protocols",
-        label: "Protocols",
-        glyph: <span className="ovw-nav-glyph">▤</span>,
-        href: appUrl("protocol-manager/", APP_BASE_URL),
-        tone: "external",
-      },
-      {
-        id: "inventory",
-        label: "Inventory",
-        glyph: <span className="ovw-nav-glyph">◇</span>,
-        href: appUrl("supply-manager/", APP_BASE_URL),
-        tone: "external",
-      },
-      {
-        id: "funding",
-        label: "Funding",
-        glyph: <span className="ovw-nav-glyph">$</span>,
-        href: appUrl("funding-manager/", APP_BASE_URL),
-        tone: "external",
-      },
-      {
-        id: "calendar",
-        label: "Calendar",
-        glyph: <span className="ovw-nav-glyph">▣</span>,
-        href: ROUTE_HASHES.calendar,
-        tone: "soon",
-        match: (r) => r.kind === "calendar",
-      },
-      {
-        id: "team",
-        label: "Team",
-        glyph: <span className="ovw-nav-glyph">⊙</span>,
-        href: ROUTE_HASHES.team,
-        tone: "internal",
-        match: (r) => r.kind === "team",
-      },
-      {
-        id: "analytics",
-        label: "Analytics",
-        glyph: <span className="ovw-nav-glyph">∿</span>,
-        href: ROUTE_HASHES.analytics,
-        tone: "soon",
-        match: (r) => r.kind === "analytics",
-      },
-      {
-        id: "reports",
-        label: "Reports",
-        glyph: <span className="ovw-nav-glyph">≡</span>,
-        href: ROUTE_HASHES.reports,
-        tone: "soon",
-        match: (r) => r.kind === "reports",
-      },
-      {
-        id: "settings",
-        label: "Settings",
-        glyph: <span className="ovw-nav-glyph">⚙</span>,
-        href: ROUTE_HASHES.settings,
-        tone: "internal",
-        match: (r) => r.kind === "settings",
-      },
-    ],
-  },
-];
-
-const Sidebar = ({
-  route,
-  onOpenLabPicker,
-}: {
-  route: HomeRoute;
-  onOpenLabPicker: () => void;
-}) => {
-  const { profile, user, activeLab, signOut } = useAuth();
-  const displayName = profile?.display_name ?? user?.email ?? "Signed in";
-  const labName = activeLab?.name ?? "No lab";
-  const role = (activeLab?.role ?? "—").toString().toUpperCase();
-
-  const initials = displayName
-    .split(" ")
-    .map((p) => p.charAt(0))
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  return (
-    <aside className="ovw-sidebar" aria-label="Primary navigation">
-      <div className="ovw-brand">
-        <div className="ovw-brand-mark">
-          <strong>{labName}</strong>
-          <span>— ∞</span>
-        </div>
-        <p className="ovw-brand-tag">
-          INTEGRATED LAB MANAGER <b>OS</b>
-        </p>
-      </div>
-
-      <nav className="ovw-nav">
-        {SIDEBAR_GROUPS.map((group, groupIndex) => (
-          <div className="ovw-nav-group" key={groupIndex}>
-            {group.items.map((item) => {
-              const active = item.match?.(route) ?? false;
-              const isExternal = item.tone === "external";
-              const className = `ovw-nav-item${active ? " is-active" : ""}${
-                item.tone === "soon" ? " is-soon" : ""
-              }`;
-              return (
-                <a
-                  key={item.id}
-                  href={item.href}
-                  className={className}
-                  aria-current={active ? "page" : undefined}
-                  rel={isExternal ? "noopener" : undefined}
-                >
-                  <span className="ovw-nav-glyph-cell">{item.glyph}</span>
-                  <span className="ovw-nav-label">{item.label}</span>
-                  {item.tone === "soon" ? <span className="ovw-nav-pip">SOON</span> : null}
-                  {active ? <span className="ovw-nav-dot" aria-hidden="true" /> : null}
-                </a>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-
-      <div className="ovw-side-status">
-        <div className="ovw-side-status-mark" aria-hidden="true">
-          <span className="ovw-side-status-dot" />
-        </div>
-        <div>
-          <p className="ovw-side-status-title">SYSTEM STATUS</p>
-          <p className="ovw-side-status-copy">All systems nominal</p>
-        </div>
-      </div>
-
-      <button type="button" className="ovw-side-profile" onClick={onOpenLabPicker}>
-        <span className="ovw-side-orb" aria-hidden="true">
-          {initials || "·"}
-        </span>
-        <span className="ovw-side-profile-copy">
-          <strong>{displayName}</strong>
-          <span>{role}</span>
-        </span>
-        <span className="ovw-side-profile-chev" aria-hidden="true">
-          ⌄
-        </span>
-      </button>
-
-      <button type="button" className="ovw-side-signout" onClick={() => void signOut()}>
-        Sign out
-      </button>
-    </aside>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Main shell
+// Route → topbar copy + nav-id mapping
 // ---------------------------------------------------------------------------
 
 const ROUTE_TITLE: Record<HomeRoute["kind"], string> = {
@@ -299,27 +113,17 @@ const ROUTE_SUBTITLE: Record<HomeRoute["kind"], string> = {
   settings: "Profile, lab, and workspace configuration.",
 };
 
-const TopBar = ({ route }: { route: HomeRoute }) => {
-  const { activeLab } = useAuth();
-  return (
-    <header className="ovw-topbar">
-      <div className="ovw-topbar-copy">
-        <span className="ovw-kicker">{ROUTE_KICKER[route.kind]}</span>
-        <h1 className="ovw-title">{ROUTE_TITLE[route.kind]}</h1>
-        <p className="ovw-subtitle">{ROUTE_SUBTITLE[route.kind]}</p>
-      </div>
-      <div className="ovw-search" role="search">
-        <span>Search projects, protocols, inventory…</span>
-        <span aria-hidden="true">⌕</span>
-      </div>
-      <div className="ovw-org">
-        <strong>{activeLab?.name ?? "—"}</strong>
-        <span className="ovw-org-pill">SECTOR OS</span>
-        <small>LAB MANAGER SYSTEM</small>
-      </div>
-    </header>
-  );
+const ROUTE_NAV: Record<HomeRoute["kind"], LabNavId> = {
+  overview: "overview",
+  calendar: "calendar",
+  team: "team",
+  analytics: "analytics",
+  reports: "reports",
+  settings: "settings",
 };
+
+// Suppress unused-import error from earlier route hash table
+void ROUTE_HASHES;
 
 const RouteBody = ({
   route,
@@ -362,15 +166,20 @@ const RouteBody = ({
 const HomeShell = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
   const route = useHomeRoute();
   return (
-    <div className="ovw-shell">
-      <Sidebar route={route} onOpenLabPicker={onOpenLabPicker} />
-      <main className="ovw-main">
-        <TopBar route={route} />
-        <div className="ovw-body">
-          <RouteBody route={route} onOpenLabPicker={onOpenLabPicker} />
-        </div>
-      </main>
-    </div>
+    <LabShell
+      activeNavId={ROUTE_NAV[route.kind]}
+      baseUrl={APP_BASE_URL}
+      onOpenProfile={onOpenLabPicker}
+      topbar={
+        <LabTopbar
+          kicker={ROUTE_KICKER[route.kind]}
+          title={ROUTE_TITLE[route.kind]}
+          subtitle={ROUTE_SUBTITLE[route.kind]}
+        />
+      }
+    >
+      <RouteBody route={route} onOpenLabPicker={onOpenLabPicker} />
+    </LabShell>
   );
 };
 

@@ -1,6 +1,77 @@
 @import "../../../packages/ui/src/tokens.css";
 @import "../../../packages/ui/src/reset.css";
 @import "../../../packages/ui/src/primitives/primitives.css";
+@import "../../../packages/ui/src/lab-shell.css";
+
+/* ============================================================
+   Subbar tab strip (replaces the old protocol-side-rail nav)
+   ============================================================ */
+
+.protocol-subbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+}
+.protocol-subbar-spacer { flex: 1; }
+.protocol-subtab {
+  appearance: none;
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0.55rem 0.85rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--rl-muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+.protocol-subtab:hover:not(:disabled) { color: var(--rl-ink); }
+.protocol-subtab:disabled { opacity: 0.5; cursor: not-allowed; }
+.protocol-subtab.is-active {
+  color: var(--rl-green);
+  font-weight: 600;
+}
+.protocol-subtab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: -0.6rem;
+  height: 2px;
+  background: var(--rl-green);
+}
+.protocol-subbar-strong {
+  appearance: none;
+  border: 1px solid var(--rl-green);
+  background: var(--rl-green);
+  color: #fff;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.protocol-subbar-strong:hover { background: var(--rl-green-2); border-color: var(--rl-green-2); }
+.protocol-subbar-back {
+  appearance: none;
+  border: 1px solid var(--rl-line);
+  background: #fff;
+  color: var(--rl-ink);
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.protocol-subbar-back:hover { background: var(--rl-soft); }
+
+/* When viewing a protocol the body becomes the editor 3-pane and needs to
+   stretch full-bleed under the subbar without the default LabShell gutter. */
+.ils-body.protocol-body--workspace {
+  padding: 0;
+}
 
 button {
   border: 1px solid var(--rl-line);

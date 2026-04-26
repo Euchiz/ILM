@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
-  AppContent,
-  AppShell,
-  AppSidebarSection,
-  AppSwitcher,
-  AppTopbar,
   Badge,
   Button,
   CheckboxField,
@@ -15,6 +10,8 @@ import {
   InlineError,
   InlineNote,
   Input,
+  LabShell,
+  LabTopbar,
   Modal,
   Panel,
   SectionHeader,
@@ -188,17 +185,6 @@ const priorityTone = (priority: RequestPriority | null | undefined): StatusTone 
   if (priority === "low") return "neutral";
   return "neutral";
 };
-
-const resolveSiteRoot = (baseUrl: string) => {
-  const normalized = (baseUrl.trim() || "/").replace(/\/?$/, "/");
-  const currentBase = new URL(
-    normalized.startsWith("/") ? normalized : `/${normalized}`,
-    window.location.origin
-  );
-  return normalized === "/" ? currentBase : new URL("../", currentBase);
-};
-
-const accountUrl = () => resolveSiteRoot(APP_BASE_URL).toString();
 
 // ---------------------------------------------------------------------------
 // Main App
@@ -537,75 +523,51 @@ export const App = () => {
   };
 
   // ---------------------------------------------------------------------
-  // Sidebar
+  // Subbar tabs (rendered inside LabShell's subbar slot)
   // ---------------------------------------------------------------------
 
-  const signedInLabel = profile?.display_name || profile?.email || "Signed in";
-
-  const sidebar = (
-    <>
-      <div className="sm-side-rail-header">
-        <strong>Supply Manager</strong>
-        <small>Stage 4c</small>
-      </div>
-      <AppSidebarSection className="sm-side-rail-nav" aria-label="Primary">
-        <button
-          type="button"
-          className={`sm-rail-item${sidebarTab === "warehouse" ? " active" : ""}`}
-          onClick={() => setSidebarTab("warehouse")}
-        >
-          Warehouse
-        </button>
-        <button
-          type="button"
-          className={`sm-rail-item${sidebarTab === "orders" ? " active" : ""}`}
-          onClick={() => setSidebarTab("orders")}
-        >
-          Orders
-          {myActiveRequests.length > 0 ? (
-            <span className="sm-rail-badge">{myActiveRequests.length}</span>
-          ) : null}
-        </button>
-        <button
-          type="button"
-          className={`sm-rail-item${sidebarTab === "review" ? " active" : ""}`}
-          onClick={() => setSidebarTab("review")}
-          disabled={!isAdmin && pendingReviewRequests.length === 0}
-        >
-          Review
-          {isAdmin && pendingReviewRequests.length > 0 ? (
-            <span className="sm-rail-badge">{pendingReviewRequests.length}</span>
-          ) : null}
-        </button>
-        <button
-          type="button"
-          className={`sm-rail-item${sidebarTab === "my-items" ? " active" : ""}`}
-          onClick={() => setSidebarTab("my-items")}
-        >
-          My Items
-        </button>
-      </AppSidebarSection>
-      <div className="sm-side-rail-footer">
-        <button
-          type="button"
-          className="sm-rail-item sm-rail-item-strong"
-          onClick={() => setModal({ kind: "new-item" })}
-        >
-          + New item
-        </button>
-        <a href={accountUrl()} className="sm-side-account" title="Open account & lab settings">
-          <div className="sm-side-account-head">
-            <strong>{signedInLabel}</strong>
-            <span>{profile?.email}</span>
-          </div>
-          <div className="sm-side-account-meta">
-            <span>{activeLab?.name ?? "No lab"}</span>
-            <span>{activeLab?.role ?? "member"}</span>
-          </div>
-          <span className="sm-side-account-action">Manage account →</span>
-        </a>
-      </div>
-    </>
+  const subbarTabs = (
+    <nav className="sm-subbar-tabs" aria-label="Supply manager sections">
+      <button
+        type="button"
+        className={`sm-subtab${sidebarTab === "warehouse" ? " is-active" : ""}`}
+        onClick={() => setSidebarTab("warehouse")}
+      >
+        Warehouse
+      </button>
+      <button
+        type="button"
+        className={`sm-subtab${sidebarTab === "orders" ? " is-active" : ""}`}
+        onClick={() => setSidebarTab("orders")}
+      >
+        Orders
+        {myActiveRequests.length > 0 ? (
+          <span className="sm-subtab-badge">{myActiveRequests.length}</span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        className={`sm-subtab${sidebarTab === "review" ? " is-active" : ""}`}
+        onClick={() => setSidebarTab("review")}
+        disabled={!isAdmin && pendingReviewRequests.length === 0}
+      >
+        Review
+        {isAdmin && pendingReviewRequests.length > 0 ? (
+          <span className="sm-subtab-badge">{pendingReviewRequests.length}</span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        className={`sm-subtab${sidebarTab === "my-items" ? " is-active" : ""}`}
+        onClick={() => setSidebarTab("my-items")}
+      >
+        My Items
+      </button>
+      <span className="sm-subbar-spacer" />
+      <Button size="sm" variant="primary" onClick={() => setModal({ kind: "new-item" })}>
+        + New item
+      </Button>
+    </nav>
   );
 
   // ---------------------------------------------------------------------
@@ -1254,44 +1216,46 @@ export const App = () => {
   // ---------------------------------------------------------------------
 
   return (
-    <AppShell sidebar={sidebar} sidebarAriaLabel="Supply manager navigation" className="sm-shell">
-      <AppTopbar
-        kicker="Integrated Lab Manager"
-        title={statusLabel(sidebarTab.replace(/-/g, " "))}
-        actions={
-          <>
-            <AppSwitcher currentApp="supply-manager" baseUrl={APP_BASE_URL} />
+    <LabShell
+      activeNavId="inventory"
+      baseUrl={APP_BASE_URL}
+      className="sm-shell"
+      topbar={
+        <LabTopbar
+          kicker="INVENTORY"
+          title={statusLabel(sidebarTab.replace(/-/g, " "))}
+          subtitle="Items, vendor orders, and inventory checks for the active lab."
+          meta={
             <Button size="sm" onClick={() => void refresh()} disabled={status === "loading"}>
               {status === "loading" ? "Refreshing…" : "Refresh"}
             </Button>
-          </>
-        }
-      />
-
+          }
+        />
+      }
+      subbar={subbarTabs}
+    >
       {error ? <ErrorBanner className="sm-page-error">{error}</ErrorBanner> : null}
       {actionError ? <ErrorBanner className="sm-page-error">{actionError}</ErrorBanner> : null}
 
-      <AppContent>
-        {!activeLab ? (
-          <Panel>
-            <EmptyState
-              title="Select a lab"
-              description="Pick a lab from the lab picker to see its supply catalog."
-            />
-          </Panel>
-        ) : sidebarTab === "warehouse" ? (
-          warehousePanel
-        ) : sidebarTab === "orders" ? (
-          ordersPanel
-        ) : sidebarTab === "review" ? (
-          reviewPanel
-        ) : (
-          myItemsPanel
-        )}
-      </AppContent>
+      {!activeLab ? (
+        <Panel>
+          <EmptyState
+            title="Select a lab"
+            description="Pick a lab from the lab picker to see its supply catalog."
+          />
+        </Panel>
+      ) : sidebarTab === "warehouse" ? (
+        warehousePanel
+      ) : sidebarTab === "orders" ? (
+        ordersPanel
+      ) : sidebarTab === "review" ? (
+        reviewPanel
+      ) : (
+        myItemsPanel
+      )}
 
       {renderModal()}
-    </AppShell>
+    </LabShell>
   );
 };
 

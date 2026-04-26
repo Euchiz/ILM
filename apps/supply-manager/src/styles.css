@@ -1,131 +1,65 @@
 @import "../../../packages/ui/src/tokens.css";
 @import "../../../packages/ui/src/reset.css";
 @import "../../../packages/ui/src/primitives/primitives.css";
+@import "../../../packages/ui/src/lab-shell.css";
 
 /* =========================================================
    Supply Manager app-local styles
-   Shell / topbar / panels / grid / buttons / forms / modals
-   come from @ilm/ui primitives. Only genuinely supply-specific
-   compositions live here, all under the .sm-* prefix.
+   Shell / topbar come from @ilm/ui's LabShell. Section nav
+   moves to a horizontal subbar under the topbar. Only
+   genuinely supply-specific compositions live here, all
+   under the .sm-* prefix.
 ========================================================= */
 
-.sm-shell {
-  --rl-shell-sidebar-width: 240px;
-}
+/* Subbar tab strip --------------------------------------------- */
 
-/* Sidebar nav -------------------------------------------------- */
-
-.sm-side-rail-header {
-  display: grid;
-  gap: 0.15rem;
-  padding: 1.1rem 1rem 0.9rem;
-  border-bottom: 1px solid var(--rl-line);
-}
-.sm-side-rail-header strong {
-  font-family: var(--rl-font-display);
-  font-size: 1.05rem;
-}
-.sm-side-rail-header small {
-  color: var(--rl-muted);
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.sm-side-rail-nav {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.75rem 0.6rem;
-}
-
-.sm-rail-item {
+.sm-subbar-tabs {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-  text-align: left;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+}
+.sm-subbar-spacer { flex: 1; }
+.sm-subtab {
+  appearance: none;
+  position: relative;
   background: transparent;
-  color: var(--rl-fg-2);
-  border: 1px solid transparent;
-  border-radius: var(--rl-radius-sm);
-  padding: 0.55rem 0.75rem;
-  font: inherit;
+  border: none;
+  padding: 0.55rem 0.85rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.8rem;
   font-weight: 500;
+  color: var(--rl-muted);
   cursor: pointer;
-  transition:
-    background var(--rl-dur-base) var(--rl-ease),
-    color var(--rl-dur-base) var(--rl-ease),
-    border-color var(--rl-dur-base) var(--rl-ease);
-}
-.sm-rail-item:hover:not(:disabled) {
-  background: var(--rl-soft);
-  color: var(--rl-ink);
-}
-.sm-rail-item:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.sm-rail-item.active {
-  background: var(--rl-soft);
-  color: var(--rl-ink);
-  border-color: var(--rl-line);
-}
-.sm-rail-item-strong {
-  background: var(--rl-green);
-  color: #fff;
-  border-color: var(--rl-green);
-  justify-content: center;
-}
-.sm-rail-item-strong:hover:not(:disabled) {
-  background: var(--rl-green-2);
-  color: #fff;
-  border-color: var(--rl-green-2);
-}
-
-.sm-rail-badge {
-  background: var(--rl-green);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  border-radius: 999px;
-  padding: 0.05rem 0.5rem;
   letter-spacing: 0.04em;
 }
-
-.sm-side-rail-footer {
-  margin-top: auto;
-  display: grid;
-  gap: 0.65rem;
-  padding: 0.75rem 0.75rem 1rem;
-  border-top: 1px solid var(--rl-line);
+.sm-subtab:hover:not(:disabled) {
+  color: var(--rl-ink);
 }
-
-.sm-side-account {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--rl-line);
-  border-radius: var(--rl-radius-sm);
-  text-decoration: none;
-  color: inherit;
-  background: var(--rl-bg);
-}
-.sm-side-account-head strong {
-  display: block;
-  font-family: var(--rl-font-display);
-}
-.sm-side-account-head span,
-.sm-side-account-meta {
-  color: var(--rl-muted);
-  font-size: 0.78rem;
-  display: flex;
-  justify-content: space-between;
-}
-.sm-side-account-action {
-  margin-top: 0.25rem;
-  font-size: 0.78rem;
+.sm-subtab:disabled { opacity: 0.5; cursor: not-allowed; }
+.sm-subtab.is-active {
   color: var(--rl-green);
+  font-weight: 600;
+}
+.sm-subtab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: -0.6rem;
+  height: 2px;
+  background: var(--rl-green);
+}
+.sm-subtab-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  background: var(--rl-green);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  letter-spacing: 0.04em;
 }
 
 /* Page-level error banner ------------------------------------- */

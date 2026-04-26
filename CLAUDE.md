@@ -94,6 +94,7 @@ user-editable metadata or frontend checks.
 ### Living docs
 - `docs/features.md` — cumulative summary of what's shipped. Update after each meaningful PR.
 - `docs/next-stage.md` — current planned next stage. Rewrite when priorities change. Read before starting a new session.
+- `docs/module-development.md` — how to scaffold a new module (Facility, Calendar, Funding, …) so it inherits the shared `<LabShell>` chrome and follows the deploy / RLS conventions. Read before starting a new app.
 
 ### Non-negotiables
 - Static frontend only; no custom backend server
