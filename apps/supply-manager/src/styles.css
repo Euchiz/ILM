@@ -189,6 +189,30 @@
   width: 28px;
 }
 
+/* Bulk action bar (warehouse / my-items multi-select) ---------- */
+
+.sm-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--rl-surface-2, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+}
+.sm-bulk-count {
+  font-size: 0.85rem;
+  color: var(--rl-muted);
+}
+.sm-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
 /* Order request composer -------------------------------------- */
 
 .sm-request-card {
