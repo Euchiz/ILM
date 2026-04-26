@@ -1,6 +1,7 @@
 @import "../../../packages/ui/src/tokens.css";
 @import "../../../packages/ui/src/reset.css";
 @import "../../../packages/ui/src/primitives/primitives.css";
+@import "../../../packages/ui/src/lab-shell.css";
 
 /* =========================================================
    Funding Manager app-local styles

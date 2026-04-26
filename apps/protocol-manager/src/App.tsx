@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
-  AppShell,
-  AppSubbar,
-  AppSwitcher,
-  AppTopbar,
+  LabShell,
+  LabTopbar,
   SubmissionHistoryLink,
   appUrl,
   useAuth,
@@ -224,8 +222,7 @@ const buildProjectGroups = (protocols: PublishedProtocolRecord[]): ProjectGroup[
 };
 
 export const App = () => {
-  const { activeLab, profile, status: authStatus, user } = useAuth();
-  const accountHref = appUrl("", APP_BASE_URL);
+  const { activeLab, user } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const mainGridRef = useRef<HTMLDivElement | null>(null);
@@ -1342,8 +1339,6 @@ export const App = () => {
       </article>
     ) : null;
 
-  const signedInLabel = profile?.display_name || profile?.email || user?.email || "Signed-in user";
-
   const viewWorkspace = (
     <div
       className={isResizingOutline ? "protocol-main-grid is-resizing" : "protocol-main-grid"}
@@ -2214,127 +2209,75 @@ export const App = () => {
     </section>
   );
 
+  // Sub-section nav: in the workspace view, swap the section tabs for the
+  // view-mode tabs (Summary / Step / Preview / Transfer). Library/Overview/
+  // Reviews/Recycle live behind the section tabs.
+  const subbar =
+    sidebarTab === "view" ? (
+      <nav className="protocol-subbar-tabs" aria-label="Protocol view modes">
+        <button className={`protocol-subtab${viewMode === "summary" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("summary")}>
+          Summary
+        </button>
+        <button className={`protocol-subtab${viewMode === "step" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("step")}>
+          Step
+        </button>
+        <button className={`protocol-subtab${viewMode === "preview" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("preview")}>
+          Preview
+        </button>
+        <button className={`protocol-subtab${viewMode === "transfer" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("transfer")}>
+          Transfer
+        </button>
+        <span className="protocol-subbar-spacer" />
+        {editor?.draftId ? (
+          <SubmissionHistoryLink
+            visible
+            history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
+            linkLabel="Submission history"
+          />
+        ) : null}
+        <button type="button" className="protocol-subbar-back" onClick={() => setSidebarTab("library")}>
+          ← Library
+        </button>
+      </nav>
+    ) : (
+      <nav className="protocol-subbar-tabs" aria-label="Protocol manager sections">
+        <button className={`protocol-subtab${sidebarTab === "overview" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("overview")}>
+          Overview
+        </button>
+        <button className={`protocol-subtab${sidebarTab === "library" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("library")}>
+          Library
+        </button>
+        {visibleReviewsTab ? (
+          <button className={`protocol-subtab${sidebarTab === "reviews" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("reviews")}>
+            Reviews
+          </button>
+        ) : null}
+        <button className={`protocol-subtab${sidebarTab === "recycle" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("recycle")}>
+          Recycle bin
+        </button>
+        <span className="protocol-subbar-spacer" />
+        <button type="button" className="protocol-subbar-strong" onClick={() => setNewProtocolModalOpen(true)}>
+          + New protocol
+        </button>
+      </nav>
+    );
+
   return (
-    <AppShell className="protocol-shell">
-      <AppTopbar
-        className="protocol-topbar"
-        brand={
-          <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
-                <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
-                  biotech
-                </span>
-                <span className="protocol-wordmark-stack">
-                  <span className="protocol-wordmark-text">Integrated Lab Manager</span>
-                  <span className="protocol-wordmark-module">Protocol Manager</span>
-                </span>
-              </button>
-            }
-            actions={
-              <div className="protocol-topbar-controls">
-                <AppSwitcher currentApp="protocol-manager" baseUrl={APP_BASE_URL} />
-              </div>
-            }
-          />
-
-          <AppSubbar
-            className="protocol-subbar"
-            kicker="Module Workspace"
-            description="Protocol-specific views for authoring, inspection, rendering, and transfer."
-            tabs={
-              <div className="protocol-tab-nav" role="tablist" aria-label="Protocol-specific views">
-                {editor?.draftId ? (
-                  <SubmissionHistoryLink
-                    visible
-                    history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
-                    linkLabel="Submission history"
-                  />
-                ) : null}
-                <button className={sidebarTab === "view" && viewMode === "summary" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("summary")}>
-                  Summary
-                </button>
-                <button className={sidebarTab === "view" && viewMode === "step" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("step")}>
-                  Step
-                </button>
-                <button className={sidebarTab === "view" && viewMode === "preview" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("preview")}>
-                  Preview
-                </button>
-                <button className={sidebarTab === "view" && viewMode === "transfer" ? "protocol-tab-link active" : "protocol-tab-link"} type="button" onClick={() => openViewMode("transfer")}>
-                  Transfer
-                </button>
-              </div>
-            }
-          />
-
-          <div className="protocol-body">
-            <aside className="protocol-side-rail" aria-label="Protocol manager navigation">
-              <div className="protocol-side-rail-nav">
-                <button className={sidebarTab === "overview" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("overview")}>
-                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                    analytics
-                  </span>
-                  <span>Overview</span>
-                </button>
-                <button className={sidebarTab === "library" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("library")}>
-                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                    folder_open
-                  </span>
-                  <span>Library</span>
-                </button>
-                {visibleReviewsTab ? (
-                  <button className={sidebarTab === "reviews" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("reviews")}>
-                    <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                      assignment
-                    </span>
-                    <span>Reviews</span>
-                  </button>
-                ) : null}
-                <button className={sidebarTab === "recycle" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("recycle")}>
-                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                    delete
-                  </span>
-                  <span>Recycle Bin</span>
-                </button>
-                <button className={sidebarTab === "view" ? "protocol-rail-item active" : "protocol-rail-item"} type="button" onClick={() => setSidebarTab("view")}>
-                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                    visibility
-                  </span>
-                  <span>View</span>
-                </button>
-              </div>
-
-              <div className="protocol-side-rail-footer">
-                <button className="protocol-rail-item protocol-rail-item-strong" type="button" onClick={() => setNewProtocolModalOpen(true)}>
-                  <span className="material-symbols-outlined protocol-rail-glyph" aria-hidden="true">
-                    add_box
-                  </span>
-                  <span>New Protocol</span>
-                </button>
-
-                <a
-                  href={accountHref}
-                  className="protocol-side-account"
-                  aria-label="Open account and lab settings"
-                  title="Open account & lab settings"
-                >
-                  <div className="protocol-side-account-header">
-                    <span className="material-symbols-outlined protocol-side-account-icon" aria-hidden="true">
-                      account_circle
-                    </span>
-                    <div>
-                      <strong>{signedInLabel}</strong>
-                    </div>
-                  </div>
-                  <div className="protocol-side-account-meta">
-                    <span>{activeLab?.name ?? "No active lab"}</span>
-                    <span>{activeLab?.role ?? "member"}</span>
-                  </div>
-                  <span className="protocol-side-account-action">Manage account →</span>
-                </a>
-              </div>
-            </aside>
-
-            {sidebarTab === "view" ? viewWorkspace : libraryAndOverview}
-          </div>
+    <LabShell
+      activeNavId="protocols"
+      baseUrl={APP_BASE_URL}
+      className="protocol-shell"
+      topbar={
+        <LabTopbar
+          kicker="PROTOCOLS"
+          title="Protocol Manager"
+          subtitle="Authoring, review, and rendering for the active lab's protocols."
+        />
+      }
+      subbar={subbar}
+      bodyClassName={sidebarTab === "view" ? "protocol-body--workspace" : ""}
+    >
+      {sidebarTab === "view" ? viewWorkspace : libraryAndOverview}
 
           {newProtocolModalOpen ? (
             <div className="step-modal-overlay" onClick={() => setNewProtocolModalOpen(false)}>
@@ -2369,7 +2312,7 @@ export const App = () => {
               </div>
             </div>
           ) : null}
-        </AppShell>
+    </LabShell>
   );
 };
 

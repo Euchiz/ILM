@@ -9,7 +9,8 @@
     "./tokens.css": "./src/tokens.css",
     "./reset.css": "./src/reset.css",
     "./primitives.css": "./src/primitives/primitives.css",
-    "./auth.css": "./src/auth/auth.css"
+    "./auth.css": "./src/auth/auth.css",
+    "./lab-shell.css": "./src/lab-shell.css"
   },
   "dependencies": {
     "@ilm/utils": "file:../utils",

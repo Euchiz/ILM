@@ -1,150 +1,99 @@
 @import "../../../packages/ui/src/tokens.css";
 @import "../../../packages/ui/src/reset.css";
 @import "../../../packages/ui/src/primitives/primitives.css";
+@import "../../../packages/ui/src/lab-shell.css";
 
 /* =========================================================
-   Shell: override shared AppShell tokens for Project Manager.
+   Project Manager app-local styles
+   Shell / topbar come from @ilm/ui's LabShell. Section nav
+   moves to the subbar slot. Only PM-specific rules live here.
 ========================================================= */
-.pm-shell {
-  --rl-shell-sidebar-width: 232px;
-  --rl-shell-sidebar-bg: var(--rl-soft);
-}
-/* Keep the side rail stickily pinned so long project lists scroll past it. */
-.pm-shell > .rl-shell-sidebar {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  overflow-y: auto;
-}
 
-.pm-side-rail-header {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.1rem 0.6rem 0.6rem;
-  border-bottom: 1px solid var(--rl-hairline);
-}
-.pm-side-rail-header strong {
-  font-family: var(--rl-font-display);
-  font-size: 1.05rem;
-  color: var(--rl-ink);
-}
-.pm-side-rail-header small {
-  color: var(--rl-muted);
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
+/* Subbar tab strip --------------------------------------------- */
 
-.pm-side-rail-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-}
-
-.pm-rail-item {
-  appearance: none;
-  border: 1px solid transparent;
-  background: transparent;
-  text-align: left;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--rl-muted);
-  border-radius: 10px;
+.pm-subbar-tabs {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+}
+.pm-subbar-spacer { flex: 1; }
+.pm-subtab {
+  appearance: none;
   position: relative;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  background: transparent;
+  border: none;
+  padding: 0.55rem 0.85rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--rl-muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
 }
-.pm-rail-item:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.6);
-  color: var(--rl-ink);
-}
-.pm-rail-item.active {
-  background: var(--rl-green-soft);
+.pm-subtab:hover:not(:disabled) { color: var(--rl-ink); }
+.pm-subtab:disabled { opacity: 0.5; cursor: not-allowed; }
+.pm-subtab.is-active {
   color: var(--rl-green);
-  border-color: rgba(55, 86, 59, 0.18);
   font-weight: 600;
 }
-.pm-rail-item:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.pm-rail-badge {
-  margin-left: auto;
+.pm-subtab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: -0.6rem;
+  height: 2px;
+  background: var(--rl-green);
+}
+.pm-subtab-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
   background: var(--rl-green);
   color: #fff;
-  border-radius: 999px;
-  padding: 0.1rem 0.45rem;
   font-size: 0.65rem;
-  letter-spacing: 0.05em;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  letter-spacing: 0.04em;
 }
 
-.pm-side-rail-footer {
-  margin-top: auto;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.pm-rail-item-strong {
-  background: var(--rl-green);
-  border-color: var(--rl-green);
-  color: #ffffff;
-  justify-content: center;
-  padding: 0.7rem 0.75rem;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-}
-.pm-rail-item-strong:hover:not(:disabled) {
-  background: var(--rl-green-2);
-  border-color: var(--rl-green-2);
-  color: #ffffff;
-}
-
-.pm-side-account {
-  background: var(--rl-surface);
-  border: 1px solid var(--rl-line);
-  border-radius: 14px;
-  padding: 0.8rem 0.9rem;
-  display: grid;
-  gap: 0.5rem;
-  color: inherit;
-  text-decoration: none;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-.pm-side-account:hover,
-.pm-side-account:focus-visible {
-  background: #ffffff;
-  border-color: rgba(0, 0, 0, 0.2);
-  outline: none;
-}
-.pm-side-account-head { display: grid; gap: 0.1rem; }
-.pm-side-account-head strong { font-size: 0.88rem; color: var(--rl-ink); }
-.pm-side-account-head span { font-size: 0.75rem; color: var(--rl-muted); }
-.pm-side-account-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  color: var(--rl-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.pm-side-account-action {
+.pm-text-button {
   appearance: none;
   border: 1px solid var(--rl-line);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0.45rem 0.6rem;
-  border-radius: 10px;
-  font-size: 0.78rem;
+  background: #fff;
   color: var(--rl-ink);
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
 }
-.pm-side-account-action:hover { background: #ffffff; }
+.pm-text-button:hover:not(:disabled) { background: var(--rl-soft); }
+.pm-text-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pm-primary-button {
+  appearance: none;
+  border: 1px solid var(--rl-green);
+  background: var(--rl-green);
+  color: #fff;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.pm-primary-button:hover:not(:disabled) {
+  background: var(--rl-green-2);
+  border-color: var(--rl-green-2);
+}
 
 /* =========================================================
-   Main body spacing tweaks on top of AppContent.
+   Main body spacing
 ========================================================= */
 .pm-main-body {
+  display: flex;
+  flex-direction: column;
   gap: 1.2rem;
 }
 
