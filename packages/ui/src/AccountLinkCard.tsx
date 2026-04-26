@@ -13,7 +13,7 @@ export const AccountLinkCard = ({
 }) => {
   const { profile, user, activeLab } = useAuth();
   const label = profile?.display_name ?? user?.email ?? "Signed in";
-  const href = appUrl("account/", baseUrl);
+  const href = appUrl("", baseUrl);
 
   return (
     <a

@@ -65,44 +65,9 @@ import {
   type Selection,
 } from "./state/protocolState";
 
-const MODULE_CARDS = [
-  {
-    id: "protocol-manager",
-    title: "Protocol Manager",
-    status: "Operational",
-    isLive: true,
-    description: "Manage published protocols, private drafts, routed reviews, and recycle-bin recovery inside one authenticated lab workspace.",
-    actionLabel: "Open workspace",
-  },
-  {
-    id: "supply-manager",
-    title: "Supply Manager",
-    status: "Planned",
-    isLive: false,
-    description: "Track reagents, vendors, and inventory counts against operational demand from experimental work.",
-    actionLabel: "Planned",
-  },
-  {
-    id: "project-manager",
-    title: "Project Manager",
-    status: "Staged rollout",
-    isLive: false,
-    description: "Coordinate project metadata, milestones, experiments, and project-lead ownership on normalized tables.",
-    actionLabel: "Deployment pending",
-  },
-  {
-    id: "funding-manager",
-    title: "Funding Manager",
-    status: "Planned",
-    isLive: false,
-    description: "Connect grants, allocations, and expense controls to the same lab and project structure used by the other modules.",
-    actionLabel: "Planned",
-  },
-] as const;
-
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
-const buildPageUrl = (path: "" | "protocol-manager/") => new URL(path, window.location.origin + APP_BASE_URL).toString();
+const buildHomeUrl = () => appUrl("", APP_BASE_URL);
 
 const readRequestedProtocolId = () => new URLSearchParams(window.location.search).get("protocolId");
 
@@ -110,12 +75,6 @@ const clearRequestedProtocolId = () => {
   const url = new URL(window.location.href);
   url.searchParams.delete("protocolId");
   window.history.replaceState({}, "", url);
-};
-
-type ActiveModule = "home" | "protocol-manager";
-
-type AppProps = {
-  page: ActiveModule;
 };
 
 type ActiveEditor = {
@@ -264,9 +223,9 @@ const buildProjectGroups = (protocols: PublishedProtocolRecord[]): ProjectGroup[
   return Array.from(groups.values()).sort((left, right) => left.project.localeCompare(right.project));
 };
 
-export const App = ({ page }: AppProps) => {
+export const App = () => {
   const { activeLab, profile, status: authStatus, user } = useAuth();
-  const accountHref = appUrl("account/", APP_BASE_URL);
+  const accountHref = appUrl("", APP_BASE_URL);
   const supabase = useMemo(() => getSupabaseClient(), []);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const mainGridRef = useRef<HTMLDivElement | null>(null);
@@ -373,7 +332,7 @@ export const App = ({ page }: AppProps) => {
   }, [activeLab, supabase, user]);
 
   useEffect(() => {
-    if (page !== "protocol-manager" || !activeLab || !user) return;
+    if (!activeLab || !user) return;
 
     let cancelled = false;
     void refreshWorkspace().then((nextWorkspace) => {
@@ -400,7 +359,7 @@ export const App = ({ page }: AppProps) => {
     return () => {
       cancelled = true;
     };
-  }, [activeLab, page, refreshWorkspace, user]);
+  }, [activeLab, refreshWorkspace, user]);
 
   useEffect(() => {
     setSelection({ type: "protocol" });
@@ -460,8 +419,8 @@ export const App = ({ page }: AppProps) => {
             ? "Draft autosave ready"
             : "Local working copy";
   const legacyProtocols = useMemo(
-    () => (page === "protocol-manager" && activeLab && !migrationDismissed ? readLegacyLibraryProtocols() : []),
-    [activeLab, migrationDismissed, page]
+    () => (activeLab && !migrationDismissed ? readLegacyLibraryProtocols() : []),
+    [activeLab, migrationDismissed]
   );
 
   useEffect(() => {
@@ -653,7 +612,7 @@ export const App = ({ page }: AppProps) => {
   );
 
   useEffect(() => {
-    if (page !== "protocol-manager" || autosaveTick === 0 || !editor || !editor.draftId) return;
+    if (autosaveTick === 0 || !editor || !editor.draftId) return;
 
     const timer = window.setTimeout(() => {
       void persistEditorDraft(editorRef.current).catch((error) => {
@@ -662,7 +621,7 @@ export const App = ({ page }: AppProps) => {
     }, 900);
 
     return () => window.clearTimeout(timer);
-  }, [autosaveTick, editor, page, persistEditorDraft]);
+  }, [autosaveTick, editor, persistEditorDraft]);
 
   const flushActiveDraft = useCallback(async () => {
     if (!editorRef.current) return null;
@@ -1335,12 +1294,8 @@ export const App = ({ page }: AppProps) => {
     setStatus(["Opened a print-ready document in a separate window. Use the browser dialog to save as PDF."]);
   };
 
-  const openProtocolManager = () => {
-    window.location.href = buildPageUrl("protocol-manager/");
-  };
-
   const openModuleHome = () => {
-    window.location.href = buildPageUrl("");
+    window.location.href = buildHomeUrl();
   };
 
   const handleImportText = () => {
@@ -1387,137 +1342,7 @@ export const App = ({ page }: AppProps) => {
       </article>
     ) : null;
 
-  const liveModuleCount = MODULE_CARDS.filter((module) => module.isLive).length;
   const signedInLabel = profile?.display_name || profile?.email || user?.email || "Signed-in user";
-
-  const homeView = (
-    <AppShell className="protocol-shell protocol-shell-home">
-      <AppTopbar
-        className="protocol-topbar"
-        brand={
-          <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
-            <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
-              biotech
-            </span>
-            <span className="protocol-wordmark-stack">
-              <span className="protocol-wordmark-text">Integrated Lab Manager</span>
-              <span className="protocol-wordmark-module">Operations Hub</span>
-            </span>
-          </button>
-        }
-        actions={<AppSwitcher currentApp="home" baseUrl={APP_BASE_URL} />}
-      />
-
-      <section className="home-main">
-        <article className="protocol-content-card protocol-content-card-accent home-hero-card">
-          <div className="home-hero-copy">
-            <p className="protocol-page-kicker">Unified Product Shell</p>
-            <h1 className="home-hero-title">Manage laboratory operations through one authenticated, lab-scoped control surface.</h1>
-            <p className="hero-subtitle">
-              Integrated Lab Manager provides a common shell for protocol governance, project coordination, supply operations, and funding oversight, all connected through shared identity, lab membership, and normalized data.
-            </p>
-          </div>
-
-          <div className="home-hero-actions">
-            <div className="home-status-list">
-              <span className="protocol-status-badge protocol-status-badge-reviewed">{authStatus === "signed-in" ? "Signed in" : "Session loading"}</span>
-              <span className="protocol-status-badge protocol-status-badge-active">{liveModuleCount} operational module{liveModuleCount === 1 ? "" : "s"}</span>
-              <span className="protocol-status-badge protocol-status-badge-validated">{activeLab?.name ?? "Lab context required"}</span>
-            </div>
-            <div className="protocol-inline-actions">
-              <button className="protocol-primary-action" type="button" onClick={openProtocolManager}>
-                Open Protocol Manager
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <div className="home-summary-grid">
-          <article className="protocol-content-card">
-            <div className="protocol-card-heading">
-              <h3>Current workspace</h3>
-              <span>Authenticated session</span>
-            </div>
-            <div className="protocol-summary-grid">
-              <div>
-                <span>Lab</span>
-                <strong>{activeLab?.name ?? "No lab selected"}</strong>
-                <small>{activeLab?.slug ?? "Select a lab to continue"}</small>
-              </div>
-              <div>
-                <span>Role</span>
-                <strong>{activeLab?.role ?? "member"}</strong>
-                <small>Applied to all module permissions</small>
-              </div>
-              <div>
-                <span>Account</span>
-                <strong>{signedInLabel}</strong>
-                <small>Supabase-authenticated session</small>
-              </div>
-              <div>
-                <span>Operational modules</span>
-                <strong>{liveModuleCount}</strong>
-                <small>Available from the shared navigation bar</small>
-              </div>
-            </div>
-          </article>
-
-          <article className="protocol-content-card">
-            <div className="protocol-card-heading">
-              <h3>Platform scope</h3>
-              <span>Stage 4 expansion</span>
-            </div>
-            <div className="home-highlights">
-              <div>
-                <strong>Shared authentication and lab context</strong>
-                <p>Every module inherits the same account, active lab, and role-aware authorization model.</p>
-              </div>
-              <div>
-                <strong>Normalized operational data</strong>
-                <p>Protocols, projects, milestones, experiments, and future supply or funding records stay in dedicated tables rather than generic document payloads.</p>
-              </div>
-              <div>
-                <strong>Module-specific workflows</strong>
-                <p>Each module keeps its own operational tabs while the primary product bar stays reserved for ILM-level navigation.</p>
-              </div>
-            </div>
-          </article>
-        </div>
-
-        <section className="home-module-section">
-          <div className="protocol-page-header home-module-header">
-            <div>
-              <p className="protocol-page-kicker">Modules</p>
-              <h1>Module portfolio</h1>
-              <p className="hero-subtitle">Each module shares the same authenticated shell while preserving domain-specific workflows, permissions, and review behavior.</p>
-            </div>
-          </div>
-
-          <div className="home-module-grid">
-            {MODULE_CARDS.map((module) => (
-              <article className={module.isLive ? "protocol-content-card home-module-card home-module-card-live" : "protocol-content-card home-module-card"} key={module.id}>
-                <div className="protocol-card-heading">
-                  <h3>{module.title}</h3>
-                  <span className={module.isLive ? "ilm-tag ilm-tag-success" : "ilm-tag ilm-tag-neutral"}>{module.status}</span>
-                </div>
-                <p className="protocol-observation-copy">{module.description}</p>
-                <div className="home-module-footer">
-                  <span>{module.isLive ? "Connected to the current lab shell" : "Not yet available in production navigation"}</span>
-                  <button
-                    type="button"
-                    onClick={module.id === "protocol-manager" ? openProtocolManager : undefined}
-                    disabled={!module.isLive}
-                  >
-                    {module.actionLabel}
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      </section>
-    </AppShell>
-  );
 
   const viewWorkspace = (
     <div
@@ -2390,15 +2215,11 @@ export const App = ({ page }: AppProps) => {
   );
 
   return (
-    <>
-      {page === "home" ? (
-        homeView
-      ) : (
-        <AppShell className="protocol-shell">
-          <AppTopbar
-            className="protocol-topbar"
-            brand={
-              <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
+    <AppShell className="protocol-shell">
+      <AppTopbar
+        className="protocol-topbar"
+        brand={
+          <button className="protocol-wordmark" type="button" onClick={openModuleHome} aria-label="Return to the Integrated Lab Manager home">
                 <span className="material-symbols-outlined protocol-wordmark-glyph" aria-hidden="true">
                   biotech
                 </span>
@@ -2549,8 +2370,6 @@ export const App = ({ page }: AppProps) => {
             </div>
           ) : null}
         </AppShell>
-      )}
-    </>
   );
 };
 

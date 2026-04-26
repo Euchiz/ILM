@@ -33,11 +33,11 @@ npm run typecheck
 
 This app is set up for GitHub Pages deployment at:
 
-`https://euchiz.github.io/ILM/`
+`https://euchiz.github.io/ILM/protocol-manager/`
 
-The module home now lives at `https://euchiz.github.io/ILM/` and the Protocol Manager itself lives at `https://euchiz.github.io/ILM/protocol-manager/`.
+The lab-wide home dashboard (Account app) owns the bare site root `https://euchiz.github.io/ILM/`. Protocol Manager itself mounts at `https://euchiz.github.io/ILM/protocol-manager/`.
 
-The GitHub Actions workflow builds the app with `VITE_BASE_PATH=/ILM/` so the generated asset URLs work correctly when served from the repository project site path.
+The GitHub Actions workflow builds the app with `VITE_BASE_PATH=/ILM/protocol-manager/` so the generated asset URLs work correctly when served from the repository project site path.
 
 ## Data model principles
 

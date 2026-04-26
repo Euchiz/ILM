@@ -20,14 +20,14 @@ const APP_LINKS: AppLink[] = [
   { id: "funding-manager", label: "Funding", href: "funding-manager/" },
 ];
 
-// Root segments recognized when walking back to the site root. Includes apps
-// that aren't rendered in the nav (e.g. "account/") so siblings still resolve.
+// Root segments recognized when walking back to the site root. The home app
+// (Account) lives at the bare site root, so it has no segment to walk back
+// from — only the named sub-apps appear here.
 const APP_ROOT_SEGMENTS = new Set<string>([
   "protocol-manager/",
   "project-manager/",
   "supply-manager/",
   "funding-manager/",
-  "account/",
 ]);
 
 const resolveSiteRoot = (baseUrl: string) => {

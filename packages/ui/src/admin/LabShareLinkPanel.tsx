@@ -7,7 +7,7 @@ const resolveSiteRoot = (baseUrl: string) => {
   const withLeadingSlash = base.startsWith("/") ? base : `/${base}`;
   const normalized = withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
   const url = new URL(normalized, window.location.origin);
-  const knownAppRoots = ["protocol-manager/", "project-manager/", "supply-manager/", "funding-manager/", "account/"];
+  const knownAppRoots = ["protocol-manager/", "project-manager/", "supply-manager/", "funding-manager/"];
   const matchedAppRoot = knownAppRoots.find((segment) => url.pathname.endsWith(segment));
   const root = matchedAppRoot ? new URL("../", url) : url;
   return root.toString();
@@ -15,7 +15,7 @@ const resolveSiteRoot = (baseUrl: string) => {
 
 export const buildLabShareUrl = (labId: string, baseUrl: string): string => {
   const root = resolveSiteRoot(baseUrl);
-  return new URL(`account/join/${labId}`, root).toString();
+  return new URL(`join/${labId}`, root).toString();
 };
 
 export const LabShareLinkPanel = ({

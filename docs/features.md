@@ -31,10 +31,10 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 - localStorage → cloud migration banner for pre-Supabase data.
 - Save-draft button becomes an "Autosaved" caption while editing an existing draft; it stays as an explicit commit button when editing on top of a published protocol.
 
-## Account app (Stage 4a — production)
+## Account / Home app (Stage 4a — production)
 
-- Dedicated app at `/account/`, reachable by clicking the login status box in any other app.
-- **Home dashboard layout**: persistent sidebar with the full ILM nav (Overview, Projects, Protocols, Inventory, Funding, Calendar, Team, Analytics, Reports, Settings) plus a system-status card and profile/orb at the bottom. External nav items deep-link to sibling apps via `appUrl(...)`; internal items use hash routing (`#/team`, `#/settings`, `#/calendar`, `#/analytics`, `#/reports`) so the static deploy keeps a single `/account/` entry point. Calendar / Analytics / Reports render `PlaceholderView` "future stage" cards.
+- The Account shell now serves as the **site root**: deployed at `/ILM/` (was `/ILM/account/`). All sibling apps live under named subpaths (`/ILM/protocol-manager/`, `/ILM/project-manager/`, `/ILM/supply-manager/`, `/ILM/funding-manager/`). The previous Protocol Manager "Operations Hub" landing page is gone — Protocol Manager mounts directly at `/ILM/protocol-manager/`.
+- **Home dashboard layout**: persistent sidebar with the full ILM nav (Overview, Projects, Protocols, Inventory, Funding, Calendar, Team, Analytics, Reports, Settings) plus a system-status card and profile/orb at the bottom. External nav items deep-link to sibling apps via `appUrl(...)`; internal items use hash routing (`#/team`, `#/settings`, `#/calendar`, `#/analytics`, `#/reports`) so the static deploy keeps a single root entry point. Calendar / Analytics / Reports render `PlaceholderView` "future stage" cards.
 - **Overview dashboard** (#/) is a status monitor patterned on `design/web.png`: a hero `LAB OPERATING STATUS` block (status word + active-projects / protocols / team-members / compliance% metrics + flow-line SVG), Upcoming Schedule placeholder, Projects donut by state, recent Protocols list, Inventory radar with classification counts + critical-low pulled from the latest `inventory_checks`, Funding placeholder (Stage 4d shell), Activity Feed unioning recent `protocols` / `projects` / `items` updates, Resource Utilization sparklines, and a Team Overview card with avatars + role breakdown. Card data is fetched in parallel by `useDashboardData(labId)` and gracefully reports an inline error.
 - **Team page** (#/team) hosts the Members + Invitations & Requests tabs (previously the Account dashboard).
 - **Settings page** (#/settings) covers the profile, active-lab tier blurb, lab-picker shortcut, and a placeholder for future lab settings.
@@ -42,12 +42,12 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
   - Admins + owner can promote members to admin and remove members.
   - Only the owner can demote admins to member or remove admins.
   - Owner is immutable via RPCs (`promote_member_to_admin`, `demote_admin_to_member`, `remove_lab_member`).
-- **Invitations & requests** under the Team tab: invite-by-email with role choice, pending-invitation list, copyable `/account/join/<uuid>` share link, and join-request queue with approve / reject-with-required-comment.
+- **Invitations & requests** under the Team tab: invite-by-email with role choice, pending-invitation list, copyable `/join/<uuid>` share link (now off the site root), and join-request queue with approve / reject-with-required-comment.
 - **Auto-claim on sign-in**: `claim_pending_invitations` RPC converts matching-email pending invitations to memberships when the user signs in.
-- **Join-by-link route** at `/account/join/<lab-uuid>`: signed-out users hit the auth shell; existing members get "Open this lab"; non-members see a lab-name preview + "Request to join" form with optional message + self-cancel.
-- **GitHub Pages SPA fallback** routed to the Account shell so deep links like `/account/join/<uuid>` resolve.
+- **Join-by-link route** at `/join/<lab-uuid>` (was `/account/join/...`): signed-out users hit the auth shell; existing members get "Open this lab"; non-members see a lab-name preview + "Request to join" form with optional message + self-cancel.
+- **GitHub Pages SPA fallback** routed to the home shell so deep links like `/ILM/join/<uuid>` resolve.
 - **Real-time badge updates**: role changes refresh both the members roster and the `AuthProvider` labs array so the sidebar tier badge updates without a reload.
-- Shared `AccountLinkCard` in `@ilm/ui` renders the login status box consistently across placeholder apps (`funding-manager`, `supply-manager`).
+- Shared `AccountLinkCard` in `@ilm/ui` renders the login status box across sibling apps and links back to the site root (the home dashboard).
 
 ## Project Manager (Stage 4b — production)
 

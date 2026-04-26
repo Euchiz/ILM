@@ -7,7 +7,7 @@ Integrated Lab Manager is a modular monorepo for structured lab operations softw
 Three apps are production-ready on Supabase with RLS-enforced workflows:
 
 - **Protocol Manager** (Stage 3) — visual protocol designer with typed steps, draft → submit → review → publish flow, append-only revisions, and a 30-day recycle bin.
-- **Account** (Stage 4a) — dedicated `/account/` app for profile, lab membership, invitations, join requests, and share links. Strict tier hierarchy (owner > admin > member).
+- **Account / Home** (Stage 4a) — lab-wide overview dashboard at the site root, with profile, lab membership, invitations, join requests, and share links living under hash routes (`#/team`, `#/settings`). Strict tier hierarchy (owner > admin > member).
 - **Project Manager** (Stage 4b) — project lifecycle with milestones, experiments, roadmap drag-reorder, project leads, review-gated publish flow, and per-project GitHub repo activity.
 
 **Supply Manager** (Stage 4c) is the current in-flight stage — see [`docs/next-stage.md`](docs/next-stage.md). **Funding Manager** (Stage 4d) is deferred. Both are scaffolded auth shells today.
@@ -54,12 +54,13 @@ Then open the local URL shown by Vite.
 
 ## GitHub Pages
 
-The Protocol Manager app is configured to deploy to GitHub Pages from the `main` branch via GitHub Actions.
+All five apps are bundled into a single GitHub Pages deploy from the `main` branch via GitHub Actions.
 
-- Production URL: `https://euchiz.github.io/ILM/`
+- Production URL: `https://euchiz.github.io/ILM/` — the home overview dashboard (Account app)
+- Sibling apps live at `https://euchiz.github.io/ILM/protocol-manager/`, `/project-manager/`, `/supply-manager/`, `/funding-manager/`
 - Workflow file: `.github/workflows/deploy-protocol-manager-pages.yml`
 
-For local development, the app still runs at `/`. For the GitHub Pages build, the workflow sets `VITE_BASE_PATH=/ILM/` so static assets resolve correctly on the project site URL.
+For local development, every app runs at `/`. For the GitHub Pages build, the workflow sets `VITE_BASE_PATH=/ILM/` for the home shell and `VITE_BASE_PATH=/ILM/<app>/` for each sibling so static assets resolve correctly on the project site URL.
 
 ## Role-based workflows
 

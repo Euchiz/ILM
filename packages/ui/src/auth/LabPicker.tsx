@@ -57,20 +57,21 @@ export const LabPicker = () => {
     // may or may not be the Account app — either way, a sibling-app URL works.
     const baseHref = typeof window !== "undefined" ? window.location.href : "/";
     const base = new URL(baseHref);
-    // Walk up the base URL to the site root: remove a trailing "<app>/" segment.
+    // Walk up the base URL to the site root: remove a trailing "<app>/"
+    // segment. The home (account) shell lives at the bare root, so it has no
+    // segment to strip.
     const pathSegments = base.pathname.split("/").filter(Boolean);
     const knownApps = new Set([
       "protocol-manager",
       "project-manager",
       "supply-manager",
       "funding-manager",
-      "account",
     ]);
     if (pathSegments.length > 0 && knownApps.has(pathSegments[pathSegments.length - 1])) {
       pathSegments.pop();
     }
     const rootPath = pathSegments.length > 0 ? `/${pathSegments.join("/")}/` : "/";
-    window.location.assign(new URL(`${rootPath}account/join/${labId}`, base.origin).toString());
+    window.location.assign(new URL(`${rootPath}join/${labId}`, base.origin).toString());
   };
 
   const emptyState = labs.length === 0;
@@ -179,7 +180,7 @@ export const LabPicker = () => {
                 required
                 value={linkInput}
                 onChange={(event) => setLinkInput(event.target.value)}
-                placeholder="https://…/account/join/<uuid>"
+                placeholder="https://…/join/<uuid>"
               />
             </label>
             <div style={{ display: "flex", gap: "0.5rem" }}>
