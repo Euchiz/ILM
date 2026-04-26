@@ -4,56 +4,320 @@
 
 /* =========================================================
    Supply Manager app-local styles
-   Shell / topbar / panels / grid come from @ilm/ui primitives.
-   Only genuinely supply-specific compositions live here.
+   Shell / topbar / panels / grid / buttons / forms / modals
+   come from @ilm/ui primitives. Only genuinely supply-specific
+   compositions live here, all under the .sm-* prefix.
 ========================================================= */
 
-.supply-hero-card {
-  grid-column: 1 / -1;
+.sm-shell {
+  --rl-shell-sidebar-width: 240px;
 }
 
-.supply-stat-grid {
+/* Sidebar nav -------------------------------------------------- */
+
+.sm-side-rail-header {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.15rem;
+  padding: 1.1rem 1rem 0.9rem;
+  border-bottom: 1px solid var(--rl-line);
 }
-
-.supply-stat-grid > div {
-  color: var(--rl-fg-2);
+.sm-side-rail-header strong {
+  font-family: var(--rl-font-display);
+  font-size: 1.05rem;
 }
-
-.supply-stat-grid span {
+.sm-side-rail-header small {
   color: var(--rl-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.supply-stat-grid strong {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--rl-ink);
-  font-size: 1.2rem;
-  font-family: var(--rl-font-display);
+.sm-side-rail-nav {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0.6rem;
 }
 
-.supply-stat-grid small {
+.sm-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--rl-fg-2);
+  border: 1px solid transparent;
+  border-radius: var(--rl-radius-sm);
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--rl-dur-base) var(--rl-ease),
+    color var(--rl-dur-base) var(--rl-ease),
+    border-color var(--rl-dur-base) var(--rl-ease);
+}
+.sm-rail-item:hover:not(:disabled) {
+  background: var(--rl-soft);
+  color: var(--rl-ink);
+}
+.sm-rail-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sm-rail-item.active {
+  background: var(--rl-soft);
+  color: var(--rl-ink);
+  border-color: var(--rl-line);
+}
+.sm-rail-item-strong {
+  background: var(--rl-green);
+  color: #fff;
+  border-color: var(--rl-green);
+  justify-content: center;
+}
+.sm-rail-item-strong:hover:not(:disabled) {
+  background: var(--rl-green-2);
+  color: #fff;
+  border-color: var(--rl-green-2);
+}
+
+.sm-rail-badge {
+  background: var(--rl-green);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+.sm-side-rail-footer {
+  margin-top: auto;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem 0.75rem 1rem;
+  border-top: 1px solid var(--rl-line);
+}
+
+.sm-side-account {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  text-decoration: none;
+  color: inherit;
+  background: var(--rl-bg);
+}
+.sm-side-account-head strong {
   display: block;
-  margin-top: 0.35rem;
+  font-family: var(--rl-font-display);
+}
+.sm-side-account-head span,
+.sm-side-account-meta {
+  color: var(--rl-muted);
+  font-size: 0.78rem;
+  display: flex;
+  justify-content: space-between;
+}
+.sm-side-account-action {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--rl-green);
+}
+
+/* Page-level error banner ------------------------------------- */
+
+.sm-page-error {
+  margin: 0.6rem 1.4rem;
+  padding: 0.65rem 0.85rem;
+  background: #fbeeec;
+  border: 1px solid #efc2bc;
+  color: var(--rl-danger-text);
+  border-radius: var(--rl-radius-sm);
+}
+
+/* Tab toolbar (filter row at the top of each tab) ------------- */
+
+.sm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+.sm-toolbar > * {
+  flex: 0 0 auto;
+}
+.sm-toolbar-grow {
+  flex: 1 1 240px;
+}
+
+/* Cards / lists ----------------------------------------------- */
+
+.sm-empty-block {
+  padding: 2rem 1.5rem;
+  border: 1px dashed var(--rl-line);
+  border-radius: var(--rl-radius-md);
+  text-align: center;
   color: var(--rl-muted);
 }
 
-.supply-list {
-  margin: 0;
-  padding-left: 1.1rem;
-  display: grid;
-  gap: 0.55rem;
-  color: var(--rl-fg-2);
+.sm-warning-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--rl-warning-text, #8a5a00);
+  font-size: 0.78rem;
 }
 
-@media (max-width: 900px) {
-  .supply-stat-grid {
+/* Table tweaks ------------------------------------------------- */
+
+.sm-item-table {
+  width: 100%;
+}
+.sm-item-table td.sm-row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+.sm-row-actions .rl-btn {
+  margin-left: 0.3rem;
+}
+.sm-checkbox-cell {
+  width: 28px;
+}
+
+/* Order request composer -------------------------------------- */
+
+.sm-request-card {
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-md);
+  padding: 0.9rem 1rem;
+  background: var(--rl-bg);
+  display: grid;
+  gap: 0.65rem;
+}
+.sm-request-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.sm-request-card-head h3 {
+  margin: 0;
+  font-family: var(--rl-font-display);
+  font-size: 1rem;
+}
+.sm-request-card-meta {
+  color: var(--rl-muted);
+  font-size: 0.78rem;
+}
+.sm-request-items {
+  display: grid;
+  gap: 0.45rem;
+}
+.sm-request-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.85rem;
+}
+.sm-request-item-name {
+  font-weight: 600;
+  color: var(--rl-ink);
+}
+.sm-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+/* Modal forms -------------------------------------------------- */
+
+.sm-modal-form {
+  display: grid;
+  gap: 0.75rem;
+}
+.sm-modal-grid-2 {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sm-modal-grid-3 {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 720px) {
+  .sm-modal-grid-2,
+  .sm-modal-grid-3 {
     grid-template-columns: 1fr;
   }
+}
+
+/* Stats row on overview / my items tab ------------------------ */
+
+.sm-stats-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 1rem;
+}
+.sm-stats-card {
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-md);
+  padding: 0.9rem 1rem;
+  background: var(--rl-bg);
+}
+.sm-stats-card span {
+  display: block;
+  color: var(--rl-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.sm-stats-card strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: var(--rl-font-display);
+  font-size: 1.6rem;
+  color: var(--rl-ink);
+}
+
+/* Detail / drawer area --------------------------------------- */
+
+.sm-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .sm-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sm-detail-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+.sm-detail-list dt {
+  color: var(--rl-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sm-detail-list dd {
+  margin: 0.1rem 0 0;
+  color: var(--rl-fg-2);
 }
