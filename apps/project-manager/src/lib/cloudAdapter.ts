@@ -87,12 +87,18 @@ export interface ProjectLeadLinkRecord {
   user_id: string;
 }
 
+export interface ProjectMemberLinkRecord {
+  project_id: string;
+  user_id: string;
+}
+
 export interface ProjectWorkspaceSnapshot {
   projects: ProjectRecord[];
   milestones: MilestoneRecord[];
   experiments: ExperimentRecord[];
   protocols: ProtocolOptionRecord[];
   leads: ProjectLeadLinkRecord[];
+  projectMembers: ProjectMemberLinkRecord[];
   repoStatuses: ProjectRepoStatusRecord[];
 }
 
@@ -111,12 +117,21 @@ const EXPERIMENT_FIELDS =
   "id, lab_id, project_id, milestone_id, sort_order, protocol_id, title, notes, status, started_at, completed_at, created_by, updated_by, created_at, updated_at";
 
 export async function listProjectWorkspace(labId: string): Promise<ProjectWorkspaceSnapshot> {
-  const [projectsResult, milestonesResult, experimentsResult, protocolsResult, leadsResult, repoStatusesResult] = await Promise.all([
+  const [
+    projectsResult,
+    milestonesResult,
+    experimentsResult,
+    protocolsResult,
+    leadsResult,
+    membersResult,
+    repoStatusesResult,
+  ] = await Promise.all([
     client().from("projects").select(PROJECT_FIELDS).eq("lab_id", labId).order("name", { ascending: true }),
     client().from("milestones").select(MILESTONE_FIELDS).eq("lab_id", labId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     client().from("experiments").select(EXPERIMENT_FIELDS).eq("lab_id", labId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     client().from("protocols").select("id, project_id, title, updated_at").eq("lab_id", labId).order("updated_at", { ascending: false }),
     client().from("project_leads").select("project_id, user_id, projects!inner(lab_id)").eq("projects.lab_id", labId),
+    client().from("project_members").select("project_id, user_id, projects!inner(lab_id)").eq("projects.lab_id", labId),
     client().from("project_repo_status").select(REPO_STATUS_FIELDS).eq("lab_id", labId),
   ]);
 
@@ -125,10 +140,15 @@ export async function listProjectWorkspace(labId: string): Promise<ProjectWorksp
   if (experimentsResult.error) throw experimentsResult.error;
   if (protocolsResult.error) throw protocolsResult.error;
   if (leadsResult.error) throw leadsResult.error;
+  if (membersResult.error) throw membersResult.error;
   // repo_status is optional infrastructure — tolerate missing table / RLS hiccups
   // so the library still loads if the GitHub migration hasn't been applied yet.
 
   const leads = ((leadsResult.data ?? []) as Array<{ project_id: string; user_id: string }>).map((row) => ({
+    project_id: row.project_id,
+    user_id: row.user_id,
+  }));
+  const projectMembers = ((membersResult.data ?? []) as Array<{ project_id: string; user_id: string }>).map((row) => ({
     project_id: row.project_id,
     user_id: row.user_id,
   }));
@@ -139,6 +159,7 @@ export async function listProjectWorkspace(labId: string): Promise<ProjectWorksp
     experiments: (experimentsResult.data as ExperimentRecord[]) ?? [],
     protocols: (protocolsResult.data as ProtocolOptionRecord[]) ?? [],
     leads,
+    projectMembers,
     repoStatuses: repoStatusesResult.error ? [] : ((repoStatusesResult.data as ProjectRepoStatusRecord[]) ?? []),
   };
 }

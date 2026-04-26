@@ -31,6 +31,11 @@ export type ProjectLeadRecord = {
   user_id: string;
 };
 
+export type ProjectMemberRecord = {
+  project_id: string;
+  user_id: string;
+};
+
 export type LabJoinRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export type LabJoinRequestRecord = {
@@ -109,6 +114,15 @@ export const listProjectLeads = async (projectId: string): Promise<ProjectLeadRe
   return (data as ProjectLeadRecord[]) ?? [];
 };
 
+export const listProjectMembers = async (projectId: string): Promise<ProjectMemberRecord[]> => {
+  const { data, error } = await client()
+    .from("project_members")
+    .select("project_id, user_id")
+    .eq("project_id", projectId);
+  if (error) throw error;
+  return (data as ProjectMemberRecord[]) ?? [];
+};
+
 export const assignProjectLead = async (projectId: string, userId: string) => {
   const { error } = await client().rpc("assign_project_lead", {
     p_project_id: projectId,
@@ -119,6 +133,22 @@ export const assignProjectLead = async (projectId: string, userId: string) => {
 
 export const revokeProjectLead = async (projectId: string, userId: string) => {
   const { error } = await client().rpc("revoke_project_lead", {
+    p_project_id: projectId,
+    p_user_id: userId,
+  });
+  if (error) throw error;
+};
+
+export const assignProjectMember = async (projectId: string, userId: string) => {
+  const { error } = await client().rpc("assign_project_member", {
+    p_project_id: projectId,
+    p_user_id: userId,
+  });
+  if (error) throw error;
+};
+
+export const revokeProjectMember = async (projectId: string, userId: string) => {
+  const { error } = await client().rpc("revoke_project_member", {
     p_project_id: projectId,
     p_user_id: userId,
   });

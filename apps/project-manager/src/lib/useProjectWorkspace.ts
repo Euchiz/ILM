@@ -28,6 +28,7 @@ import {
   type MilestoneRecord,
   type MilestoneStatus,
   type ProjectLeadLinkRecord,
+  type ProjectMemberLinkRecord,
   type ProjectRecord,
   type ProjectRepoStatusRecord,
   type ProjectStatus,
@@ -126,6 +127,7 @@ export function useProjectWorkspace(
   const [experiments, setExperiments] = useState<ExperimentRecord[]>(EMPTY_ARRAY);
   const [protocols, setProtocols] = useState<ProtocolOptionRecord[]>(EMPTY_ARRAY);
   const [leads, setLeads] = useState<ProjectLeadLinkRecord[]>(EMPTY_ARRAY);
+  const [projectMembers, setProjectMembers] = useState<ProjectMemberLinkRecord[]>(EMPTY_ARRAY);
   const [deletedProjects, setDeletedProjects] = useState<ProjectRecord[]>(EMPTY_ARRAY);
   const [repoStatuses, setRepoStatuses] = useState<ProjectRepoStatusRecord[]>(EMPTY_ARRAY);
   const [labGithubPatConfigured, setLabGithubPatConfiguredState] = useState<boolean>(false);
@@ -137,6 +139,7 @@ export function useProjectWorkspace(
       setExperiments(EMPTY_ARRAY);
       setProtocols(EMPTY_ARRAY);
       setLeads(EMPTY_ARRAY);
+      setProjectMembers(EMPTY_ARRAY);
       setDeletedProjects(EMPTY_ARRAY);
       setRepoStatuses(EMPTY_ARRAY);
       setLabGithubPatConfiguredState(false);
@@ -154,6 +157,7 @@ export function useProjectWorkspace(
       setExperiments(next.experiments);
       setProtocols(next.protocols);
       setLeads(next.leads);
+      setProjectMembers(next.projectMembers);
       setRepoStatuses(next.repoStatuses ?? EMPTY_ARRAY);
       try {
         setLabGithubPatConfiguredState(await rpcLabGithubPatConfigured(labId));
@@ -347,6 +351,7 @@ export function useProjectWorkspace(
     experiments,
     protocols,
     leads,
+    projectMembers,
     repoStatuses,
     deletedProjects,
     labGithubPatConfigured,

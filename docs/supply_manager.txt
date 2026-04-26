@@ -1,0 +1,394 @@
+You are working on my Integrated Lab Manager app.
+
+Goal:
+Implement a new Supply Manager module for lab inventory and ordering. This should integrate with the existing app structure, authentication, project system, and visual design. Do not implement equipment management in this module. Equipment will be a separate feature later.
+
+Important constraint:
+Do NOT include “equipment” as a classification option. The supply manager should only handle reagents, consumables, supplies, samples, and general/other lab items.
+
+Assumptions:
+- The app already has user authentication.
+- The app already has projects and project membership.
+- The app may use Supabase or another SQL backend. If Supabase is present, implement this using Supabase tables, migrations, and row-level security policies.
+- Follow the current code style, routing pattern, component structure, and UI design of the existing app.
+- Keep the implementation MVP-focused but extensible.
+
+Core concept:
+The Supply Manager should manage:
+1. Item identity: what the item is.
+2. Project association: which projects use the item.
+3. Inventory checks: current stock status and check history.
+4. Order requests: user-submitted requests for items.
+5. Admin review: approve/deny/withdraw order requests.
+6. Order tracking: placed/backordered/shipped/received status, vendor, tracking, lot information.
+
+Do not put all information directly into one items table. Separate stable item identity from stock checks, project links, order requests, actual orders, and received lots.
+
+Database schema to implement:
+
+1. items
+Fields:
+- id: uuid primary key
+- name: text, required
+- details: text, nullable
+- classification: text or enum, required
+  Allowed values:
+  - reagent
+  - consumable
+  - supply
+  - sample
+  - other
+- default_unit: text, nullable
+- storage_location: text, nullable
+- catalog_number: text, nullable
+- preferred_vendor: text, nullable
+- is_active: boolean, default true
+- created_by: uuid, references users/auth users
+- created_at: timestamp
+- updated_at: timestamp
+
+Notes:
+- Archived items are represented by is_active = false.
+- Archived items should be hidden from default views but can be shown with a toggle/filter.
+
+2. item_projects
+Fields:
+- id: uuid primary key
+- item_id: uuid, references items(id), required
+- project_id: uuid, references projects(id), nullable or required depending on existing project schema
+- association_type: text, nullable
+  Suggested values:
+  - primary
+  - shared
+  - temporary
+  - general
+- created_by: uuid
+- created_at: timestamp
+
+Notes:
+- One item can belong to multiple projects.
+- If the existing app has a “general” or lab-wide project, use that for general items. Otherwise allow general association in a clean way.
+- Users should be able to later associate an item with a project from other parts of the app, such as protocols.
+
+3. inventory_checks
+Fields:
+- id: uuid primary key
+- item_id: uuid, references items(id), required
+- stock_status: text or enum, required
+  Allowed values:
+  - plenty
+  - medium
+  - low
+  - out
+  - unknown
+- estimated_quantity: numeric, nullable
+- unit: text, nullable
+- location: text, nullable
+- note: text, nullable
+- checked_by: uuid
+- checked_at: timestamp
+
+Notes:
+- This table stores check history.
+- The UI should display the latest inventory check for each item.
+- Users should be able to add a new check rather than overwriting the old one.
+
+4. order_requests
+Fields:
+- id: uuid primary key
+- requested_by: uuid, required
+- project_id: uuid, nullable
+- status: text or enum, required
+  Allowed values:
+  - draft
+  - submitted
+  - approved
+  - denied
+  - withdrawn
+  - ordered
+  - received
+  - cancelled
+- reason: text, nullable
+- review_note: text, nullable
+- reviewed_by: uuid, nullable
+- reviewed_at: timestamp, nullable
+- created_at: timestamp
+- updated_at: timestamp
+
+Notes:
+- Regular users can create draft or submitted requests.
+- Regular users can withdraw their own submitted requests before approval.
+- Admin users can approve or deny submitted requests.
+- Admin review should record reviewed_by, reviewed_at, and optional review_note.
+
+5. order_request_items
+Fields:
+- id: uuid primary key
+- order_request_id: uuid, references order_requests(id), required
+- item_id: uuid, references items(id), required
+- requested_quantity: numeric, nullable
+- unit: text, nullable
+- priority: text, nullable
+  Suggested values:
+  - low
+  - normal
+  - high
+  - urgent
+- note: text, nullable
+
+Notes:
+- One order request may contain multiple items.
+- Users should be able to request existing items.
+- If reasonable for the current app, allow users to create a new item while making a request.
+
+6. orders
+Fields:
+- id: uuid primary key
+- order_request_id: uuid, references order_requests(id), required
+- company: text, nullable
+- order_number: text, nullable
+- tracking_number: text, nullable
+- status: text or enum, required
+  Allowed values:
+  - initial_order_placed
+  - back_ordered
+  - shipped
+  - partially_received
+  - received
+  - cancelled
+- placed_by: uuid, nullable
+- placed_at: timestamp, nullable
+- expected_arrival: date or timestamp, nullable
+- received_at: timestamp, nullable
+- note: text, nullable
+
+Notes:
+- This table represents actual vendor/order tracking after approval.
+- Admins should be able to mark approved requests as ordered.
+- Admins should be able to update tracking and status.
+- Receiving an order should allow adding lot information.
+
+7. stock_lots
+Fields:
+- id: uuid primary key
+- item_id: uuid, references items(id), required
+- order_id: uuid, references orders(id), nullable
+- lot_number: text, nullable
+- received_quantity: numeric, nullable
+- unit: text, nullable
+- expiration_date: date, nullable
+- storage_location: text, nullable
+- received_by: uuid, nullable
+- received_at: timestamp
+- note: text, nullable
+
+Notes:
+- Use this for lot number, expiration, and received quantity.
+- This is especially useful for reagents, samples, and consumables.
+- Keep it optional and lightweight for MVP.
+
+Access control:
+Implement permissions consistent with the existing app.
+
+Suggested roles:
+- regular user
+- admin
+
+Regular users can:
+- View active items associated with projects they belong to.
+- View general lab items.
+- Create order request drafts.
+- Submit their own order requests.
+- Withdraw their own submitted requests before approval.
+- Add inventory checks for items they can access.
+- View their own requests and relevant project-associated items.
+
+Admin users can:
+- View all items.
+- Create/edit/archive/unarchive any item.
+- Bulk edit items.
+- View all order requests.
+- Approve or deny submitted requests.
+- Mark approved requests as ordered.
+- Update order tracking information.
+- Mark orders as received.
+- Add received lot information.
+- View archived items.
+
+RLS/security:
+If using Supabase, add row-level security policies so users cannot access unrelated project items unless they are admins or the item is general/lab-wide.
+Use existing user profile / project membership / role tables if present.
+Do not hardcode admin emails unless the current app already uses that pattern.
+
+Main UI views:
+Add a Supply Manager section with the following tabs:
+
+1. Warehouse
+Purpose:
+Full item database.
+
+Features:
+- Search by item name, details, vendor, catalog number, location.
+- Filters:
+  - classification
+  - project
+  - stock status
+  - storage location
+  - active / archived
+  - last checked date
+- Default: show only active items.
+- Toggle: show archived items.
+- Table/list columns:
+  - name
+  - classification
+  - project associations
+  - latest stock status
+  - latest checked date
+  - storage location
+  - preferred vendor
+  - catalog number
+  - active/archive status
+- Actions:
+  - add item
+  - edit item
+  - archive/unarchive item
+  - add inventory check
+  - request order for selected item
+  - bulk edit selected items if admin
+  - link/unlink item to projects
+
+2. Orders
+Purpose:
+Show current and historical order-related information.
+
+Features:
+- Toggle/filter:
+  - all active orders
+  - my requests
+  - project-related requests
+  - received/completed orders
+- Show request status and order status separately.
+  Example:
+  - Request status: approved
+  - Order status: back_ordered
+- Actions:
+  - create new order request
+  - continue draft
+  - submit draft
+  - withdraw own request
+  - admin: mark approved request as ordered
+  - admin: add company/order number/tracking number
+  - admin: update order status
+  - admin: receive order and add lot information
+
+3. Review
+Purpose:
+Admin review queue.
+
+Features:
+- Only admins can approve or deny requests.
+- Regular users can see their own request review status but should not see the admin review queue unless appropriate.
+- Show submitted requests pending review.
+- Each request should show:
+  - requested_by
+  - project
+  - items requested
+  - requested quantity/unit
+  - priority
+  - reason/note
+  - created_at
+- Admin actions:
+  - approve
+  - deny
+  - add review note
+- User action:
+  - withdraw own submitted request if not already approved/denied
+
+4. My Items
+Purpose:
+User-centered project supply view.
+
+Features:
+- Show items associated with projects where the current user is a member.
+- Also show general/lab-wide items if appropriate.
+- Show low/out/unknown items prominently.
+- Show items with old inventory checks using a warning.
+
+“Better check first” warning:
+When adding or requesting an item, the user can set or use a default threshold for how old the last inventory check can be before warning.
+Example:
+- If last checked > 60 days ago, show:
+  “Last checked 74 days ago — better check before ordering.”
+This warning should not block submission. It is only a warning.
+
+Actions:
+- add new item
+- save item draft if the existing app supports drafts, otherwise just save normally
+- submit order request
+- add inventory check
+- link item to one of my projects
+- view project-associated supplies
+
+UX requirements:
+- Keep the UI clean and consistent with the existing Integrated Lab Manager style.
+- Use clear status badges for:
+  - stock status
+  - request status
+  - order status
+  - active/archived
+- Use modals or side panels for add/edit flows if that matches the current app.
+- Avoid cluttering the first version with too many fields in the main table.
+- Details can be shown in an expandable row, modal, or item detail page.
+- Use optimistic UI updates only if the existing app already handles errors cleanly.
+- Always show error messages for failed database actions.
+
+Important data behavior:
+- Editing an item should update the stable item record.
+- Adding a stock check should create a new inventory_checks row.
+- Displayed stock status should come from the latest inventory_checks row.
+- Archiving an item should not delete it.
+- Deleting should generally be avoided or admin-only.
+- Receiving an order should:
+  1. update order status to received or partially_received,
+  2. optionally create stock_lots rows,
+  3. optionally create a new inventory_checks row marking the item as plenty/medium/etc.
+
+Suggested implementation steps:
+1. Inspect the existing app structure, routing, auth, project, and database patterns.
+2. Add database migrations/schema for the supply manager tables.
+3. Add TypeScript types or equivalent model definitions.
+4. Add API/Supabase helper functions:
+   - list items with latest inventory check
+   - create/update/archive item
+   - link item to project
+   - add inventory check
+   - create/update/submit/withdraw order request
+   - approve/deny order request
+   - create/update order
+   - receive order / add stock lot
+5. Add Supply Manager route/page.
+6. Implement the four tabs:
+   - Warehouse
+   - Orders
+   - Review
+   - My Items
+7. Add permission-aware UI controls.
+8. Add loading, empty, and error states.
+9. Add basic tests if the project has a test framework.
+10. Update README or developer notes with the new supply manager schema and usage.
+
+Acceptance criteria:
+- A user can create an item with classification reagent/consumable/supply/sample/other.
+- Equipment is not present anywhere in this module.
+- A user can associate an item with one or more projects.
+- A user can add inventory checks, and the latest check appears in item lists.
+- Archived items are hidden by default and can be shown with a toggle.
+- A user can create a draft order request with one or more items.
+- A user can submit and withdraw their own request.
+- An admin can approve or deny submitted requests.
+- An admin can mark approved requests as ordered and add vendor/tracking information.
+- An admin can mark an order as received and optionally add lot/expiration information.
+- My Items only shows items relevant to the user’s project memberships plus general items.
+- Old inventory checks trigger a non-blocking “better check first” warning.
+- The app remains visually consistent with the existing Integrated Lab Manager.
+- No equipment management is implemented.

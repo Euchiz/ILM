@@ -2,8 +2,10 @@ export { LabMembersPanel } from "./LabMembersPanel";
 export { LabJoinRequestsPanel } from "./LabJoinRequestsPanel";
 export { LabShareLinkPanel, buildLabShareUrl } from "./LabShareLinkPanel";
 export { ProjectLeadsPanel } from "./ProjectLeadsPanel";
+export { ProjectMembersPanel } from "./ProjectMembersPanel";
 export {
   approveLabJoin,
+  assignProjectMember,
   assignProjectLead,
   cancelLabJoin,
   claimPendingInvitations,
@@ -13,6 +15,7 @@ export {
   listLabJoinRequests,
   listLabMembers,
   listProjectLeads,
+  listProjectMembers,
   listProjects,
   lookupLabById,
   promoteMemberToAdmin,
@@ -20,6 +23,7 @@ export {
   removeLabMember,
   requestLabJoin,
   revokeProjectLead,
+  revokeProjectMember,
 } from "./api";
 export type {
   LabInvitationRecord,
@@ -28,5 +32,6 @@ export type {
   LabLookupResult,
   LabMemberRecord,
   ProjectLeadRecord,
+  ProjectMemberRecord,
   ProjectRecord,
 } from "./api";

@@ -6,6 +6,7 @@ import {
   AppSwitcher,
   AppTopbar,
   ProjectLeadsPanel,
+  ProjectMembersPanel,
   SubmissionHistoryLink,
   appUrl,
   useAuth,
@@ -494,6 +495,7 @@ export const App = () => {
     experiments,
     protocols,
     leads,
+    projectMembers,
     deletedProjects,
     repoStatuses,
     labGithubPatConfigured,
@@ -556,6 +558,11 @@ export const App = () => {
   const memberNameById = useMemo(() => {
     const map = new Map<string, string>();
     labMembers.forEach((m) => map.set(m.user_id, m.display_name || m.email || m.user_id));
+    return map;
+  }, [labMembers]);
+  const memberRoleById = useMemo(() => {
+    const map = new Map<string, string>();
+    labMembers.forEach((m) => map.set(m.user_id, m.role));
     return map;
   }, [labMembers]);
 
@@ -669,6 +676,25 @@ export const App = () => {
     return set;
   }, [leads, user?.id]);
 
+  const membersByProject = useMemo(() => {
+    const map = new Map<string, string[]>();
+    projectMembers.forEach((m) => {
+      const list = map.get(m.project_id) ?? [];
+      list.push(m.user_id);
+      map.set(m.project_id, list);
+    });
+    return map;
+  }, [projectMembers]);
+
+  const myMemberProjectIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!user?.id) return set;
+    projectMembers.forEach((m) => {
+      if (m.user_id === user.id) set.add(m.project_id);
+    });
+    return set;
+  }, [projectMembers, user?.id]);
+
   const canReviewProject = useCallback(
     (project: ProjectRecord) => isAdmin || myLeadProjectIds.has(project.id),
     [isAdmin, myLeadProjectIds]
@@ -691,7 +717,17 @@ export const App = () => {
     [activeProjectExperiments]
   );
   const canManageRoadmap =
-    isAdmin || (activeProject?.state === "draft" && activeProject.created_by === user?.id);
+    !!activeProject &&
+    (isAdmin ||
+      myLeadProjectIds.has(activeProject.id) ||
+      myMemberProjectIds.has(activeProject.id) ||
+      (activeProject.state === "draft" && activeProject.created_by === user?.id));
+  const canEditProjectInfo =
+    !!activeProject &&
+    (isAdmin ||
+      myLeadProjectIds.has(activeProject.id) ||
+      myMemberProjectIds.has(activeProject.id) ||
+      activeProject.created_by === user?.id);
   const selectedMilestone = useMemo(
     () =>
       outlineSelection?.kind === "milestone"
@@ -723,6 +759,22 @@ export const App = () => {
       return names.length ? names : ["No explicit lead"];
     },
     [leadsByProject, memberNameById]
+  );
+
+  const memberNamesForProject = useCallback(
+    (projectId: string) => {
+      const userIds = membersByProject.get(projectId) ?? [];
+      const projectLeadIds = new Set(leadsByProject.get(projectId) ?? []);
+      const names = userIds
+        .filter((uid) => {
+          const role = memberRoleById.get(uid);
+          return role !== "owner" && role !== "admin" && !projectLeadIds.has(uid);
+        })
+        .map((uid) => memberNameById.get(uid))
+        .filter((n): n is string => !!n);
+      return names.length ? names : ["No explicit members"];
+    },
+    [leadsByProject, membersByProject, memberNameById, memberRoleById]
   );
 
   // Open a project in View tab
@@ -852,6 +904,10 @@ export const App = () => {
       setProjectSaveBusy("saving");
       setProjectSaveError(null);
       try {
+        if (!canEditProjectInfo) {
+          setProjectSaveError("Only project members, leads, and lab admins can edit project information.");
+          return;
+        }
         await updateProject({
           projectId: activeProject.id,
           name: args.name.trim() || "Untitled project",
@@ -866,7 +922,7 @@ export const App = () => {
         setProjectSaveBusy("idle");
       }
     },
-    [activeProject, updateProject]
+    [activeProject, canEditProjectInfo, updateProject]
   );
 
   const persistMilestoneOrder = useCallback(
@@ -1131,6 +1187,7 @@ export const App = () => {
 
   const projectCard = (project: ProjectRecord, opts: { showReviewActions?: boolean } = {}) => {
     const leadNames = leadNamesForProject(project.id);
+    const memberNames = memberNamesForProject(project.id);
     const ms = milestonesByProject.get(project.id) ?? [];
     const ex = experimentsByProject.get(project.id) ?? [];
     const isGeneral = project.name === "General";
@@ -1156,6 +1213,10 @@ export const App = () => {
           <div>
             <dt>Lead</dt>
             <dd>{leadNames.join(", ")}</dd>
+          </div>
+          <div>
+            <dt>Members</dt>
+            <dd>{memberNames.join(", ")}</dd>
           </div>
           <div>
             <dt>Milestones</dt>
@@ -1559,6 +1620,7 @@ export const App = () => {
           {viewSubTab === "info" ? (
             <InfoTab
               project={activeProject}
+              canEdit={canEditProjectInfo}
               busy={projectSaveBusy}
               error={projectSaveError}
               onSave={handleSaveMetadata}
@@ -1567,6 +1629,7 @@ export const App = () => {
 
           {viewSubTab === "personnel" ? (
             <div className="pm-personnel-body">
+              <ProjectMembersPanel projectId={activeProject.id} title="Project members" onChanged={refresh} />
               <ProjectLeadsPanel projectId={activeProject.id} title="Project leads" />
               <section className="pm-panel-section">
                 <div className="pm-panel-section-head">
@@ -1875,11 +1938,13 @@ const ProjectRoadmapPreview = ({
 
 const InfoTab = ({
   project,
+  canEdit,
   busy,
   error,
   onSave,
 }: {
   project: ProjectRecord;
+  canEdit: boolean;
   busy: "idle" | "saving";
   error: string | null;
   onSave: (args: { name: string; description: string; status: ProjectStatus; approvalRequired: boolean; githubRepoUrl: string }) => Promise<void>;
@@ -1901,6 +1966,7 @@ const InfoTab = ({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canEdit) return;
     await onSave({ name, description, status, approvalRequired, githubRepoUrl });
   };
 
@@ -1913,13 +1979,16 @@ const InfoTab = ({
         </small>
       </div>
       {error ? <p className="pm-inline-error">{error}</p> : null}
+      {!canEdit ? (
+        <p className="pm-inline-note">Only project members, project leads, and lab admins can edit these details.</p>
+      ) : null}
       <label className="pm-field">
         <span>Name</span>
-        <input value={name} onChange={(event) => setName(event.target.value)} />
+        <input value={name} onChange={(event) => setName(event.target.value)} disabled={!canEdit} />
       </label>
       <label className="pm-field">
         <span>Description</span>
-        <textarea rows={5} value={description} onChange={(event) => setDescription(event.target.value)} />
+        <textarea rows={5} value={description} onChange={(event) => setDescription(event.target.value)} disabled={!canEdit} />
       </label>
       <label className="pm-field">
         <span>GitHub repository URL</span>
@@ -1928,12 +1997,13 @@ const InfoTab = ({
           placeholder="https://github.com/owner/repo"
           value={githubRepoUrl}
           onChange={(event) => setGithubRepoUrl(event.target.value)}
+          disabled={!canEdit}
         />
       </label>
       <div className="pm-field-row">
         <label className="pm-field">
           <span>Status</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus)}>
+          <select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus)} disabled={!canEdit}>
             {PROJECT_STATUSES.map((option) => (
               <option key={option} value={option}>
                 {statusLabel(option)}
@@ -1946,6 +2016,7 @@ const InfoTab = ({
             type="checkbox"
             checked={approvalRequired}
             onChange={(event) => setApprovalRequired(event.target.checked)}
+            disabled={!canEdit}
           />
           <span>Require review before protocol publication inside this project</span>
         </label>
@@ -1964,7 +2035,7 @@ const InfoTab = ({
               : "Published: visible to the whole lab."}
         </small>
         <div className="pm-inline-actions">
-          <button type="submit" className="pm-primary-button" disabled={busy === "saving"}>
+          <button type="submit" className="pm-primary-button" disabled={!canEdit || busy === "saving"}>
             {busy === "saving" ? "Saving..." : "Save changes"}
           </button>
         </div>
