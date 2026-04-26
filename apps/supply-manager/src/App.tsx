@@ -83,8 +83,22 @@ type ModalState =
 const statusLabel = (value: string) =>
   value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Unexpected error";
+const errorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
+    if (typeof candidate.message === "string" && candidate.message.trim() !== "") {
+      const detail =
+        typeof candidate.details === "string" && candidate.details.trim() !== ""
+          ? ` (${candidate.details})`
+          : typeof candidate.hint === "string" && candidate.hint.trim() !== ""
+          ? ` (${candidate.hint})`
+          : "";
+      return candidate.message + detail;
+    }
+  }
+  return "Unexpected error";
+};
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return "—";
