@@ -7,6 +7,7 @@ import {
   cancelOrderRequest as rpcCancelOrderRequest,
   createItem as rpcCreateItem,
   createOrderRequestDraft as rpcCreateOrderRequestDraft,
+  deleteItem as rpcDeleteItem,
   deleteOrderRequest as rpcDeleteOrderRequest,
   denyOrderRequest as rpcDenyOrderRequest,
   linkItemToProject as rpcLinkItemToProject,
@@ -71,6 +72,7 @@ export interface UseSupplyWorkspaceValue extends SupplyWorkspaceSnapshot {
 
   archiveItem: (itemId: string) => Promise<ItemRecord>;
   unarchiveItem: (itemId: string) => Promise<ItemRecord>;
+  deleteItem: (itemId: string) => Promise<void>;
 
   linkItemToProject: (args: {
     itemId: string;
@@ -286,6 +288,15 @@ export function useSupplyWorkspace(
     [hydrate, requireIdentity]
   );
 
+  const deleteItem = useCallback<UseSupplyWorkspaceValue["deleteItem"]>(
+    async (itemId) => {
+      requireIdentity();
+      await rpcDeleteItem(itemId);
+      await hydrate();
+    },
+    [hydrate, requireIdentity]
+  );
+
   const linkItemToProject = useCallback<UseSupplyWorkspaceValue["linkItemToProject"]>(
     async (args) => {
       const { userId: uid } = requireIdentity();
@@ -470,6 +481,7 @@ export function useSupplyWorkspace(
     updateItem,
     archiveItem,
     unarchiveItem,
+    deleteItem,
     linkItemToProject,
     unlinkItemFromProject,
     addInventoryCheck,

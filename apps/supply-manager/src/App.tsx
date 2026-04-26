@@ -68,13 +68,15 @@ type ModalState =
   | { kind: "new-item" }
   | { kind: "edit-item"; itemId: string }
   | { kind: "inventory-check"; itemId: string }
-  | { kind: "link-projects"; itemId: string }
-  | { kind: "new-request"; presetItemId?: string | null }
+  | { kind: "new-request"; presetItemIds?: string[] | null }
   | { kind: "edit-request"; requestId: string }
   | { kind: "review-request"; requestId: string; mode: "approve" | "deny" }
   | { kind: "place-order"; requestId: string }
   | { kind: "update-order"; orderId: string }
-  | { kind: "receive-order"; orderId: string };
+  | { kind: "receive-order"; orderId: string }
+  | { kind: "bulk-check"; itemIds: string[] }
+  | { kind: "bulk-projects"; itemIds: string[] }
+  | { kind: "bulk-location"; itemIds: string[] };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -211,6 +213,27 @@ export const App = () => {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("warehouse");
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [actionError, setActionError] = useState<string | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  const toggleItemSelected = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const setAllSelected = (ids: string[], on: boolean) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedItemIds(new Set());
 
   // Filters
   const [search, setSearch] = useState("");
@@ -455,6 +478,40 @@ export const App = () => {
     await wrap(() => workspace.unarchiveItem(item.id));
   };
 
+  const handleBulkArchive = async () => {
+    const ids = [...selectedItemIds];
+    if (ids.length === 0) return;
+    if (!window.confirm(`Archive ${ids.length} item${ids.length === 1 ? "" : "s"}?`)) return;
+    await wrap(async () => {
+      for (const id of ids) await workspace.archiveItem(id);
+    });
+    clearSelection();
+  };
+
+  const handleBulkUnarchive = async () => {
+    const ids = [...selectedItemIds];
+    if (ids.length === 0) return;
+    await wrap(async () => {
+      for (const id of ids) await workspace.unarchiveItem(id);
+    });
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedItemIds];
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Permanently delete ${ids.length} item${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+      )
+    )
+      return;
+    await wrap(async () => {
+      for (const id of ids) await workspace.deleteItem(id);
+    });
+    clearSelection();
+  };
+
   const handleDeleteRequest = async (req: OrderRequestRecord) => {
     if (!window.confirm("Delete this draft request?")) return;
     await wrap(() => workspace.deleteOrderRequest(req.id));
@@ -555,6 +612,184 @@ export const App = () => {
   // Render: panels
   // ---------------------------------------------------------------------
 
+  const renderBulkBar = (visibleIds: string[]) => {
+    const selectedHere = visibleIds.filter((id) => selectedItemIds.has(id));
+    if (selectedHere.length === 0) return null;
+    return (
+      <div className="sm-bulk-bar">
+        <span className="sm-bulk-count">
+          <strong>{selectedHere.length}</strong> selected
+        </span>
+        <div className="sm-bulk-actions">
+          <Button size="sm" onClick={() => setModal({ kind: "bulk-check", itemIds: selectedHere })}>
+            Bulk check
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => setModal({ kind: "new-request", presetItemIds: selectedHere })}
+          >
+            Request order
+          </Button>
+          <Button size="sm" onClick={() => setModal({ kind: "bulk-projects", itemIds: selectedHere })}>
+            Add project link
+          </Button>
+          <Button size="sm" onClick={() => setModal({ kind: "bulk-location", itemIds: selectedHere })}>
+            Set location
+          </Button>
+          {isAdmin ? (
+            <>
+              <Button size="sm" variant="danger" onClick={() => void handleBulkArchive()}>
+                Archive
+              </Button>
+              <Button size="sm" onClick={() => void handleBulkUnarchive()}>
+                Restore
+              </Button>
+              <Button size="sm" variant="danger" onClick={() => void handleBulkDelete()}>
+                Delete
+              </Button>
+            </>
+          ) : null}
+          <Button size="sm" onClick={clearSelection}>
+            Clear
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderItemsTable = (items: ItemRecord[], emptyHint: string) => {
+    const visibleIds = items.map((i) => i.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedItemIds.has(id));
+    const someSelected = visibleIds.some((id) => selectedItemIds.has(id));
+
+    return (
+      <>
+        {renderBulkBar(visibleIds)}
+        <Table className="sm-item-table">
+          <thead>
+            <tr>
+              <th style={{ width: "2rem" }}>
+                <input
+                  type="checkbox"
+                  aria-label="Select all"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allSelected && someSelected;
+                  }}
+                  onChange={(e) => setAllSelected(visibleIds, e.target.checked)}
+                />
+              </th>
+              <th>Name</th>
+              <th>Class</th>
+              <th>Stock</th>
+              <th>Last check</th>
+              <th>Storage</th>
+              <th>Vendor</th>
+              <th>Projects</th>
+              <th>Status</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {status === "loading" ? (
+              <TableLoading colSpan={10} />
+            ) : items.length === 0 ? (
+              <TableEmpty colSpan={10}>{emptyHint}</TableEmpty>
+            ) : (
+              items.map((item) => {
+                const latest = latestCheckByItem.get(item.id);
+                const stock = latest?.stock_status ?? "unknown";
+                const checkDays = daysSince(latest?.checked_at);
+                const stale = checkDays === null || checkDays > STALE_CHECK_DAYS;
+                const links = linksByItem.get(item.id) ?? [];
+                const projectNames = links
+                  .map((l) =>
+                    l.project_id ? projectsById.get(l.project_id)?.name ?? "Unknown" : "General"
+                  )
+                  .filter((v, i, a) => a.indexOf(v) === i);
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${item.name}`}
+                        checked={selectedItemIds.has(item.id)}
+                        onChange={() => toggleItemSelected(item.id)}
+                      />
+                    </td>
+                    <td>
+                      <strong>{item.name}</strong>
+                      {item.details ? (
+                        <div style={{ color: "var(--rl-muted)", fontSize: "0.78rem" }}>{item.details}</div>
+                      ) : null}
+                    </td>
+                    <td>{statusLabel(item.classification)}</td>
+                    <td>
+                      <StatusPill status={stockStatusTone(stock)} label={statusLabel(stock)} />
+                    </td>
+                    <td>
+                      {latest ? (
+                        <span title={formatDateTime(latest.checked_at)}>
+                          {formatDate(latest.checked_at)}
+                          {stale ? <span className="sm-warning-note"> ⚠ {checkDays ?? "—"}d</span> : null}
+                        </span>
+                      ) : (
+                        <span className="sm-warning-note">Never checked</span>
+                      )}
+                    </td>
+                    <td>{item.storage_location ?? "—"}</td>
+                    <td>
+                      {item.preferred_vendor ?? "—"}
+                      {item.catalog_number ? (
+                        <div style={{ color: "var(--rl-muted)", fontSize: "0.78rem" }}>
+                          {item.catalog_number}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td>{projectNames.length === 0 ? "General" : projectNames.join(", ")}</td>
+                    <td>
+                      {item.is_active ? (
+                        <Badge tone="success">Active</Badge>
+                      ) : (
+                        <Badge tone="neutral">Archived</Badge>
+                      )}
+                    </td>
+                    <td className="sm-row-actions">
+                      <Button size="sm" onClick={() => setModal({ kind: "inventory-check", itemId: item.id })}>
+                        Check
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setModal({ kind: "new-request", presetItemIds: [item.id] })}
+                      >
+                        Request
+                      </Button>
+                      <Button size="sm" onClick={() => setModal({ kind: "edit-item", itemId: item.id })}>
+                        Edit
+                      </Button>
+                      {isAdmin ? (
+                        item.is_active ? (
+                          <Button size="sm" variant="danger" onClick={() => void handleArchive(item)}>
+                            Archive
+                          </Button>
+                        ) : (
+                          <Button size="sm" onClick={() => void handleUnarchive(item)}>
+                            Restore
+                          </Button>
+                        )
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </Table>
+      </>
+    );
+  };
+
   const warehousePanel = (
     <Panel>
       <SectionHeader
@@ -583,110 +818,12 @@ export const App = () => {
         onShowArchived={setShowArchived}
         canShowArchived={isAdmin}
       />
-
-      <Table className="sm-item-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Class</th>
-            <th>Stock</th>
-            <th>Last check</th>
-            <th>Storage</th>
-            <th>Vendor</th>
-            <th>Projects</th>
-            <th>Status</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {status === "loading" ? (
-            <TableLoading colSpan={9} />
-          ) : filteredItems.length === 0 ? (
-            <TableEmpty colSpan={9}>
-              {workspace.items.length === 0
-                ? "No items yet — create one to get started."
-                : "No items match the current filters."}
-            </TableEmpty>
-          ) : (
-            filteredItems.map((item) => {
-              const latest = latestCheckByItem.get(item.id);
-              const stock = latest?.stock_status ?? "unknown";
-              const checkDays = daysSince(latest?.checked_at);
-              const stale = checkDays === null || checkDays > STALE_CHECK_DAYS;
-              const links = linksByItem.get(item.id) ?? [];
-              const projectNames = links
-                .map((l) =>
-                  l.project_id ? projectsById.get(l.project_id)?.name ?? "Unknown" : "General"
-                )
-                .filter((v, i, a) => a.indexOf(v) === i);
-              return (
-                <tr key={item.id}>
-                  <td>
-                    <strong>{item.name}</strong>
-                    {item.details ? <div style={{ color: "var(--rl-muted)", fontSize: "0.78rem" }}>{item.details}</div> : null}
-                  </td>
-                  <td>{statusLabel(item.classification)}</td>
-                  <td>
-                    <StatusPill status={stockStatusTone(stock)} label={statusLabel(stock)} />
-                  </td>
-                  <td>
-                    {latest ? (
-                      <span title={formatDateTime(latest.checked_at)}>
-                        {formatDate(latest.checked_at)}
-                        {stale ? <span className="sm-warning-note"> ⚠ {checkDays ?? "—"}d</span> : null}
-                      </span>
-                    ) : (
-                      <span className="sm-warning-note">Never checked</span>
-                    )}
-                  </td>
-                  <td>{item.storage_location ?? "—"}</td>
-                  <td>
-                    {item.preferred_vendor ?? "—"}
-                    {item.catalog_number ? (
-                      <div style={{ color: "var(--rl-muted)", fontSize: "0.78rem" }}>{item.catalog_number}</div>
-                    ) : null}
-                  </td>
-                  <td>{projectNames.length === 0 ? "General" : projectNames.join(", ")}</td>
-                  <td>
-                    {item.is_active ? (
-                      <Badge tone="success">Active</Badge>
-                    ) : (
-                      <Badge tone="neutral">Archived</Badge>
-                    )}
-                  </td>
-                  <td className="sm-row-actions">
-                    <Button size="sm" onClick={() => setModal({ kind: "inventory-check", itemId: item.id })}>
-                      Check
-                    </Button>
-                    <Button size="sm" onClick={() => setModal({ kind: "new-request", presetItemId: item.id })}>
-                      Request
-                    </Button>
-                    <Button size="sm" onClick={() => setModal({ kind: "link-projects", itemId: item.id })}>
-                      Projects
-                    </Button>
-                    {isAdmin ? (
-                      <>
-                        <Button size="sm" onClick={() => setModal({ kind: "edit-item", itemId: item.id })}>
-                          Edit
-                        </Button>
-                        {item.is_active ? (
-                          <Button size="sm" variant="danger" onClick={() => void handleArchive(item)}>
-                            Archive
-                          </Button>
-                        ) : (
-                          <Button size="sm" onClick={() => void handleUnarchive(item)}>
-                            Restore
-                          </Button>
-                        )}
-                      </>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </Table>
+      {renderItemsTable(
+        filteredItems,
+        workspace.items.length === 0
+          ? "No items yet — create one to get started."
+          : "No items match the current filters."
+      )}
     </Panel>
   );
 
@@ -811,110 +948,9 @@ export const App = () => {
         </div>
       </div>
 
-      {myLowOrUnknown.length > 0 ? (
-        <>
-          <SectionHeader title="Reorder candidates" meta={`${myLowOrUnknown.length}`} />
-          <Table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Stock</th>
-                <th>Last check</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {myLowOrUnknown.map((item) => {
-                const latest = latestCheckByItem.get(item.id);
-                const days = daysSince(latest?.checked_at);
-                return (
-                  <tr key={item.id}>
-                    <td><strong>{item.name}</strong></td>
-                    <td>
-                      <StatusPill
-                        status={stockStatusTone(latest?.stock_status ?? "unknown")}
-                        label={statusLabel(latest?.stock_status ?? "unknown")}
-                      />
-                    </td>
-                    <td>
-                      {latest ? formatDate(latest.checked_at) : "Never"}
-                      {days !== null && days > STALE_CHECK_DAYS ? (
-                        <span className="sm-warning-note"> ⚠ {days}d</span>
-                      ) : null}
-                    </td>
-                    <td className="sm-row-actions">
-                      <Button size="sm" onClick={() => setModal({ kind: "inventory-check", itemId: item.id })}>
-                        Check
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={() => setModal({ kind: "new-request", presetItemId: item.id })}
-                      >
-                        Request order
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        </>
-      ) : null}
-
-      <SectionHeader title="All my project items" meta={`${myItems.length}`} />
-      {myItems.length === 0 ? (
-        <EmptyState boxed title="No items yet" description="Items associated with your projects (or general lab items) will appear here." />
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Class</th>
-              <th>Stock</th>
-              <th>Last check</th>
-              <th>Projects</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {myItems.map((item) => {
-              const latest = latestCheckByItem.get(item.id);
-              const days = daysSince(latest?.checked_at);
-              const links = linksByItem.get(item.id) ?? [];
-              const projectNames = links
-                .map((l) => (l.project_id ? projectsById.get(l.project_id)?.name ?? "Unknown" : "General"))
-                .filter((v, i, a) => a.indexOf(v) === i);
-              return (
-                <tr key={item.id}>
-                  <td><strong>{item.name}</strong></td>
-                  <td>{statusLabel(item.classification)}</td>
-                  <td>
-                    <StatusPill
-                      status={stockStatusTone(latest?.stock_status ?? "unknown")}
-                      label={statusLabel(latest?.stock_status ?? "unknown")}
-                    />
-                  </td>
-                  <td>
-                    {latest ? formatDate(latest.checked_at) : "Never"}
-                    {days !== null && days > STALE_CHECK_DAYS ? (
-                      <span className="sm-warning-note"> ⚠ {days}d</span>
-                    ) : null}
-                  </td>
-                  <td>{projectNames.length === 0 ? "General" : projectNames.join(", ")}</td>
-                  <td className="sm-row-actions">
-                    <Button size="sm" onClick={() => setModal({ kind: "inventory-check", itemId: item.id })}>
-                      Check
-                    </Button>
-                    <Button size="sm" onClick={() => setModal({ kind: "new-request", presetItemId: item.id })}>
-                      Request
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
+      {renderItemsTable(
+        myItems,
+        "Items associated with your projects (or general lab items) will appear here."
       )}
     </Panel>
   );
@@ -957,6 +993,18 @@ export const App = () => {
               );
               if (result) closeModal();
             }}
+            onAddLink={async (values) => {
+              await wrap(() =>
+                workspace.linkItemToProject({
+                  itemId: item.id,
+                  projectId: values.projectId,
+                  associationType: values.associationType,
+                })
+              );
+            }}
+            onRemoveLink={async (linkId) => {
+              await wrap(() => workspace.unlinkItemFromProject(linkId));
+            }}
           />
         );
       }
@@ -975,48 +1023,37 @@ export const App = () => {
           />
         );
       }
-      case "link-projects": {
-        const item = itemsById.get(modal.itemId);
-        if (!item) return null;
-        return (
-          <LinkProjectsModal
-            item={item}
-            projects={workspace.projects}
-            existingLinks={linksByItem.get(item.id) ?? []}
-            onClose={closeModal}
-            onAdd={async (values) => {
-              await wrap(() =>
-                workspace.linkItemToProject({
-                  itemId: item.id,
-                  projectId: values.projectId,
-                  associationType: values.associationType,
-                })
-              );
-            }}
-            onRemove={async (linkId) => {
-              await wrap(() => workspace.unlinkItemFromProject(linkId));
-            }}
-          />
-        );
-      }
       case "new-request":
         return (
           <NewRequestModal
             projects={workspace.projects}
             myProjectIds={workspace.myProjectIds}
+            presetItems={
+              modal.presetItemIds
+                ? modal.presetItemIds
+                    .map((id) => itemsById.get(id))
+                    .filter((i): i is ItemRecord => Boolean(i))
+                : []
+            }
             onClose={closeModal}
             onCreate={async ({ projectId, reason }) => {
               const created = await wrap(() => workspace.createOrderRequestDraft({ projectId, reason }));
               if (created) {
-                if (modal.presetItemId) {
-                  await wrap(() =>
-                    workspace.addOrderRequestItem({
-                      requestId: created.id,
-                      itemId: modal.presetItemId!,
-                      priority: "normal",
-                    })
-                  );
+                const ids = modal.presetItemIds ?? [];
+                if (ids.length > 0) {
+                  for (const id of ids) {
+                    const item = itemsById.get(id);
+                    await wrap(() =>
+                      workspace.addOrderRequestItem({
+                        requestId: created.id,
+                        itemId: id,
+                        priority: "normal",
+                        unit: item?.default_unit ?? null,
+                      })
+                    );
+                  }
                 }
+                setSelectedItemIds(new Set());
                 setModal({ kind: "edit-request", requestId: created.id });
               }
             }}
@@ -1049,6 +1086,10 @@ export const App = () => {
               const result = await wrap(() => workspace.submitOrderRequest(req.id));
               if (result) closeModal();
             }}
+            onAbort={async () => {
+              const result = await wrap(() => workspace.deleteOrderRequest(req.id));
+              if (result !== null) closeModal();
+            }}
             latestCheckByItem={latestCheckByItem}
           />
         );
@@ -1080,6 +1121,8 @@ export const App = () => {
         return (
           <PlaceOrderModal
             request={req}
+            requestItems={requestItemsByRequest.get(req.id) ?? []}
+            itemsById={itemsById}
             onClose={closeModal}
             onSubmit={async (values) => {
               const result = await wrap(() =>
@@ -1122,6 +1165,83 @@ export const App = () => {
                 workspace.receiveSupplyOrder({ orderId: order.id, ...values })
               );
               if (result) closeModal();
+            }}
+          />
+        );
+      }
+      case "bulk-check": {
+        const items = modal.itemIds
+          .map((id) => itemsById.get(id))
+          .filter((i): i is ItemRecord => Boolean(i));
+        if (items.length === 0) return null;
+        return (
+          <BulkInventoryCheckModal
+            items={items}
+            onClose={closeModal}
+            onSubmit={async (values) => {
+              const result = await wrap(async () => {
+                for (const item of items) {
+                  await workspace.addInventoryCheck({ itemId: item.id, ...values });
+                }
+                return true;
+              });
+              if (result) {
+                clearSelection();
+                closeModal();
+              }
+            }}
+          />
+        );
+      }
+      case "bulk-projects": {
+        const items = modal.itemIds
+          .map((id) => itemsById.get(id))
+          .filter((i): i is ItemRecord => Boolean(i));
+        if (items.length === 0) return null;
+        return (
+          <BulkProjectsModal
+            items={items}
+            projects={workspace.projects}
+            onClose={closeModal}
+            onSubmit={async ({ projectId, associationType }) => {
+              const result = await wrap(async () => {
+                for (const item of items) {
+                  await workspace.linkItemToProject({
+                    itemId: item.id,
+                    projectId,
+                    associationType,
+                  });
+                }
+                return true;
+              });
+              if (result) {
+                clearSelection();
+                closeModal();
+              }
+            }}
+          />
+        );
+      }
+      case "bulk-location": {
+        const items = modal.itemIds
+          .map((id) => itemsById.get(id))
+          .filter((i): i is ItemRecord => Boolean(i));
+        if (items.length === 0) return null;
+        return (
+          <BulkLocationModal
+            items={items}
+            onClose={closeModal}
+            onSubmit={async ({ storageLocation }) => {
+              const result = await wrap(async () => {
+                for (const item of items) {
+                  await workspace.updateItem({ itemId: item.id, storageLocation });
+                }
+                return true;
+              });
+              if (result) {
+                clearSelection();
+                closeModal();
+              }
             }}
           />
         );
@@ -1491,9 +1611,11 @@ const ItemFormModal = ({
   mode,
   item,
   projects,
-  existingLinks: _existingLinks,
+  existingLinks,
   onClose,
   onSubmit,
+  onAddLink,
+  onRemoveLink,
 }: {
   mode: "create" | "edit";
   item?: ItemRecord;
@@ -1501,6 +1623,8 @@ const ItemFormModal = ({
   existingLinks?: ItemProjectRecord[];
   onClose: () => void;
   onSubmit: (values: ItemFormValues) => Promise<void>;
+  onAddLink?: (values: { projectId: string | null; associationType: ItemAssociationType | null }) => Promise<void>;
+  onRemoveLink?: (linkId: string) => Promise<void>;
 }) => {
   const [name, setName] = useState(item?.name ?? "");
   const [classification, setClassification] = useState<ItemClassification>(
@@ -1513,6 +1637,7 @@ const ItemFormModal = ({
   const [preferredVendor, setPreferredVendor] = useState(item?.preferred_vendor ?? "");
   const [projectLink, setProjectLink] = useState<string>("general");
   const [associationType, setAssociationType] = useState<ItemAssociationType>("primary");
+  const [linkBusy, setLinkBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1547,6 +1672,46 @@ const ItemFormModal = ({
       setBusy(false);
     }
   };
+
+  const handleAddLink = async () => {
+    if (!onAddLink) return;
+    setLinkBusy(true);
+    setError(null);
+    try {
+      await onAddLink({
+        projectId: projectLink === "general" ? null : projectLink,
+        associationType: projectLink === "general" ? "general" : associationType,
+      });
+      setProjectLink("general");
+      setAssociationType("primary");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
+  const handleRemoveLink = async (linkId: string) => {
+    if (!onRemoveLink) return;
+    setLinkBusy(true);
+    setError(null);
+    try {
+      await onRemoveLink(linkId);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
+  // Hide project picks that are already linked.
+  const linkedProjectIds = new Set(
+    (existingLinks ?? [])
+      .map((l) => l.project_id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const availableProjects = projects.filter((p) => !linkedProjectIds.has(p.id));
+  const generalAlreadyLinked = (existingLinks ?? []).some((l) => l.project_id === null);
 
   return (
     <Modal
@@ -1625,6 +1790,89 @@ const ItemFormModal = ({
             ) : null}
           </FormRow>
         ) : null}
+
+        {mode === "edit" && onAddLink && onRemoveLink ? (
+          <>
+            <SectionHeader title="Project associations" meta={`${(existingLinks ?? []).length}`} />
+            {(existingLinks ?? []).length === 0 ? (
+              <InlineNote>No project associations yet — this item is treated as general / lab-wide.</InlineNote>
+            ) : (
+              <ul style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}>
+                {(existingLinks ?? []).map((l) => {
+                  const project = l.project_id ? projects.find((p) => p.id === l.project_id) : null;
+                  return (
+                    <li
+                      key={l.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0.4rem 0.6rem",
+                        border: "1px solid var(--rl-line)",
+                        borderRadius: "var(--rl-radius-sm)",
+                      }}
+                    >
+                      <span>
+                        <strong>{project?.name ?? "General"}</strong>
+                        {l.association_type ? (
+                          <span style={{ color: "var(--rl-muted)", marginLeft: "0.4rem" }}>
+                            ({statusLabel(l.association_type)})
+                          </span>
+                        ) : null}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => void handleRemoveLink(l.id)}
+                        disabled={linkBusy}
+                      >
+                        Unlink
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <FormRow>
+              <FormField label="Add project">
+                <Select value={projectLink} onChange={(e) => setProjectLink(e.target.value)}>
+                  {!generalAlreadyLinked ? (
+                    <option value="general">General / lab-wide</option>
+                  ) : null}
+                  {availableProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              {projectLink !== "general" ? (
+                <FormField label="Association type">
+                  <Select
+                    value={associationType}
+                    onChange={(e) => setAssociationType(e.target.value as ItemAssociationType)}
+                  >
+                    {ASSOCIATION_TYPES.map((a) => (
+                      <option key={a} value={a}>
+                        {statusLabel(a)}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+              ) : null}
+              <div style={{ display: "flex", alignItems: "flex-end" }}>
+                <Button
+                  size="sm"
+                  onClick={() => void handleAddLink()}
+                  disabled={linkBusy || (projectLink === "general" && generalAlreadyLinked)}
+                >
+                  Add link
+                </Button>
+              </div>
+            </FormRow>
+          </>
+        ) : null}
+
         <div className="rl-modal-actions">
           <Button onClick={onClose} disabled={busy}>
             Cancel
@@ -1756,78 +2004,122 @@ const InventoryCheckModal = ({
 };
 
 // ---------------------------------------------------------------------------
-// Link projects modal
+// Bulk action modals (warehouse / my-items selection)
 // ---------------------------------------------------------------------------
 
-const LinkProjectsModal = ({
-  item,
-  projects,
-  existingLinks,
+const BulkInventoryCheckModal = ({
+  items,
   onClose,
-  onAdd,
-  onRemove,
+  onSubmit,
 }: {
-  item: ItemRecord;
-  projects: { id: string; name: string }[];
-  existingLinks: ItemProjectRecord[];
+  items: ItemRecord[];
   onClose: () => void;
-  onAdd: (values: { projectId: string | null; associationType: ItemAssociationType | null }) => Promise<void>;
-  onRemove: (linkId: string) => Promise<void>;
+  onSubmit: (values: {
+    stockStatus: StockStatus;
+    estimatedQuantity: number | null;
+    unit: string | null;
+    location: string | null;
+    note: string | null;
+  }) => Promise<void>;
 }) => {
-  const [projectId, setProjectId] = useState("general");
-  const [associationType, setAssociationType] = useState<ItemAssociationType>("primary");
+  const [stockStatus, setStockStatus] = useState<StockStatus>("medium");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAdd = async () => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setBusy(true);
+    setError(null);
     try {
-      await onAdd({
-        projectId: projectId === "general" ? null : projectId,
-        associationType: projectId === "general" ? "general" : associationType,
+      await onSubmit({
+        stockStatus,
+        estimatedQuantity: null,
+        unit: null,
+        location: null,
+        note: note.trim() || null,
       });
-      setProjectId("general");
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal open onClose={onClose} title={`Project associations — ${item.name}`} width="default">
-      <div className="sm-modal-form">
-        {existingLinks.length === 0 ? (
-          <InlineNote>No project associations yet — this item is treated as general / lab-wide.</InlineNote>
-        ) : (
-          <ul style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}>
-            {existingLinks.map((l) => {
-              const project = l.project_id ? projects.find((p) => p.id === l.project_id) : null;
-              return (
-                <li
-                  key={l.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "0.4rem 0.6rem",
-                    border: "1px solid var(--rl-line)",
-                    borderRadius: "var(--rl-radius-sm)",
-                  }}
-                >
-                  <span>
-                    <strong>{project?.name ?? "General"}</strong>
-                    {l.association_type ? (
-                      <span style={{ color: "var(--rl-muted)", marginLeft: "0.4rem" }}>
-                        ({statusLabel(l.association_type)})
-                      </span>
-                    ) : null}
-                  </span>
-                  <Button size="sm" variant="danger" onClick={() => void onRemove(l.id)} disabled={busy}>
-                    Unlink
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+    <Modal open onClose={onClose} title={`Bulk inventory check — ${items.length} items`} width="default">
+      <form className="sm-modal-form" onSubmit={handleSubmit}>
+        {error ? <InlineError>{error}</InlineError> : null}
+        <InlineNote>
+          Records the same status for {items.length} items. Use a per-item check if you need to record
+          quantity, unit, or location.
+        </InlineNote>
+        <FormField label="Stock status">
+          <Select value={stockStatus} onChange={(e) => setStockStatus(e.target.value as StockStatus)}>
+            {STOCK_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {statusLabel(s)}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+        <FormField label="Note (optional)">
+          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        </FormField>
+        <div className="rl-modal-actions">
+          <Button onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? "Saving…" : "Apply check"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const BulkProjectsModal = ({
+  items,
+  projects,
+  onClose,
+  onSubmit,
+}: {
+  items: ItemRecord[];
+  projects: { id: string; name: string }[];
+  onClose: () => void;
+  onSubmit: (values: {
+    projectId: string | null;
+    associationType: ItemAssociationType | null;
+  }) => Promise<void>;
+}) => {
+  const [projectId, setProjectId] = useState("general");
+  const [associationType, setAssociationType] = useState<ItemAssociationType>("primary");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await onSubmit({
+        projectId: projectId === "general" ? null : projectId,
+        associationType: projectId === "general" ? "general" : associationType,
+      });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Add project link — ${items.length} items`} width="default">
+      <form className="sm-modal-form" onSubmit={handleSubmit}>
+        {error ? <InlineError>{error}</InlineError> : null}
+        <InlineNote>
+          Adds the same project association to {items.length} items. Items already linked to this project
+          will fail individually but the rest will succeed.
+        </InlineNote>
         <FormRow>
           <FormField label="Project">
             <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
@@ -1855,12 +2147,61 @@ const LinkProjectsModal = ({
           ) : null}
         </FormRow>
         <div className="rl-modal-actions">
-          <Button onClick={onClose} disabled={busy}>Close</Button>
-          <Button variant="primary" onClick={() => void handleAdd()} disabled={busy}>
-            Link project
+          <Button onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? "Saving…" : "Add link"}
           </Button>
         </div>
-      </div>
+      </form>
+    </Modal>
+  );
+};
+
+const BulkLocationModal = ({
+  items,
+  onClose,
+  onSubmit,
+}: {
+  items: ItemRecord[];
+  onClose: () => void;
+  onSubmit: (values: { storageLocation: string | null }) => Promise<void>;
+}) => {
+  const [location, setLocation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await onSubmit({ storageLocation: location.trim() || null });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Set storage location — ${items.length} items`} width="default">
+      <form className="sm-modal-form" onSubmit={handleSubmit}>
+        {error ? <InlineError>{error}</InlineError> : null}
+        <FormField label="Storage location">
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="-80 freezer A, shelf 2 (leave blank to clear)"
+          />
+        </FormField>
+        <InlineNote>Bulk location updates require admin permissions on each item.</InlineNote>
+        <div className="rl-modal-actions">
+          <Button onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? "Saving…" : "Apply location"}
+          </Button>
+        </div>
+      </form>
     </Modal>
   );
 };
@@ -1872,11 +2213,13 @@ const LinkProjectsModal = ({
 const NewRequestModal = ({
   projects,
   myProjectIds,
+  presetItems,
   onClose,
   onCreate,
 }: {
   projects: { id: string; name: string }[];
   myProjectIds: string[];
+  presetItems: ItemRecord[];
   onClose: () => void;
   onCreate: (values: { projectId: string | null; reason: string | null }) => Promise<void>;
 }) => {
@@ -1904,6 +2247,20 @@ const NewRequestModal = ({
   return (
     <Modal open onClose={onClose} title="New order request" width="default">
       <form className="sm-modal-form" onSubmit={handleSubmit}>
+        {presetItems.length > 0 ? (
+          <InlineNote>
+            {presetItems.length === 1 ? (
+              <>
+                <strong>{presetItems[0].name}</strong> will be added to the draft.
+              </>
+            ) : (
+              <>
+                <strong>{presetItems.length} items</strong> will be added to the draft:{" "}
+                {presetItems.map((i) => i.name).join(", ")}
+              </>
+            )}
+          </InlineNote>
+        ) : null}
         <FormField label="Project (optional)">
           <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
             <option value="none">— None —</option>
@@ -1950,6 +2307,7 @@ const EditRequestModal = ({
   onUpdateItem,
   onRemoveItem,
   onSubmit,
+  onAbort,
 }: {
   request: OrderRequestRecord;
   requestItems: OrderRequestItemRecord[];
@@ -1975,6 +2333,7 @@ const EditRequestModal = ({
   }) => Promise<void>;
   onRemoveItem: (requestItemId: string) => Promise<void>;
   onSubmit: () => Promise<void>;
+  onAbort: () => Promise<void>;
 }) => {
   const [projectId, setProjectId] = useState<string>(request.project_id ?? "none");
   const [reason, setReason] = useState(request.reason ?? "");
@@ -2221,6 +2580,21 @@ const EditRequestModal = ({
         </Panel>
 
         <div className="rl-modal-actions">
+          <Button
+            variant="danger"
+            onClick={async () => {
+              if (!window.confirm("Discard this draft request and all its items?")) return;
+              setBusy(true);
+              try {
+                await onAbort();
+              } finally {
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+          >
+            Abort draft
+          </Button>
           <Button onClick={onClose} disabled={busy}>Close</Button>
           <Button
             variant="primary"
@@ -2327,10 +2701,14 @@ const ReviewRequestModal = ({
 
 const PlaceOrderModal = ({
   request: _request,
+  requestItems,
+  itemsById,
   onClose,
   onSubmit,
 }: {
   request: OrderRequestRecord;
+  requestItems: OrderRequestItemRecord[];
+  itemsById: Map<string, ItemRecord>;
   onClose: () => void;
   onSubmit: (values: {
     company: string | null;
@@ -2340,7 +2718,27 @@ const PlaceOrderModal = ({
     note: string | null;
   }) => Promise<void>;
 }) => {
-  const [company, setCompany] = useState("");
+  // Pre-fill vendor with the most common preferred_vendor among the request's
+  // items (admins almost always order from a single supplier per request).
+  const defaultVendor = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const ri of requestItems) {
+      const vendor = itemsById.get(ri.item_id)?.preferred_vendor?.trim();
+      if (!vendor) continue;
+      counts.set(vendor, (counts.get(vendor) ?? 0) + 1);
+    }
+    let top: string | null = null;
+    let topCount = 0;
+    for (const [vendor, count] of counts.entries()) {
+      if (count > topCount) {
+        top = vendor;
+        topCount = count;
+      }
+    }
+    return top ?? "";
+  }, [requestItems, itemsById]);
+
+  const [company, setCompany] = useState(defaultVendor);
   const [orderNumber, setOrderNumber] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [expected, setExpected] = useState("");
@@ -2371,6 +2769,37 @@ const PlaceOrderModal = ({
     <Modal open onClose={onClose} title="Mark as ordered" width="default">
       <form className="sm-modal-form" onSubmit={handleSubmit}>
         {error ? <InlineError>{error}</InlineError> : null}
+        {requestItems.length > 0 ? (
+          <>
+            <SectionHeader title="Items in this request" meta={`${requestItems.length}`} />
+            <Table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Vendor</th>
+                  <th>Catalog #</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requestItems.map((ri) => {
+                  const item = itemsById.get(ri.item_id);
+                  return (
+                    <tr key={ri.id}>
+                      <td>{item?.name ?? "Unknown"}</td>
+                      <td>
+                        {ri.requested_quantity ?? "—"}
+                        {ri.unit ? ` ${ri.unit}` : ""}
+                      </td>
+                      <td>{item?.preferred_vendor ?? "—"}</td>
+                      <td>{item?.catalog_number ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </>
+        ) : null}
         <FormRow>
           <FormField label="Vendor">
             <Input value={company} onChange={(e) => setCompany(e.target.value)} />

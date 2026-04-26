@@ -295,6 +295,11 @@ export async function unarchiveItem(itemId: string, userId: string): Promise<Ite
   return updateItem({ itemId, userId, isActive: true });
 }
 
+export async function deleteItem(itemId: string): Promise<void> {
+  const { error } = await client().from("items").delete().eq("id", itemId);
+  if (error) throw error;
+}
+
 // ---------------------------------------------------------------------------
 // Item ↔ project associations
 // ---------------------------------------------------------------------------
