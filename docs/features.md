@@ -6,7 +6,7 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 
 ## Foundation
 
-- **Monorepo**: npm workspaces with apps (`account`, `funding-manager`, `project-manager`, `protocol-manager`, `supply-manager`) and shared packages (`@ilm/ai-import`, `@ilm/types`, `@ilm/ui`, `@ilm/utils`, `@ilm/validation`).
+- **Monorepo**: npm workspaces with apps (`account`, `funding-manager`, `project-manager`, `protocol-manager`, `scheduler`, `supply-manager`) and shared packages (`@ilm/ai-import`, `@ilm/types`, `@ilm/ui`, `@ilm/utils`, `@ilm/validation`).
 - **Supabase backend**: Postgres schema under `supabase/migrations/`, Supabase Auth for identity, RLS on every app table.
 - **Static deploy**: GitHub Pages, no custom backend server; only `VITE_SUPABASE_URL` + anon key ship to the browser.
 
@@ -80,6 +80,14 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
   - **My Items** — project-scoped dashboard: counts of active / low-or-unknown / stale / open-requests, a "Reorder candidates" table with one-click request prefill, and the user's full project-scoped item list.
 - **Modals.** `ItemFormModal` (create + edit), `InventoryCheckModal` (with check history viewer), `LinkProjectsModal` (manage project associations), `NewRequestModal` (creates a draft, optionally seeded from a Warehouse row), `EditRequestModal` (continue draft, add / edit / remove items inline, surfaces ⚠ stale-check warnings per item), `ReviewRequestModal` (approve / deny with note), `PlaceOrderModal`, `UpdateOrderModal`, `ReceiveOrderModal` (multi-lot receipt with optional auto-recorded inventory check).
 
+## Scheduler (Stage 4e — foundation)
+
+- **Schema.** Four lab-scoped tables behind RLS: `resources` (equipment / bookable resources with category, location, availability_status, booking_mode `hard_booking | soft_booking`, booking_policy `open | approval_required | admin_only`, setup / cleanup buffers, min / max duration, required_training, responsible_person, optional `linked_protocol_id`), `calendar_events` (lab events with `event_type`, start / end window with check constraint, optional links to project / protocol / planned task, organizer + participant array, visibility `private | project | lab | equipment_visible`, `recurrence_rule` text + `recurrence_exceptions` timestamptz array, status `scheduled | cancelled | completed`), `bookings` (resource reservations with FK to resource + optional calendar event / planned task / project / protocol, copied setup/cleanup buffers, booking_type `experiment | daily_use | maintenance | calibration | training`, status `draft | requested | approved | denied | active | completed | cancelled | no_show`, actual start/end times + usage_record), `planned_tasks` (unscheduled work queue with priority `low | normal | high | urgent`, status `planned | ready_to_schedule | scheduled | completed | cancelled`, `required_resource_ids` array, `scheduled_event_id` / `scheduled_booking_id` back-links).
+- **Visibility / writes.** Lab members read all four tables. `resources` are admin-write only. `calendar_events` and `planned_tasks` allow members to create / edit / delete their own (organizer / created_by / assigned_user_id); admins manage all. Bookings allow members to create their own and edit non-terminal own bookings; admins override.
+- **Lifecycle RPCs (SECURITY DEFINER + audit-logged).** `book_resource` (server-side conflict + policy + duration check; auto-routes to `requested` for `approval_required` resources, otherwise `approved`), `cancel_booking`, `complete_booking` (records usage_record + actual start/end), `approve_booking`, `deny_booking` (note required), `schedule_planned_task` (converts a task into a calendar event and/or a booking, links the IDs back on the task, marks status `scheduled`).
+- **Conflict detection helper.** `find_booking_conflicts(resource_id, start, end, exclude_booking_id)` returns overlapping bookings using `tstzrange` overlap operator. Setup/cleanup buffers from the resource extend the window on both sides; soft-booking resources short-circuit and never report conflicts. Hard conflicts block non-admin booking; admins can override.
+- **Frontend (foundation).** `apps/scheduler` is a fresh Vite app inside the shared `<LabShell>`, mounted to the `calendar` sidebar slot at `/ILM/scheduler/`. The shell exposes Calendar / Bookings / Unscheduled / Resources subbar tabs (placeholder content for now). `cloudAdapter.ts` types every record + RPC; `useSchedulerWorkspace` hydrates a `{ resources, events, bookings, plannedTasks, projects, protocols }` snapshot and wraps each mutation with `await hydrate()`. View UIs land in the next session.
+
 ## Audit & security
 
 - `audit_log` table captures state transitions only — submit / approve / reject / recycle / restore / purge for projects and protocols, plus submit / withdraw / approve / deny / cancel / place / update / receive for supply orders. Draft edits, roadmap reorders, and inventory checks are not logged.
@@ -88,4 +96,5 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 ## Known gaps (see `next-stage.md`)
 
 - `funding-manager` (Stage 4d) is deferred — auth-shell stub with no schema or adapter.
+- `scheduler` (Stage 4e) has its schema + RPCs + adapter + shell, but the four views (Calendar / Bookings / Unscheduled / Resources) are still placeholder cards — view UIs and modals are the next session's work.
 - Share-link token is a raw lab UUID; a rotatable HMAC token is a deferred follow-up.

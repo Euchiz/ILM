@@ -65,8 +65,8 @@ const NAV_ITEMS: NavItem[] = [
     id: "calendar",
     label: "Calendar",
     glyph: "▣",
-    buildHref: (root) => `${root}#/calendar`,
-    tone: "soon",
+    buildHref: (_, base) => appUrl("scheduler/", base),
+    tone: "external",
   },
   {
     id: "team",

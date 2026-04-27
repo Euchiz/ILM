@@ -66,6 +66,7 @@ export const LabPicker = () => {
       "project-manager",
       "supply-manager",
       "funding-manager",
+      "scheduler",
     ]);
     if (pathSegments.length > 0 && knownApps.has(pathSegments[pathSegments.length - 1])) {
       pathSegments.pop();
