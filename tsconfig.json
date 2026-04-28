@@ -10,6 +10,7 @@
     { "path": "apps/project-manager" },
     { "path": "apps/supply-manager" },
     { "path": "apps/funding-manager" },
+    { "path": "apps/scheduler" },
     { "path": "apps/account" }
   ]
 }

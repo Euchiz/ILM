@@ -1,0 +1,91 @@
+@import "../../../packages/ui/src/tokens.css";
+@import "../../../packages/ui/src/reset.css";
+@import "../../../packages/ui/src/primitives/primitives.css";
+@import "../../../packages/ui/src/lab-shell.css";
+
+/* =========================================================
+   Scheduler app-local styles
+   Shared shell + topbar come from lab-shell.css. Scheduler-
+   specific composition uses the .sch- prefix.
+========================================================= */
+
+.sch-subbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sch-subbar-spacer {
+  flex: 1 1 auto;
+}
+
+.sch-subtab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0.55rem 0.85rem;
+  font: inherit;
+  font-family: var(--rl-font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rl-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.sch-subtab.is-active {
+  color: var(--rl-ink);
+  border-bottom-color: var(--rl-accent);
+}
+
+.sch-subtab:hover:not(.is-active) {
+  color: var(--rl-fg-2);
+}
+
+.sch-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  color: var(--rl-fg-2);
+}
+
+.sch-stat-grid > div span {
+  color: var(--rl-muted);
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sch-stat-grid > div strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--rl-ink);
+  font-family: var(--rl-font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.sch-stat-grid > div small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--rl-muted);
+}
+
+.sch-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+  color: var(--rl-fg-2);
+}
+
+@media (max-width: 900px) {
+  .sch-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}

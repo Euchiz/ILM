@@ -7,7 +7,7 @@ const resolveSiteRoot = (baseUrl: string) => {
   const withLeadingSlash = base.startsWith("/") ? base : `/${base}`;
   const normalized = withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
   const url = new URL(normalized, window.location.origin);
-  const knownAppRoots = ["protocol-manager/", "project-manager/", "supply-manager/", "funding-manager/"];
+  const knownAppRoots = ["protocol-manager/", "project-manager/", "supply-manager/", "funding-manager/", "scheduler/"];
   const matchedAppRoot = knownAppRoots.find((segment) => url.pathname.endsWith(segment));
   const root = matchedAppRoot ? new URL("../", url) : url;
   return root.toString();

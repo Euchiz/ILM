@@ -4,65 +4,66 @@ Rewrite this file when priorities change. It always describes *the current plann
 
 ---
 
-## Stage 4d: Funding Manager — grants, budgets, expenses
+## Stage 4e: Scheduler — calendar, bookings, unscheduled tasks
 
-**Why now.** Protocol (Stage 3), Account (Stage 4a), Project (Stage 4b), and Supply (Stage 4c) are all in production. The remaining authorial gap is money: PIs need to know what grants are open, how the budget is allocated across projects, and what's been spent. The `funding-manager` app is currently an auth-shell stub with no schema. Building it on the same UI kit + Supabase RLS + audit pattern that Supply just validated keeps the lift modest.
+**Why now.** Projects + protocols define what needs to happen and supply tracks what's on hand. The remaining authorial gap is *time and equipment* — when work is scheduled, who's holding the microscope on Tuesday, and what's queued but not yet on the calendar. Foundation has shipped (schema + RLS + lifecycle RPCs + Vite app shell on the `calendar` nav slot); the four views and their modals are the remaining work. Funding Manager (Stage 4d) is paused — labs asked for scheduling first.
 
-**Scope for this stage.** Three capabilities:
+**Scope for this stage.** Four views, all hosted inside `apps/scheduler` and bound to `useSchedulerWorkspace`:
 
-1. **Grants** — lab-scoped funding sources (agency, grant number, PI, period, total amount, status).
-2. **Budgets / allocations** — per-grant line items grouped by category (personnel, supplies, equipment, travel, other) and optionally allocated to specific projects so PIs can see how a grant is divided.
-3. **Expenses** — actual charges against an allocation, with date / amount / vendor / description / linked supply order or project. The Supply Manager's `orders` table is the natural feed for supply expenses; this stage adds the manual-entry path and the link.
+1. **Calendar** — weekly grid with day / week / month toggles (week is required, others if practical). Event cards colored by `event_type`. New / edit / delete event. Basic recurrence (none / daily / weekly / biweekly / monthly) — store the rule string, expand instances client-side for the visible window.
+2. **Bookings** — table / card list filtered by resource, project, status, "my bookings", date range. New booking form runs `book_resource` RPC; surfaces hard-conflict errors with a `ConflictWarning` panel. Lifecycle actions: cancel, complete (with usage_record), approve / deny (admins).
+3. **Unscheduled tasks** — task cards from `planned_tasks` where `status in ('planned','ready_to_schedule')`. New task button. "Schedule" opens a converter that calls `schedule_planned_task` with event-only / booking-only / both args.
+4. **Resources** — admin-managed equipment registry with filters (category / location / status / booking mode / active). Add / edit / archive. Resource detail card with current + upcoming bookings.
 
-Out of scope for this stage: invoice scanning, multi-currency, automatic feeds from institutional accounting, payroll burden calculations, cost-share tracking. Deferred to follow-ups.
+Out of scope for this stage: Google Calendar sync, notifications, auto-scheduling, multi-user real-time collaboration, RRULE exception editing beyond the basic `recurrence_exceptions` array, analytics dashboard.
 
-### Step 1 — Schema migration
+### Step 1 — Calendar view
 
-Create `supabase/migrations/YYYYMMDDHHMMSS_funding_manager.sql`:
+- Weekly grid component (Sun/Mon-anchored, configurable later). Render events from `events` snapshot whose `[start_time, end_time]` window intersects the visible week, plus expanded instances of recurring events.
+- `EventForm` modal (create / edit) — title, type, start/end, location, project / protocol / linked task, visibility, recurrence rule. Calls `createCalendarEvent` / `updateCalendarEvent`.
+- Status badge by `event_type` (use existing `Badge` / `StatusPill` primitives). Color tokens added in `styles.css`.
 
-- `grants` — `(id, lab_id, name, agency, grant_number, pi_user_id nullable, status: planning/active/closed/awarded/rejected, total_amount numeric, currency text default 'USD', period_start date, period_end date, notes, created_by, timestamps)`. RLS lab-scoped.
-- `grant_allocations` — `(id, grant_id, lab_id, project_id nullable, category: personnel/supplies/equipment/travel/other, label text, allocated_amount numeric, notes, timestamps)`. A null `project_id` means lab-wide / unassigned.
-- `expenses` — `(id, lab_id, grant_id, allocation_id nullable, project_id nullable, supply_order_id nullable, description, vendor, amount numeric, occurred_at date, recorded_by, notes, timestamps)`.
-- `updated_at` triggers on all three.
-- **RLS** — read for any lab member; create/edit/delete for lab admins. Loosen later if PIs want member-recorded expenses.
-- **RPCs (SECURITY DEFINER, audit-logged)** — `create_grant`, `update_grant`, `archive_grant`; `create_allocation`, `update_allocation`, `delete_allocation`; `record_expense`, `update_expense`, `delete_expense`. Audit each state-changing call.
-- **Audit** — entries on grant status changes, allocation create/delete, expense create/update/delete. Routine field edits on a grant can stay un-logged.
+### Step 2 — Bookings view
 
-### Step 2 — Shared types + adapter
+- Bookings table with the filter bar described above. Existing `Table` / `StatusPill` primitives.
+- `BookingForm` modal that pre-checks for conflicts using `findBookingConflicts` (server RPC) before calling `bookResource`. On conflict-error response, render `ConflictWarning` listing the overlapping bookings.
+- Cancel / complete / approve / deny actions wired to the existing RPCs. Completion modal collects `usage_record` and optional `actual_start_time` / `actual_end_time`.
 
-- `apps/funding-manager/src/lib/cloudAdapter.ts` mirrors `apps/supply-manager/src/lib/cloudAdapter.ts` — exported types + the seven hydration query + per-RPC helpers.
-- `apps/funding-manager/src/lib/useFundingWorkspace.ts` mirrors `useSupplyWorkspace`: snapshot state, identity-aware action wrappers, `hydrate()` after each mutation.
+### Step 3 — Unscheduled tasks view
 
-### Step 3 — Frontend screens
+- Card grid sorted by priority + preferred_start_date.
+- "Schedule" opens a modal with three modes: event only, booking only, both. Both modes share start/end and link the new event to the new booking via `calendar_event_id` (the RPC handles that).
+- Status flips to `scheduled` automatically inside the RPC; UI reflects the new `scheduled_event_id` / `scheduled_booking_id`.
 
-Tabs in `apps/funding-manager` (built on `@ilm/ui` primitives — `AppShell` / `Panel` / `Table` / `Modal` / `Button` / `StatusPill`, etc., same approach Supply Manager just validated):
+### Step 4 — Resources view
 
-- **Grants** — list with search + status filter; cards show agency, grant #, PI, period, totals (allocated vs. spent vs. remaining). Admin actions: New / Edit / Archive.
-- **Budget** — per-grant breakdown: allocations grouped by category, with project breakdown beneath. Spent / remaining bar per allocation.
-- **Expenses** — table with date / vendor / category / project / amount; filters by grant / project / category / date range. "Link supply order" picker pulls from `orders` so supply receipts can be charged in one click.
-- **Overview** — lab-level dashboard: total active funding, spend by category, top grants by remaining balance, expiring-soon banner.
+- Admin-only table with `New / Edit / Archive` actions. Members see a read-only registry with availability status badges.
+- `ResourceForm` modal — covers all schema fields including buffers, min/max durations, required training, booking mode + policy, responsible person.
+- Archived toggle hides `is_active = false` resources by default (mirrors Supply Manager pattern).
 
-### Step 4 — Cross-app link from Supply
+### Step 5 — Daily-use bookings & cross-app surfacing
 
-When a supply order is marked received, surface a "Charge to grant" button in the order card that opens a Funding Manager modal pre-filled with the order's vendor / total / linked project. Saves an `expenses` row pointing back at the supply order. No schema change needed beyond the optional `supply_order_id` column on `expenses`.
+- Confirm `daily_use` booking_type works end-to-end on a soft-booking resource (no conflict block, overlap allowed). Already supported in the schema; just wire the form preset.
+- Surface upcoming bookings on the home dashboard's Upcoming Schedule card (currently a placeholder).
 
-### Step 5 — Deployment + docs
+### Step 6 — Docs
 
-- Funding Manager is already wired into `.github/workflows/deploy-protocol-manager-pages.yml`; just verify the build still passes.
-- Update `docs/features.md` with a "Funding Manager (Stage 4d)" section on ship.
+- Update `docs/features.md` Scheduler section as views ship.
+- Add a "Scheduler" subsection to `docs/module-development.md` if any new convention emerges (e.g. RRULE expansion helper) that future modules should reuse.
 
 ### Tradeoffs
 
-- **Allocation granularity.** v1 lets allocations target a project or stay lab-wide; further sub-budgeting (per-experiment, per-investigator) is out of scope. Add a parent allocation FK later if labs ask for nesting.
-- **Expense source.** Manual entry + supply-order link covers ~90% of charges for a small lab. Institutional ERP feeds, P-card imports, and effort reporting are deferred to a follow-up stage.
-- **Status machine.** Grants get a flat status field rather than a draft/review workflow — the data is administrative, not authorial, and a single lab admin enters it. If grant *applications* (pre-award) become a use case, revisit with a draft/submit/reject flow modeled on the Project review gating.
+- **Recurrence model.** v1 stores a free-form `recurrence_rule` text. We expand instances client-side for the rendered window — easier than persisting expanded rows, simple to extend later. Full RRULE editing (BYDAY, COUNT, UNTIL) is out of scope.
+- **Visibility enforcement.** The `visibility` column is stored but RLS treats every event as lab-visible for now (members read all). Tightening to `private` / `project` requires a join through `project_members`; deferred until a lab actually needs it.
+- **Conflict UX.** Server RPC raises `errcode 23P01` on hard conflict and the frontend re-runs `find_booking_conflicts` to render the offending rows. We don't have an admin "force override" button yet — admins can already book through the conflict because the RPC's check is gated by `is_lab_admin`.
 
 ---
 
-## After this stage
+## Deferred
 
-- **UI kit Phase E.** Write `packages/ui/README.md` + `docs/design-system.md` covering the primitives, the `--rl-*` token contract, and the "first use local, second use promote" rule. Phase D is already done (Account / Project / Protocol all run on `AppShell`).
-- **Stage 4e — Supply Manager v2.** Per-experiment consumption logging (links `experiments` to a new `stock_movements` ledger), supplier/catalog import, barcode scanning, lot/expiry alerts. The current single-row-per-item stock model upgrades to an append-only ledger when this lands.
-- **Stage 4f — Reporting / exports.** Cross-app digests: weekly lab-activity summary, grant-period spend report, protocol publication log. Probably edge-function generated, surfaced as a downloadable HTML/PDF.
-- **Rotatable share-link token.** Today the Account share link embeds a raw lab UUID. A signed HMAC with a server-stored secret + a "rotate" button in the share-link section would make leaked links revocable.
+- **Stage 4d — Funding Manager.** Grants / budgets / allocations / expenses, plus a "Charge to grant" button on received Supply orders. Spec is preserved in git history (was the previous next-stage); revive when the Scheduler MVP is in production.
+- **UI kit Phase F.** `packages/ui/README.md` + `docs/design-system.md` describing primitives, the `--rl-*` token contract, and the "first use local, second use promote" rule. Phase E (LabShell unification) shipped.
+- **Stage 4f — Supply Manager v2.** Per-experiment consumption logging (links `experiments` to a new `stock_movements` ledger), supplier/catalog import, barcode scanning, lot/expiry alerts.
+- **Stage 4g — Reporting / exports.** Cross-app digests (weekly lab activity, grant-period spend, protocol publication log).
+- **Rotatable share-link token.** Replace the raw lab UUID in the Account share link with a signed HMAC + revocation.
 - **Deferred housekeeping.** Fractional `sort_order`, layout polish (InfoTab responsive grid, roadmap card ellipsis, recycle-bin visual differentiation), dead-code simplify pass.

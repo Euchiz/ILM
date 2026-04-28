@@ -4,6 +4,7 @@ export type AppId =
   | "project-manager"
   | "supply-manager"
   | "funding-manager"
+  | "scheduler"
   | "account";
 
 type AppLink = {
@@ -18,6 +19,7 @@ const APP_LINKS: AppLink[] = [
   { id: "project-manager", label: "Projects", href: "project-manager/" },
   { id: "supply-manager", label: "Supply", href: "supply-manager/" },
   { id: "funding-manager", label: "Funding", href: "funding-manager/" },
+  { id: "scheduler", label: "Scheduler", href: "scheduler/" },
 ];
 
 // Root segments recognized when walking back to the site root. The home app
@@ -28,6 +30,7 @@ const APP_ROOT_SEGMENTS = new Set<string>([
   "project-manager/",
   "supply-manager/",
   "funding-manager/",
+  "scheduler/",
 ]);
 
 const resolveSiteRoot = (baseUrl: string) => {
