@@ -23,6 +23,8 @@ export type InventoryStats = {
   samples: number;
   other: number;
   criticalLow: number;
+  inOrder: number;
+  unchecked: number;
 };
 
 export type TeamStats = {
@@ -81,7 +83,7 @@ export type DashboardData = {
 const emptyState: Omit<DashboardData, "refresh"> = {
   projects: { draft: 0, published: 0, deleted: 0, total: 0 },
   protocols: { total: 0, active: 0, inReview: 0, archived: 0 },
-  inventory: { total: 0, reagents: 0, consumables: 0, supplies: 0, samples: 0, other: 0, criticalLow: 0 },
+  inventory: { total: 0, reagents: 0, consumables: 0, supplies: 0, samples: 0, other: 0, criticalLow: 0, inOrder: 0, unchecked: 0 },
   team: { total: 0, owners: 0, admins: 0, members: 0, recentAvatars: [] },
   pending: { protocols: 0, projects: 0, orders: 0, members: 0, bookings: 0 },
   schedule: [],
@@ -160,6 +162,7 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
           bookingsRes,
           recentOrdersRes,
           projectLeadRes,
+          inOrderItemsRes,
         ] = await Promise.all([
           supabase.from("projects").select("id, state, updated_at, name, review_requested_at").eq("lab_id", labId),
           supabase
@@ -176,9 +179,8 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
             .from("inventory_checks")
             .select("item_id, stock_status, checked_at, items!inner(lab_id)")
             .eq("items.lab_id", labId)
-            .in("stock_status", ["low", "out"])
             .order("checked_at", { ascending: false })
-            .limit(200),
+            .limit(2000),
           supabase.rpc("list_lab_members", { p_lab_id: labId }),
           supabase
             .from("protocol_submissions")
@@ -230,6 +232,14 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
                 .eq("projects.lab_id", labId)
                 .limit(1)
             : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: null }),
+          // Items currently "in order": distinct item_ids appearing in
+          // order_request_items whose parent order_request is open
+          // (submitted / approved / ordered) within this lab.
+          supabase
+            .from("order_request_items")
+            .select("item_id, order_requests!inner(lab_id, status)")
+            .eq("order_requests.lab_id", labId)
+            .in("order_requests.status", ["submitted", "approved", "ordered"]),
         ]);
 
         // Projects
@@ -278,12 +288,40 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
           samples: byClass("sample"),
           other: byClass("other"),
           criticalLow: 0,
+          inOrder: 0,
+          unchecked: 0,
         };
-        type LowRow = { item_id: string };
-        const lowRows = (lowChecksRes.data as LowRow[] | null) ?? [];
-        const seenLow = new Set<string>();
-        for (const r of lowRows) seenLow.add(r.item_id);
-        inventory.criticalLow = seenLow.size;
+
+        // Walk the latest check per item to find the active stock_status, and
+        // record which items have ever been checked (for the "unchecked" count).
+        type CheckRow = { item_id: string; stock_status: string; checked_at: string };
+        const checkRows = (lowChecksRes.data as CheckRow[] | null) ?? [];
+        const latestStatus = new Map<string, string>();
+        for (const r of checkRows) {
+          // Rows arrive sorted by checked_at desc, so the first time we see an
+          // item_id is the latest check.
+          if (!latestStatus.has(r.item_id)) latestStatus.set(r.item_id, r.stock_status);
+        }
+        let lowCount = 0;
+        for (const status of latestStatus.values()) {
+          if (status === "low" || status === "out") lowCount += 1;
+        }
+        inventory.criticalLow = lowCount;
+        const activeItemIds = new Set(itemRows.map((r) => r.id));
+        let uncheckedCount = 0;
+        for (const id of activeItemIds) {
+          if (!latestStatus.has(id)) uncheckedCount += 1;
+        }
+        inventory.unchecked = uncheckedCount;
+
+        // Items currently in an open order
+        type OrderItemRow = { item_id: string };
+        const orderItemRows = (inOrderItemsRes.data as OrderItemRow[] | null) ?? [];
+        const inOrderSet = new Set<string>();
+        for (const r of orderItemRows) {
+          if (activeItemIds.has(r.item_id)) inOrderSet.add(r.item_id);
+        }
+        inventory.inOrder = inOrderSet.size;
 
         // Team
         type MemberRow = {
