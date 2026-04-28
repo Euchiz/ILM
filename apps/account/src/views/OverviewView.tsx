@@ -253,10 +253,86 @@ const ReviewQueueCard = ({
 // Inventory status — replaces resource utilization
 // ---------------------------------------------------------------------------
 
+const InventoryRadar = ({ stats }: { stats: InventoryStats }) => {
+  // Six axes: 4 known classifications + 2 placeholder slots so the polygon
+  // still reads as a hexagon while we wait for additional taxonomy.
+  const axes: { label: string; value: number }[] = [
+    { label: "Reagents", value: stats.reagents },
+    { label: "Supplies", value: stats.supplies },
+    { label: "Samples", value: stats.samples },
+    { label: "Consumables", value: stats.consumables },
+    { label: "Other 1", value: stats.other },
+    { label: "Other 2", value: 0 },
+  ];
+  const max = Math.max(1, ...axes.map((a) => a.value));
+  const cx = 75;
+  const cy = 75;
+  const radius = 52;
+  // 6 evenly-spaced angles, starting at top (-90°)
+  const points = axes.map((axis, i) => {
+    const angle = (-Math.PI / 2) + (i * 2 * Math.PI) / axes.length;
+    const r = (axis.value / max) * radius;
+    return {
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+      ringX: cx + Math.cos(angle) * radius,
+      ringY: cy + Math.sin(angle) * radius,
+      labelX: cx + Math.cos(angle) * (radius + 13),
+      labelY: cy + Math.sin(angle) * (radius + 13),
+      label: axis.label,
+      value: axis.value,
+    };
+  });
+  const polygonPoints = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const ringPoints = points.map((p) => `${p.ringX.toFixed(1)},${p.ringY.toFixed(1)}`).join(" ");
+  const innerRadii = [0.33, 0.66];
+  return (
+    <svg viewBox="0 0 150 150" className="ovw-inv-radar" role="img" aria-label="Inventory class distribution">
+      <g fill="none" stroke="var(--ilm-line)">
+        {innerRadii.map((scale) => (
+          <polygon
+            key={scale}
+            points={points
+              .map((p) => {
+                const ix = cx + (p.ringX - cx) * scale;
+                const iy = cy + (p.ringY - cy) * scale;
+                return `${ix.toFixed(1)},${iy.toFixed(1)}`;
+              })
+              .join(" ")}
+          />
+        ))}
+        <polygon points={ringPoints} />
+        {points.map((p, i) => (
+          <line key={i} x1={cx} y1={cy} x2={p.ringX} y2={p.ringY} />
+        ))}
+      </g>
+      <polygon
+        points={polygonPoints}
+        fill="rgba(78,159,146,0.32)"
+        stroke="var(--ilm-viridian)"
+        strokeWidth="1.3"
+      />
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2" fill="var(--ilm-viridian)" />
+      ))}
+      {points.map((p, i) => (
+        <text
+          key={`l-${i}`}
+          x={p.labelX}
+          y={p.labelY}
+          className="ovw-inv-radar-label"
+          textAnchor="middle"
+          dominantBaseline="middle"
+        >
+          {p.label}
+        </text>
+      ))}
+    </svg>
+  );
+};
+
 const InventoryCard = ({ stats }: { stats: InventoryStats }) => {
   const inventoryHref = appUrl("supply-manager/", APP_BASE_URL);
-  const totalKnown = stats.total || 1;
-  const lowPct = Math.min(100, Math.round((stats.criticalLow / totalKnown) * 100));
   return (
     <section className="ovw-card ovw-inventory">
       <header>
@@ -264,43 +340,29 @@ const InventoryCard = ({ stats }: { stats: InventoryStats }) => {
         <a className="ovw-card-link" href={inventoryHref}>View inventory</a>
       </header>
       <div className="ovw-inv-body">
-        <div
-          className="ovw-inv-radar"
-          aria-hidden="true"
-          style={{ backgroundImage: `url(${APP_BASE_URL}assets/radar.png)` }}
-        />
+        <InventoryRadar stats={stats} />
         <ul className="ovw-inv-stats">
           <li>
             <i style={{ background: "var(--ilm-viridian)" }} />
-            <strong>{stats.reagents}</strong>
-            <span>Reagents</span>
-          </li>
-          <li>
-            <i style={{ background: "var(--ilm-viridian-2)" }} />
-            <strong>{stats.consumables}</strong>
-            <span>Consumables</span>
-          </li>
-          <li>
-            <i style={{ background: "var(--ilm-blue)" }} />
-            <strong>{stats.supplies + stats.samples + stats.other}</strong>
-            <span>Supplies · samples · other</span>
+            <strong>{stats.total}</strong>
+            <span>Total items</span>
           </li>
           <li>
             <i style={{ background: "var(--ilm-amber)" }} />
             <strong>{stats.criticalLow}</strong>
-            <span>Critical low · reorder</span>
+            <span>Low · needs reorder</span>
+          </li>
+          <li>
+            <i style={{ background: "var(--ilm-viridian-2)" }} />
+            <strong>{stats.inOrder}</strong>
+            <span>In order</span>
+          </li>
+          <li>
+            <i style={{ background: "var(--ilm-fg-4, #9aa3a0)" }} />
+            <strong>{stats.unchecked}</strong>
+            <span>Unchecked</span>
           </li>
         </ul>
-      </div>
-      <div className="ovw-inv-bar" aria-hidden="true">
-        <span className="ovw-inv-bar-track">
-          <span className="ovw-inv-bar-fill" style={{ width: `${100 - lowPct}%` }} />
-        </span>
-        <small>
-          {stats.total > 0
-            ? `${stats.total - stats.criticalLow} / ${stats.total} items above reorder threshold`
-            : "No active inventory items yet"}
-        </small>
       </div>
     </section>
   );
