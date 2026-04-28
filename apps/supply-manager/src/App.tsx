@@ -56,8 +56,7 @@ const STOCK_STATUSES: StockStatus[] = ["plenty", "medium", "low", "out", "unknow
 const REQUEST_PRIORITIES: RequestPriority[] = ["low", "normal", "high", "urgent"];
 const ASSOCIATION_TYPES: ItemAssociationType[] = ["primary", "shared", "temporary", "general"];
 const NON_RECEIVED_ORDER_STATUSES: Exclude<OrderStatus, "received">[] = [
-  "initial_order_placed",
-  "back_ordered",
+  "order_placed",
   "shipped",
   "partially_received",
   "cancelled",
@@ -169,10 +168,8 @@ const requestStatusTone = (status: OrderRequestStatus): StatusTone => {
 
 const orderStatusTone = (status: OrderStatus): StatusTone => {
   switch (status) {
-    case "initial_order_placed":
+    case "order_placed":
       return "submitted";
-    case "back_ordered":
-      return "blocked";
     case "shipped":
       return "reviewing";
     case "partially_received":
@@ -864,17 +861,8 @@ export const App = () => {
               onPlaceOrder={() => setModal({ kind: "place-order", requestId: req.id })}
               onUpdateOrder={(orderId) => setModal({ kind: "update-order", orderId })}
               onReceiveOrder={(orderId) => setModal({ kind: "receive-order", orderId })}
-              onSetFunding={
-                isAdmin
-                  ? (fundingSourceId) =>
-                      void wrap(() => workspace.setOrderFunding(req.id, fundingSourceId))
-                  : undefined
-              }
-              onClearFunding={
-                isAdmin
-                  ? () => void wrap(() => workspace.clearOrderFunding(req.id))
-                  : undefined
-              }
+              /* Funding assignment is set/changed only during review. The
+                 Orders tab shows the funding line read-only. */
             />
           ))}
         </div>
