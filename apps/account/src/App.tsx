@@ -368,7 +368,7 @@ const SignedInShell = () => {
   }, [activeLabId, showPicker]);
 
   if (!activeLab || showPicker) {
-    return <LabPicker />;
+    return <LabPicker onClose={activeLab ? () => setShowPicker(false) : undefined} />;
   }
   return <HomeShell onOpenLabPicker={() => setShowPicker(true)} />;
 };

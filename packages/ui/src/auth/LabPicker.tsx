@@ -12,8 +12,8 @@ const extractLabIdFromInput = (value: string): string | null => {
   return uuidMatch ? uuidMatch[0] : null;
 };
 
-export const LabPicker = () => {
-  const { labs, selectLab, createLab, signOut, profile, user } = useAuth();
+export const LabPicker = ({ onClose }: { onClose?: () => void } = {}) => {
+  const { labs, selectLab, createLab, signOut, profile, user, activeLab } = useAuth();
   const [mode, setMode] = useState<Mode>(labs.length === 0 ? "choose" : "choose");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -86,9 +86,16 @@ export const LabPicker = () => {
             <h1 className="ilm-auth-title">Choose a lab workspace</h1>
             {displayName && <p className="ilm-auth-hint">Signed in as {displayName}</p>}
           </div>
-          <button type="button" className="ilm-text-button" onClick={() => void signOut()}>
-            Sign out
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {onClose && activeLab ? (
+              <button type="button" className="ilm-text-button" onClick={onClose}>
+                Cancel
+              </button>
+            ) : null}
+            <button type="button" className="ilm-text-button" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
         </div>
 
         {!emptyState ? (
@@ -98,9 +105,16 @@ export const LabPicker = () => {
                 <button
                   type="button"
                   className="ilm-lab-list-item"
-                  onClick={() => selectLab(lab.id)}
+                  aria-current={activeLab?.id === lab.id ? "true" : undefined}
+                  onClick={() => {
+                    selectLab(lab.id);
+                    onClose?.();
+                  }}
                 >
-                  <span className="ilm-lab-list-name">{lab.name}</span>
+                  <span className="ilm-lab-list-name">
+                    {lab.name}
+                    {activeLab?.id === lab.id ? " (current)" : ""}
+                  </span>
                   <span className="ilm-lab-list-meta">{lab.role}</span>
                 </button>
               </li>
