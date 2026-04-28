@@ -28,8 +28,7 @@ export type OrderRequestStatus =
   | "cancelled";
 
 export type OrderStatus =
-  | "initial_order_placed"
-  | "back_ordered"
+  | "order_placed"
   | "shipped"
   | "partially_received"
   | "received"
