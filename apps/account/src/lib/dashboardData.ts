@@ -40,7 +40,12 @@ export type TeamStats = {
   owners: number;
   admins: number;
   members: number;
-  recentAvatars: { id: string; label: string; email: string | null }[];
+  recentAvatars: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    headshotUrl: string | null;
+  }[];
 };
 
 export type ActivityEntry = {
@@ -211,7 +216,14 @@ export const useDashboardData = (labId: string | null): DashboardData => {
         inventory.criticalLow = seenLow.size;
 
         // Team
-        type MemberRow = { user_id: string; role: "owner" | "admin" | "member"; display_name: string | null; email: string | null; joined_at: string };
+        type MemberRow = {
+          user_id: string;
+          role: "owner" | "admin" | "member";
+          display_name: string | null;
+          email: string | null;
+          headshot_url: string | null;
+          joined_at: string;
+        };
         const memberRows = ((membersRes.data as MemberRow[] | null) ?? []).filter(Boolean);
         const team: TeamStats = {
           total: memberRows.length,
@@ -220,8 +232,9 @@ export const useDashboardData = (labId: string | null): DashboardData => {
           members: memberRows.filter((m) => m.role === "member").length,
           recentAvatars: memberRows.slice(0, 7).map((m) => ({
             id: m.user_id,
-            label: (m.display_name || m.email || "?").slice(0, 2).toUpperCase(),
+            name: m.display_name,
             email: m.email,
+            headshotUrl: m.headshot_url,
           })),
         };
 

@@ -928,6 +928,23 @@
 .acct-text-button:hover:not(:disabled) { background: var(--ilm-surface-soft); }
 .acct-text-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.acct-profile-edit {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.acct-profile-edit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+.acct-profile-edit-actions small {
+  font-size: 0.75rem;
+}
+
 .acct-side-profile {
   display: grid;
   gap: 0.2rem;

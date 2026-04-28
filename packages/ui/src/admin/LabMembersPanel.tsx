@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { Avatar } from "../primitives/Avatar";
 import {
   inviteMemberToLab,
   listLabInvitations,
@@ -134,10 +135,18 @@ export const LabMembersPanel = ({
               const isBusy = busyUserId === member.user_id;
               return (
                 <li className="ilm-admin-list-item" key={member.user_id}>
-                  <div className="ilm-admin-list-copy">
-                    <strong>{label}</strong>
-                    <span>{member.email || "No email available"}</span>
-                    <small>Joined {formatJoinedAt(member.joined_at)}{isSelf ? " • You" : ""}</small>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", minWidth: 0 }}>
+                    <Avatar
+                      size="md"
+                      name={member.display_name}
+                      email={member.email}
+                      url={member.headshot_url}
+                    />
+                    <div className="ilm-admin-list-copy">
+                      <strong>{label}</strong>
+                      <span>{member.email || "No email available"}</span>
+                      <small>Joined {formatJoinedAt(member.joined_at)}{isSelf ? " • You" : ""}</small>
+                    </div>
                   </div>
                   <div className="ilm-admin-actions">
                     <span className={`ilm-admin-badge ilm-admin-badge-${member.role}`}>{member.role}</span>
