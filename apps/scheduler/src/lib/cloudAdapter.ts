@@ -234,7 +234,9 @@ export async function listSchedulerWorkspace(
       .eq("lab_id", labId)
       .order("created_at", { ascending: false }),
     client().from("projects").select("id, name").eq("lab_id", labId).order("name"),
-    client().from("protocols").select("id, name").eq("lab_id", labId).order("name"),
+    // PostgREST alias `name:title` returns the protocols.title column under
+    // the key `name` so ProtocolOption keeps a single shape across modules.
+    client().from("protocols").select("id, name:title").eq("lab_id", labId).order("title"),
   ]);
 
   if (resourcesResult.error) throw resourcesResult.error;
