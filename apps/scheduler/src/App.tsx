@@ -59,7 +59,14 @@ export const App = () => {
     userId: user?.id ?? null,
   });
 
-  const [tab, setTab] = useState<SchedulerTab>("calendar");
+  const [tab, setTab] = useState<SchedulerTab>(() => {
+    if (typeof window === "undefined") return "calendar";
+    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (hash === "bookings" || hash === "calendar" || hash === "unscheduled" || hash === "resources") {
+      return hash as SchedulerTab;
+    }
+    return "calendar";
+  });
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
 

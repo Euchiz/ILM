@@ -245,7 +245,14 @@ export const App = () => {
   const [saveState, setSaveState] = useState<DraftSaveState>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [autosaveTick, setAutosaveTick] = useState(0);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("overview");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
+    if (typeof window === "undefined") return "overview";
+    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (hash === "reviews" || hash === "library" || hash === "overview" || hash === "recycle") {
+      return hash as SidebarTab;
+    }
+    return "overview";
+  });
   const [viewMode, setViewMode] = useState<ViewMode>("step");
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
   const [jsonText, setJsonText] = useState("");
