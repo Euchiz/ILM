@@ -388,6 +388,18 @@
   letter-spacing: 0.04em;
   fill: var(--ilm-muted);
 }
+.ovw-inv-radar-pct {
+  font-family: var(--rl-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  fill: var(--ilm-ink);
+}
+.ovw-inv-radar-pct-label {
+  font-family: var(--rl-font-display);
+  font-size: 6.5px;
+  letter-spacing: 0.18em;
+  fill: var(--ilm-muted);
+}
 .ovw-inv-stats {
   list-style: none;
   margin: 0;
@@ -416,9 +428,14 @@
   color: var(--ilm-ink);
 }
 
-/* Activity */
+/* Activity — full-width row at the bottom of the dashboard */
 .ovw-activity {
-  grid-column: span 1;
+  grid-column: span 3;
+}
+.ovw-activity-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid;
+  gap: 0.55rem 1.5rem;
 }
 .ovw-activity-dot--protocol { background: var(--ilm-viridian); }
 .ovw-activity-dot--project  { background: var(--ilm-viridian-2); }
@@ -521,50 +538,46 @@
    Responsive — collapse to one column on narrow screens
    ============================================================ */
 
+/* Tighter 3-col grid for medium widths — 2/1 hero+schedule, full-width
+   reviews, 2/1 inventory+team, full-width activity. No orphan rows. */
 @media (max-width: 1280px) {
   .ovw-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   }
-  .ovw-hero {
-    grid-column: span 3;
-  }
-  .ovw-reviews {
-    grid-column: span 3;
-  }
-  .ovw-inventory {
-    grid-column: span 2;
-  }
+  .ovw-hero       { grid-column: span 2; }
+  .ovw-schedule   { grid-column: span 1; }
+  .ovw-reviews    { grid-column: span 3; }
+  .ovw-inventory  { grid-column: span 2; }
+  .ovw-team       { grid-column: span 1; }
+  .ovw-activity   { grid-column: span 3; }
 }
 
+/* On tablets, drop to 2 columns. Each card spans the full row to keep
+   alignment crisp; the review tiles re-flow inside their card. */
 @media (max-width: 960px) {
   .ovw-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .ovw-hero,
-  .ovw-reviews {
-    grid-column: span 2;
-  }
-  .ovw-inventory {
-    grid-column: span 2;
-  }
-  .ovw-inv-body {
-    grid-template-columns: 140px 1fr;
-  }
-  .ovw-inv-radar { width: 140px; height: 140px; }
+  .ovw-hero       { grid-column: span 2; }
+  .ovw-schedule   { grid-column: span 2; }
+  .ovw-reviews    { grid-column: span 2; }
+  .ovw-inventory  { grid-column: span 2; }
+  .ovw-team       { grid-column: span 2; }
+  .ovw-activity   { grid-column: span 2; }
+  .ovw-inv-body { grid-template-columns: 150px 1fr; }
+  .ovw-inv-radar { width: 150px; height: 150px; }
+  .ovw-activity-list { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-  .ovw-grid {
-    grid-template-columns: 1fr;
-  }
+  .ovw-grid { grid-template-columns: 1fr; }
   .ovw-hero,
+  .ovw-schedule,
   .ovw-reviews,
-  .ovw-inventory {
-    grid-column: span 1;
-  }
-  .ovw-hero {
-    grid-template-columns: 1fr;
-  }
+  .ovw-inventory,
+  .ovw-team,
+  .ovw-activity { grid-column: span 1; }
+  .ovw-hero { grid-template-columns: 1fr; }
   .ovw-hero-art { display: none; }
   .ovw-metric-row {
     grid-template-columns: repeat(2, 1fr);
@@ -574,7 +587,8 @@
     border-right: none;
     padding: 0;
   }
-  .ovw-inv-stats { grid-template-columns: 1fr; }
+  .ovw-inv-body { grid-template-columns: 1fr; justify-items: center; }
+  .ovw-inv-stats { grid-template-columns: 1fr 1fr; width: 100%; }
 }
 
 /* ============================================================

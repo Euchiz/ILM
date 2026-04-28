@@ -253,7 +253,7 @@ const ReviewQueueCard = ({
 // Inventory status — replaces resource utilization
 // ---------------------------------------------------------------------------
 
-const InventoryRadar = ({ stats }: { stats: InventoryStats }) => {
+const InventoryRadar = ({ stats, stockedPct }: { stats: InventoryStats; stockedPct: number | null }) => {
   // Six axes: 4 known classifications + 2 placeholder slots so the polygon
   // still reads as a hexagon while we wait for additional taxonomy.
   const axes: { label: string; value: number }[] = [
@@ -327,12 +327,24 @@ const InventoryRadar = ({ stats }: { stats: InventoryStats }) => {
           {p.label}
         </text>
       ))}
+      {stockedPct !== null ? (
+        <>
+          <text x={cx} y={cy - 2} textAnchor="middle" className="ovw-inv-radar-pct">
+            {stockedPct}%
+          </text>
+          <text x={cx} y={cy + 11} textAnchor="middle" className="ovw-inv-radar-pct-label">
+            STOCKED
+          </text>
+        </>
+      ) : null}
     </svg>
   );
 };
 
 const InventoryCard = ({ stats }: { stats: InventoryStats }) => {
   const inventoryHref = appUrl("supply-manager/", APP_BASE_URL);
+  const stockedPct =
+    stats.total > 0 ? Math.round(((stats.total - stats.criticalLow) / stats.total) * 100) : null;
   return (
     <section className="ovw-card ovw-inventory">
       <header>
@@ -340,7 +352,7 @@ const InventoryCard = ({ stats }: { stats: InventoryStats }) => {
         <a className="ovw-card-link" href={inventoryHref}>View inventory</a>
       </header>
       <div className="ovw-inv-body">
-        <InventoryRadar stats={stats} />
+        <InventoryRadar stats={stats} stockedPct={stockedPct} />
         <ul className="ovw-inv-stats">
           <li>
             <i style={{ background: "var(--ilm-viridian)" }} />
@@ -488,8 +500,8 @@ export const OverviewView = () => {
       <ScheduleCard schedule={data.schedule} />
       <ReviewQueueCard mode={reviewMode} pending={data.pending} />
       <InventoryCard stats={data.inventory} />
-      <ActivityCard entries={data.activity} />
       <TeamCard team={data.team} />
+      <ActivityCard entries={data.activity} />
     </div>
   );
 };
