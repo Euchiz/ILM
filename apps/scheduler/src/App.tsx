@@ -1,12 +1,26 @@
 import { useState } from "react";
 import {
-  CardGrid,
+  ErrorBanner,
   LabShell,
   LabTopbar,
-  Panel,
-  SectionHeader,
   useAuth,
 } from "@ilm/ui";
+import { useSchedulerWorkspace } from "./lib/useSchedulerWorkspace";
+import { startOfWeek } from "./lib/datetime";
+import { CalendarView } from "./components/CalendarView";
+import { EventFormModal } from "./components/EventFormModal";
+import { BookingsView } from "./components/BookingsView";
+import { BookingFormModal } from "./components/BookingFormModal";
+import { UnscheduledView } from "./components/UnscheduledView";
+import { PlannedTaskFormModal } from "./components/PlannedTaskFormModal";
+import { ScheduleTaskModal } from "./components/ScheduleTaskModal";
+import { ResourcesView } from "./components/ResourcesView";
+import { ResourceFormModal } from "./components/ResourceFormModal";
+import type {
+  CalendarEventRecord,
+  PlannedTaskRecord,
+  ResourceRecord,
+} from "./lib/cloudAdapter";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -19,9 +33,103 @@ const TAB_LABELS: Record<SchedulerTab, string> = {
   resources: "Resources",
 };
 
+type ModalState =
+  | { kind: "none" }
+  | {
+      kind: "event-form";
+      event: CalendarEventRecord | null;
+      startIso?: string | null;
+      endIso?: string | null;
+    }
+  | {
+      kind: "booking-form";
+      resourceId?: string | null;
+      startIso?: string | null;
+      endIso?: string | null;
+    }
+  | { kind: "task-form"; task: PlannedTaskRecord | null }
+  | { kind: "schedule-task"; task: PlannedTaskRecord }
+  | { kind: "resource-form"; resource: ResourceRecord | null };
+
 export const App = () => {
-  const { activeLab, profile } = useAuth();
+  const { user, activeLab } = useAuth();
+  const isAdmin = activeLab?.role === "owner" || activeLab?.role === "admin";
+  const workspace = useSchedulerWorkspace({
+    labId: activeLab?.id ?? null,
+    userId: user?.id ?? null,
+  });
+
   const [tab, setTab] = useState<SchedulerTab>("calendar");
+  const [modal, setModal] = useState<ModalState>({ kind: "none" });
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+
+  const closeModal = () => setModal({ kind: "none" });
+
+  const renderTab = () => {
+    switch (tab) {
+      case "calendar":
+        return (
+          <CalendarView
+            events={workspace.events}
+            weekStart={weekStart}
+            onChangeWeek={setWeekStart}
+            onCreateEvent={(startIso, endIso) =>
+              setModal({
+                kind: "event-form",
+                event: null,
+                startIso: startIso ?? null,
+                endIso: endIso ?? null,
+              })
+            }
+            onSelectEvent={(event) =>
+              setModal({ kind: "event-form", event, startIso: null, endIso: null })
+            }
+          />
+        );
+      case "bookings":
+        return (
+          <BookingsView
+            bookings={workspace.bookings}
+            resources={workspace.resources}
+            projects={workspace.projects}
+            currentUserId={user?.id ?? null}
+            isAdmin={isAdmin}
+            onNewBooking={() =>
+              setModal({ kind: "booking-form", resourceId: null })
+            }
+            onCancel={(bookingId) => workspace.cancelBooking(bookingId)}
+            onComplete={(bookingId, usageRecord) =>
+              workspace.completeBooking({ bookingId, usageRecord })
+            }
+            onApprove={(bookingId) => workspace.approveBooking(bookingId)}
+            onDeny={(bookingId, note) => workspace.denyBooking(bookingId, note)}
+          />
+        );
+      case "unscheduled":
+        return (
+          <UnscheduledView
+            tasks={workspace.plannedTasks}
+            resources={workspace.resources}
+            projects={workspace.projects}
+            onNewTask={() => setModal({ kind: "task-form", task: null })}
+            onEditTask={(task) => setModal({ kind: "task-form", task })}
+            onSchedule={(task) => setModal({ kind: "schedule-task", task })}
+          />
+        );
+      case "resources":
+        return (
+          <ResourcesView
+            resources={workspace.resources}
+            bookings={workspace.bookings}
+            isAdmin={isAdmin}
+            onNewResource={() => setModal({ kind: "resource-form", resource: null })}
+            onEditResource={(resource) =>
+              setModal({ kind: "resource-form", resource })
+            }
+          />
+        );
+    }
+  };
 
   return (
     <LabShell
@@ -51,50 +159,69 @@ export const App = () => {
         </nav>
       }
     >
-      <CardGrid>
-        <Panel>
-          <SectionHeader title="Lab context" meta={activeLab?.role ?? "member"} />
-          <div className="sch-stat-grid">
-            <div>
-              <span>Active lab</span>
-              <strong>{activeLab?.name ?? "No lab selected"}</strong>
-              <small>{activeLab?.slug ?? "Slug pending"}</small>
-            </div>
-            <div>
-              <span>User</span>
-              <strong>{profile?.display_name || profile?.email || "Signed-in user"}</strong>
-              <small>Shared auth shell is active</small>
-            </div>
-            <div>
-              <span>Active tab</span>
-              <strong>{TAB_LABELS[tab]}</strong>
-              <small>Foundation scaffold — view UI lands next</small>
-            </div>
-          </div>
-        </Panel>
+      {workspace.error ? <ErrorBanner>{workspace.error}</ErrorBanner> : null}
+      {workspace.status === "loading" && workspace.events.length === 0 ? (
+        <p className="sch-loading">Loading scheduler…</p>
+      ) : null}
+      {renderTab()}
 
-        <Panel>
-          <SectionHeader title="Coming up" meta="Stage 4e" />
-          <ul className="sch-list">
-            <li>Weekly calendar with event create / edit / delete and basic recurrence</li>
-            <li>Equipment booking form with server-side conflict detection</li>
-            <li>Unscheduled task queue that converts into events and bookings</li>
-            <li>Resource registry with status, buffers, and policy controls</li>
-          </ul>
-        </Panel>
+      <EventFormModal
+        open={modal.kind === "event-form"}
+        onClose={closeModal}
+        onCreate={(data) => workspace.createCalendarEvent(data)}
+        onUpdate={(eventId, data) => workspace.updateCalendarEvent(eventId, data)}
+        onDelete={(eventId) => workspace.deleteCalendarEvent(eventId)}
+        initial={modal.kind === "event-form" ? modal.event : null}
+        initialStartIso={modal.kind === "event-form" ? modal.startIso : null}
+        initialEndIso={modal.kind === "event-form" ? modal.endIso : null}
+        projects={workspace.projects}
+        protocols={workspace.protocols}
+      />
 
-        <Panel>
-          <SectionHeader title="Schema status" meta="Migrated" />
-          <ul className="sch-list">
-            <li><code>resources</code>, <code>calendar_events</code>, <code>bookings</code>, <code>planned_tasks</code> with RLS</li>
-            <li>
-              <code>book_resource</code>, <code>cancel_booking</code>, <code>complete_booking</code>,
-              <code>approve_booking</code>, <code>deny_booking</code>, <code>schedule_planned_task</code> RPCs
-            </li>
-            <li><code>find_booking_conflicts</code> helper applies setup / cleanup buffers</li>
-          </ul>
-        </Panel>
-      </CardGrid>
+      <BookingFormModal
+        open={modal.kind === "booking-form"}
+        onClose={closeModal}
+        onBook={(args) => workspace.bookResource(args)}
+        onCheckConflicts={(args) => workspace.findBookingConflicts(args)}
+        resources={workspace.resources}
+        projects={workspace.projects}
+        protocols={workspace.protocols}
+        initialResourceId={modal.kind === "booking-form" ? modal.resourceId : null}
+        initialStartIso={modal.kind === "booking-form" ? modal.startIso : null}
+        initialEndIso={modal.kind === "booking-form" ? modal.endIso : null}
+      />
+
+      <PlannedTaskFormModal
+        open={modal.kind === "task-form"}
+        onClose={closeModal}
+        onCreate={(data) => workspace.createPlannedTask(data)}
+        onUpdate={(taskId, data) => workspace.updatePlannedTask(taskId, data)}
+        onDelete={(taskId) => workspace.deletePlannedTask(taskId)}
+        initial={modal.kind === "task-form" ? modal.task : null}
+        projects={workspace.projects}
+        protocols={workspace.protocols}
+        resources={workspace.resources}
+      />
+
+      <ScheduleTaskModal
+        open={modal.kind === "schedule-task"}
+        onClose={closeModal}
+        task={modal.kind === "schedule-task" ? modal.task : null}
+        resources={workspace.resources}
+        projects={workspace.projects}
+        protocols={workspace.protocols}
+        onSchedule={(args) => workspace.schedulePlannedTask(args)}
+      />
+
+      <ResourceFormModal
+        open={modal.kind === "resource-form"}
+        onClose={closeModal}
+        onCreate={(data) => workspace.createResource(data)}
+        onUpdate={(resourceId, data) => workspace.updateResource(resourceId, data)}
+        onArchive={(resourceId) => workspace.archiveResource(resourceId)}
+        initial={modal.kind === "resource-form" ? modal.resource : null}
+        protocols={workspace.protocols}
+      />
     </LabShell>
   );
 };
