@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAuth } from "@ilm/ui";
+import { Avatar, useAuth } from "@ilm/ui";
 import { useDashboardData, type ProjectStateCounts, type ProtocolStats, type InventoryStats, type TeamStats } from "../lib/dashboardData";
 
 const formatNumber = (n: number) => new Intl.NumberFormat().format(n);
@@ -424,9 +424,7 @@ const TeamCard = ({ team }: { team: TeamStats }) => (
     </header>
     <div className="ovw-avatars">
       {team.recentAvatars.map((m) => (
-        <span className="ovw-avatar" key={m.id} title={m.email ?? ""}>
-          {m.label}
-        </span>
+        <Avatar key={m.id} size="md" name={m.name} email={m.email} url={m.headshotUrl} />
       ))}
       {team.total > team.recentAvatars.length ? (
         <span className="ovw-avatar ovw-avatar--more">+{team.total - team.recentAvatars.length}</span>

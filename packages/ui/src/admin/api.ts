@@ -6,6 +6,7 @@ export type LabMemberRecord = {
   role: MembershipRole;
   display_name: string | null;
   email: string | null;
+  headshot_url: string | null;
   joined_at: string;
 };
 

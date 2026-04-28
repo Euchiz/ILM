@@ -4,6 +4,7 @@ export type Profile = {
   id: string;
   display_name: string | null;
   email: string | null;
+  headshot_url: string | null;
 };
 
 export type Lab = {

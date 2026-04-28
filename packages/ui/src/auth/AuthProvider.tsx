@@ -30,9 +30,13 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string, redirectTo?: string) => Promise<void>;
 
+  // Profile actions
+  updateProfile: (changes: { display_name?: string | null; headshot_url?: string | null }) => Promise<Profile>;
+
   // Lab actions
   selectLab: (labId: string | null) => void;
   createLab: (name: string, slug?: string) => Promise<LabWithRole>;
+  renameLab: (labId: string, name: string) => Promise<LabWithRole>;
   refreshLabs: () => Promise<void>;
 };
 
@@ -79,7 +83,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     async (userId: string): Promise<Profile | null> => {
       const { data, error: err } = await supabase
         .from("profiles")
-        .select("id, display_name, email")
+        .select("id, display_name, email, headshot_url")
         .eq("id", userId)
         .maybeSingle();
       if (err) throw err;
@@ -285,6 +289,61 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setActiveLabId(labId);
   }, []);
 
+  const updateProfile = useCallback(
+    async (changes: { display_name?: string | null; headshot_url?: string | null }): Promise<Profile> => {
+      if (!user) throw new Error("Not signed in");
+      setError(null);
+      const patch: Record<string, unknown> = {};
+      if (Object.prototype.hasOwnProperty.call(changes, "display_name")) {
+        const next = changes.display_name;
+        patch.display_name = typeof next === "string" ? (next.trim() || null) : null;
+      }
+      if (Object.prototype.hasOwnProperty.call(changes, "headshot_url")) {
+        patch.headshot_url = changes.headshot_url ?? null;
+      }
+      if (Object.keys(patch).length === 0) {
+        if (!profile) throw new Error("Profile not loaded");
+        return profile;
+      }
+      const { data, error: err } = await supabase
+        .from("profiles")
+        .update(patch)
+        .eq("id", user.id)
+        .select("id, display_name, email, headshot_url")
+        .single();
+      if (err) {
+        setError(err.message);
+        throw err;
+      }
+      const next = data as Profile;
+      setProfile(next);
+      return next;
+    },
+    [profile, supabase, user]
+  );
+
+  const renameLab = useCallback(
+    async (labId: string, name: string): Promise<LabWithRole> => {
+      if (!user) throw new Error("Not signed in");
+      setError(null);
+      const { data, error: err } = await supabase
+        .rpc("rename_lab", { p_lab_id: labId, p_name: name })
+        .maybeSingle();
+      if (err) {
+        setError(err.message);
+        throw err;
+      }
+      if (!data) throw new Error("Rename failed");
+      const lab = data as Omit<LabWithRole, "role">;
+      setLabs((prev) =>
+        prev.map((entry) => (entry.id === lab.id ? { ...entry, ...lab } : entry))
+      );
+      const existing = labs.find((entry) => entry.id === lab.id);
+      return { ...lab, role: existing?.role ?? "owner" };
+    },
+    [labs, supabase, user]
+  );
+
   const value: AuthContextValue = {
     status,
     session,
@@ -297,8 +356,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     signUp,
     signOut,
     sendPasswordReset,
+    updateProfile,
     selectLab,
     createLab,
+    renameLab,
     refreshLabs,
   };
 
