@@ -517,7 +517,12 @@ export const App = () => {
     reorderExperiments,
   } = workspace;
 
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("overview");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
+    if (typeof window === "undefined") return "overview";
+    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (hash === "review" || hash === "library" || hash === "overview") return hash as SidebarTab;
+    return "overview";
+  });
   const [viewSubTab, setViewSubTab] = useState<ViewSubTab>("info");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@ilm/utils";
 
 export type ProjectStateCounts = {
@@ -8,21 +8,11 @@ export type ProjectStateCounts = {
   total: number;
 };
 
-export type ProtocolSummary = {
-  id: string;
-  title: string;
-  description: string | null;
-  lifecycleStatus: string | null;
-  reviewStatus: string | null;
-  updatedAt: string;
-};
-
 export type ProtocolStats = {
   total: number;
   active: number;
   inReview: number;
   archived: number;
-  recent: ProtocolSummary[];
 };
 
 export type InventoryStats = {
@@ -48,9 +38,26 @@ export type TeamStats = {
   }[];
 };
 
+export type PendingReviews = {
+  protocols: number;
+  projects: number;
+  orders: number;
+  members: number;
+  bookings: number;
+};
+
+export type ScheduleEntry = {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string | null;
+  kind: "event" | "booking";
+  location: string | null;
+};
+
 export type ActivityEntry = {
   id: string;
-  kind: "protocol" | "project" | "item";
+  kind: "protocol" | "project" | "item" | "order" | "booking";
   label: string;
   context: string;
   timestamp: string;
@@ -61,18 +68,27 @@ export type DashboardData = {
   protocols: ProtocolStats;
   inventory: InventoryStats;
   team: TeamStats;
+  pending: PendingReviews;
+  schedule: ScheduleEntry[];
   activity: ActivityEntry[];
+  isProjectLead: boolean;
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
+  refresh: () => Promise<void>;
 };
 
-const empty: DashboardData = {
+const emptyState: Omit<DashboardData, "refresh"> = {
   projects: { draft: 0, published: 0, deleted: 0, total: 0 },
-  protocols: { total: 0, active: 0, inReview: 0, archived: 0, recent: [] },
+  protocols: { total: 0, active: 0, inReview: 0, archived: 0 },
   inventory: { total: 0, reagents: 0, consumables: 0, supplies: 0, samples: 0, other: 0, criticalLow: 0 },
   team: { total: 0, owners: 0, admins: 0, members: 0, recentAvatars: [] },
+  pending: { protocols: 0, projects: 0, orders: 0, members: 0, bookings: 0 },
+  schedule: [],
   activity: [],
+  isProjectLead: false,
   loading: true,
+  refreshing: false,
   error: null,
 };
 
@@ -110,23 +126,42 @@ const readDocStatus = (doc: ProtocolRow["document_json"]): { lifecycle: string |
   };
 };
 
-export const useDashboardData = (labId: string | null): DashboardData => {
-  const [data, setData] = useState<DashboardData>(empty);
+export const useDashboardData = (labId: string | null, userId: string | null): DashboardData => {
+  const [state, setState] = useState<Omit<DashboardData, "refresh">>(emptyState);
 
-  useEffect(() => {
-    if (!labId) {
-      setData({ ...empty, loading: false });
-      return;
-    }
-    let cancelled = false;
-    setData((prev) => ({ ...prev, loading: true, error: null }));
+  const load = useCallback(
+    async (mode: "initial" | "refresh") => {
+      if (!labId) {
+        setState({ ...emptyState, loading: false });
+        return;
+      }
+      setState((prev) => ({
+        ...prev,
+        loading: mode === "initial" ? true : prev.loading,
+        refreshing: mode === "refresh",
+        error: null,
+      }));
 
-    const supabase = getSupabaseClient();
+      const supabase = getSupabaseClient();
+      const nowIso = new Date().toISOString();
 
-    (async () => {
       try {
-        const [projectsRes, protocolsRes, itemsRes, lowChecksRes, membersRes] = await Promise.all([
-          supabase.from("projects").select("id, state, updated_at, name").eq("lab_id", labId),
+        const [
+          projectsRes,
+          protocolsRes,
+          itemsRes,
+          lowChecksRes,
+          membersRes,
+          pendingProtocolsRes,
+          pendingOrdersRes,
+          pendingJoinRes,
+          pendingBookingsRes,
+          eventsRes,
+          bookingsRes,
+          recentOrdersRes,
+          projectLeadRes,
+        ] = await Promise.all([
+          supabase.from("projects").select("id, state, updated_at, name, review_requested_at").eq("lab_id", labId),
           supabase
             .from("protocols")
             .select("id, title, description, lifecycle_status, review_status, updated_at, document_json")
@@ -145,26 +180,82 @@ export const useDashboardData = (labId: string | null): DashboardData => {
             .order("checked_at", { ascending: false })
             .limit(200),
           supabase.rpc("list_lab_members", { p_lab_id: labId }),
+          supabase
+            .from("protocol_submissions")
+            .select("id", { count: "exact", head: true })
+            .eq("lab_id", labId)
+            .eq("status", "pending"),
+          supabase
+            .from("order_requests")
+            .select("id, status, updated_at, created_at, reason", { count: "exact" })
+            .eq("lab_id", labId)
+            .eq("status", "submitted")
+            .order("created_at", { ascending: false })
+            .limit(50),
+          supabase.rpc("list_lab_join_requests", { p_lab_id: labId, p_status: "pending" }),
+          supabase
+            .from("bookings")
+            .select("id, title, start_time, end_time, status, updated_at", { count: "exact" })
+            .eq("lab_id", labId)
+            .eq("status", "requested")
+            .order("start_time", { ascending: true })
+            .limit(50),
+          supabase
+            .from("calendar_events")
+            .select("id, title, start_time, end_time, location, status")
+            .eq("lab_id", labId)
+            .gte("start_time", nowIso)
+            .neq("status", "cancelled")
+            .order("start_time", { ascending: true })
+            .limit(8),
+          supabase
+            .from("bookings")
+            .select("id, title, start_time, end_time, status")
+            .eq("lab_id", labId)
+            .gte("start_time", nowIso)
+            .in("status", ["approved", "active", "requested"])
+            .order("start_time", { ascending: true })
+            .limit(8),
+          supabase
+            .from("order_requests")
+            .select("id, reason, status, updated_at")
+            .eq("lab_id", labId)
+            .order("updated_at", { ascending: false })
+            .limit(6),
+          userId
+            ? supabase
+                .from("project_leads")
+                .select("project_id, projects!inner(lab_id)")
+                .eq("user_id", userId)
+                .eq("projects.lab_id", labId)
+                .limit(1)
+            : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: null }),
         ]);
 
-        if (cancelled) return;
-
         // Projects
-        type ProjectRow = { id: string; state: string; updated_at: string; name: string };
+        type ProjectRow = {
+          id: string;
+          state: string;
+          updated_at: string;
+          name: string;
+          review_requested_at: string | null;
+        };
         const projectRows = (projectsRes.data as ProjectRow[] | null) ?? [];
         const projects: ProjectStateCounts = {
           draft: projectRows.filter((r) => r.state === "draft").length,
           published: projectRows.filter((r) => r.state === "published").length,
           deleted: projectRows.filter((r) => r.state === "deleted").length,
-          total: projectRows.filter((r) => r.state !== "deleted").length,
+          total: projectRows.filter((r) => r.state === "published").length,
         };
+        const pendingProjectsCount = projectRows.filter(
+          (r) => r.state === "draft" && r.review_requested_at !== null
+        ).length;
 
         // Protocols
         const protocolRows = (protocolsRes.data as ProtocolRow[] | null) ?? [];
         let active = 0;
         let inReview = 0;
         let archived = 0;
-        const recent: ProtocolSummary[] = [];
         for (const row of protocolRows) {
           const fromDoc = readDocStatus(row.document_json);
           const lifecycle = (row.lifecycle_status ?? fromDoc.lifecycle ?? "").toLowerCase();
@@ -172,24 +263,8 @@ export const useDashboardData = (labId: string | null): DashboardData => {
           if (lifecycle === "archived") archived += 1;
           else if (lifecycle === "active") active += 1;
           if (review === "reviewing" || review === "pending" || review === "submitted") inReview += 1;
-          if (recent.length < 4) {
-            recent.push({
-              id: row.id,
-              title: row.title,
-              description: row.description,
-              lifecycleStatus: row.lifecycle_status ?? fromDoc.lifecycle,
-              reviewStatus: row.review_status ?? fromDoc.review,
-              updatedAt: row.updated_at,
-            });
-          }
         }
-        const protocols: ProtocolStats = {
-          total: protocolRows.length,
-          active,
-          inReview,
-          archived,
-          recent,
-        };
+        const protocols: ProtocolStats = { total: protocolRows.length, active, inReview, archived };
 
         // Inventory
         type ItemRow = { id: string; classification: string; updated_at: string; name: string };
@@ -204,15 +279,10 @@ export const useDashboardData = (labId: string | null): DashboardData => {
           other: byClass("other"),
           criticalLow: 0,
         };
-
-        // Critical low: latest inventory_check per item with status low|out
-        type LowRow = { item_id: string; stock_status: string; checked_at: string };
+        type LowRow = { item_id: string };
         const lowRows = (lowChecksRes.data as LowRow[] | null) ?? [];
         const seenLow = new Set<string>();
-        for (const r of lowRows) {
-          if (seenLow.has(r.item_id)) continue;
-          seenLow.add(r.item_id);
-        }
+        for (const r of lowRows) seenLow.add(r.item_id);
         inventory.criticalLow = seenLow.size;
 
         // Team
@@ -238,13 +308,65 @@ export const useDashboardData = (labId: string | null): DashboardData => {
           })),
         };
 
-        // Activity feed: union recent updates across protocols/projects/items.
+        // Pending counts
+        type PendingJoinRow = { id: string };
+        const joinRows = (pendingJoinRes.data as PendingJoinRow[] | null) ?? [];
+        const pending: PendingReviews = {
+          protocols: pendingProtocolsRes.count ?? 0,
+          projects: pendingProjectsCount,
+          orders: pendingOrdersRes.count ?? 0,
+          members: joinRows.length,
+          bookings: pendingBookingsRes.count ?? 0,
+        };
+
+        // Schedule (calendar_events + upcoming bookings, merged + sorted)
+        type EventRow = {
+          id: string;
+          title: string;
+          start_time: string;
+          end_time: string | null;
+          location: string | null;
+          status: string;
+        };
+        type BookingRow = {
+          id: string;
+          title: string | null;
+          start_time: string;
+          end_time: string | null;
+          status: string;
+        };
+        const eventRows = (eventsRes.data as EventRow[] | null) ?? [];
+        const bookingRows = (bookingsRes.data as BookingRow[] | null) ?? [];
+        const schedule: ScheduleEntry[] = [
+          ...eventRows.map((e) => ({
+            id: `event-${e.id}`,
+            title: e.title,
+            startTime: e.start_time,
+            endTime: e.end_time,
+            kind: "event" as const,
+            location: e.location,
+          })),
+          ...bookingRows.map((b) => ({
+            id: `booking-${b.id}`,
+            title: b.title ?? "Resource booking",
+            startTime: b.start_time,
+            endTime: b.end_time,
+            kind: "booking" as const,
+            location: null,
+          })),
+        ]
+          .sort((a, b) => a.startTime.localeCompare(b.startTime))
+          .slice(0, 5);
+
+        // Activity feed: union recent updates across protocols/projects/items/orders/bookings
+        type OrderRow = { id: string; reason: string | null; status: string; updated_at: string };
+        const orderRows = (recentOrdersRes.data as OrderRow[] | null) ?? [];
         const stream: ActivityEntry[] = [];
         for (const r of protocolRows.slice(0, 6)) {
           stream.push({
             id: `protocol-${r.id}`,
             kind: "protocol",
-            label: `Protocol "${r.title}" was updated`,
+            label: `Protocol "${r.title}" updated`,
             context: formatRelative(r.updated_at),
             timestamp: r.updated_at,
           });
@@ -253,7 +375,7 @@ export const useDashboardData = (labId: string | null): DashboardData => {
           stream.push({
             id: `project-${r.id}`,
             kind: "project",
-            label: `Project "${r.name}" was updated`,
+            label: `Project "${r.name}" updated`,
             context: formatRelative(r.updated_at),
             timestamp: r.updated_at,
           });
@@ -262,34 +384,76 @@ export const useDashboardData = (labId: string | null): DashboardData => {
           stream.push({
             id: `item-${r.id}`,
             kind: "item",
-            label: `Inventory item "${r.name}" was updated`,
+            label: `Item "${r.name}" updated`,
+            context: formatRelative(r.updated_at),
+            timestamp: r.updated_at,
+          });
+        }
+        for (const r of orderRows) {
+          stream.push({
+            id: `order-${r.id}`,
+            kind: "order",
+            label: `Order request ${r.status}`,
             context: formatRelative(r.updated_at),
             timestamp: r.updated_at,
           });
         }
         stream.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
-        setData({
+        // Project lead?
+        type LeadRow = { project_id: string };
+        const leadRows = (projectLeadRes.data as LeadRow[] | null) ?? [];
+
+        setState({
           projects,
           protocols,
           inventory,
           team,
-          activity: stream.slice(0, 5),
+          pending,
+          schedule,
+          activity: stream.slice(0, 6),
+          isProjectLead: leadRows.length > 0,
           loading: false,
+          refreshing: false,
           error: null,
         });
       } catch (err) {
-        if (cancelled) return;
-        setData({ ...empty, loading: false, error: errorMessage(err) });
+        setState((prev) => ({ ...prev, loading: false, refreshing: false, error: errorMessage(err) }));
       }
-    })();
+    },
+    [labId, userId]
+  );
 
+  // Initial load + reload on labId/userId change.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await load("initial");
+      if (cancelled) return;
+    })();
     return () => {
       cancelled = true;
     };
-  }, [labId]);
+  }, [load]);
 
-  return data;
+  // Refresh when the tab becomes visible again (so metrics pick up changes
+  // made in another window/app without a hard refresh).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && labId) {
+        void load("refresh");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [labId, load]);
+
+  const refresh = useCallback(async () => {
+    await load("refresh");
+  }, [load]);
+
+  return { ...state, refresh };
 };
 
 export const formatRelativeTime = formatRelative;

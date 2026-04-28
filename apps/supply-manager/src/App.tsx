@@ -200,7 +200,14 @@ export const App = () => {
   const workspace = useSupplyWorkspace(activeLab?.id ?? null, user?.id ?? null);
   const { status, error, refresh } = workspace;
 
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("warehouse");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
+    if (typeof window === "undefined") return "warehouse";
+    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (hash === "review" || hash === "orders" || hash === "warehouse" || hash === "my-items") {
+      return hash as SidebarTab;
+    }
+    return "warehouse";
+  });
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [actionError, setActionError] = useState<string | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
