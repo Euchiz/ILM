@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Button,
   ConfirmDialog,
@@ -143,10 +143,6 @@ export const EventFormModal = ({
   }, [open, initial, initialStartIso, initialEndIso]);
 
   const isEdit = initial !== null;
-  const titleId = useMemo(
-    () => `event-form-${initial?.id ?? "new"}`,
-    [initial?.id]
-  );
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
@@ -221,7 +217,6 @@ export const EventFormModal = ({
       onClose={busy ? () => {} : onClose}
       title={isEdit ? "Edit event" : "New event"}
       width="wide"
-      labelledBy={titleId}
       actions={
         <>
           {isEdit && onDelete ? (
@@ -239,7 +234,7 @@ export const EventFormModal = ({
           <Button
             variant="primary"
             type="submit"
-            form={titleId}
+            form="event-form"
             disabled={busy}
           >
             {isEdit ? "Save changes" : "Create event"}
@@ -247,7 +242,7 @@ export const EventFormModal = ({
         </>
       }
     >
-      <form id={titleId} className="sch-form" onSubmit={handleSubmit}>
+      <form id="event-form" className="sch-form" onSubmit={handleSubmit}>
         {error ? <InlineError>{error}</InlineError> : null}
         <FormField label="Title">
           <Input
