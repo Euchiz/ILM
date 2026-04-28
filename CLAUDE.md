@@ -11,9 +11,11 @@
 npm workspaces monorepo:
 
 **Apps** (`apps/`):
-- `funding-manager`
+- `account`
+- `funding-manager` (Funding Directory — alias / grant id / validity, no financial tracking)
 - `project-manager`
 - `protocol-manager`
+- `scheduler`
 - `supply-manager`
 
 **Packages** (`packages/`):
@@ -84,12 +86,15 @@ user-editable metadata or frontend checks.
 - **Stage 3 — Protocol Manager**: visual editor, draft → submit → review → publish, append-only revisions, recycle bin.
 - **Stage 4a — Account / Home app**: hosts the lab-wide overview dashboard at the site root, plus tier hierarchy (owner > admin > member), invitations + join requests, share links, auto-claim under hash routes (`#/team`, `#/settings`).
 - **Stage 4b — Project Manager**: projects/milestones/experiments, project leads, review gate, recycle bin, GitHub repo activity per project.
+- **Stage 4c — Supply Manager**: catalog, inventory checks, order requests + review + receipt, recycle bin.
+- **Stage 4d-lite — Funding Directory**: privacy-preserving grant alias book wired into Supply order approval (no budgets / balances / expenses).
+- **Stage 4e — Scheduler (foundation)**: resources, calendar events, bookings, planned tasks.
 
 **Current**
-- **Stage 4c — Supply Manager**: stock + orders + storage locations. See `docs/next-stage.md`.
+- See `docs/next-stage.md` for the active stage.
 
 **Deferred**
-- **Stage 4d — Funding Manager**: grants / budgets / allocations / expenses.
+- **Stage 4d-full — Funding Manager (financial)**: grants / budgets / allocations / expenses tracking. Lightweight directory shipped as 4d-lite; full financial module is intentionally deferred unless a lab requests it.
 
 ### Living docs
 - `docs/features.md` — cumulative summary of what's shipped. Update after each meaningful PR.

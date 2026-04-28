@@ -16,6 +16,23 @@ export const nowIso = (): string => new Date().toISOString();
 export { getSupabaseClient, isSupabaseConfigured } from "./supabaseClient";
 export type { SupabaseClient } from "./supabaseClient";
 
+export {
+  getDaysUntilExpiration,
+  getFundingStatus,
+  isFundingSourceAssignable,
+  fundingVisibilityLabel,
+  confidenceReason,
+} from "./funding";
+export type {
+  FundingSourceRecord,
+  FundingDefaultRecord,
+  FundingVisibility,
+  FundingAssignmentStatus,
+  FundingConfidenceLevel,
+  FundingStatus,
+  FundingStatusKind,
+} from "./funding";
+
 export const safeJsonParse = <T>(text: string): { ok: true; value: T } | { ok: false; error: string } => {
   try {
     return { ok: true, value: JSON.parse(text) as T };

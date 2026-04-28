@@ -44,7 +44,7 @@ Out of scope: Google Calendar sync, notifications, auto-scheduling optimization,
 
 ## Deferred
 
-- **Stage 4d — Funding Manager.** Grants / budgets / allocations / expenses, plus a "Charge to grant" button on received Supply orders. Spec is preserved in git history (was the previous next-stage); revive when the Scheduler MVP is in production.
+- **Stage 4d-full — Funding Manager (financial).** The lightweight directory shipped (see `features.md` Funding Directory) — alias / grant id / validity / brief note for routing approved orders. The fuller scope (grant total budgets, remaining balance, burn rate, allocations, expense ledger linked to received Supply orders) is intentionally still deferred because the lab does not currently need to track financial state on this site. Revive only if a lab requests it.
 - **UI kit Phase F.** `packages/ui/README.md` + `docs/design-system.md` describing primitives, the `--rl-*` token contract, and the "first use local, second use promote" rule. Phase E (LabShell unification) shipped.
 - **Stage 4f — Supply Manager v2.** Per-experiment consumption logging (links `experiments` to a new `stock_movements` ledger), supplier/catalog import, barcode scanning, lot/expiry alerts.
 - **Stage 4g — Reporting / exports.** Cross-app digests (weekly lab activity, grant-period spend, protocol publication log).

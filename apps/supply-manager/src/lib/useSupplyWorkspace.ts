@@ -5,6 +5,7 @@ import {
   approveOrderRequest as rpcApproveOrderRequest,
   archiveItem as rpcArchiveItem,
   cancelOrderRequest as rpcCancelOrderRequest,
+  clearOrderFunding as rpcClearOrderFunding,
   createItem as rpcCreateItem,
   createOrderRequestDraft as rpcCreateOrderRequestDraft,
   deleteItem as rpcDeleteItem,
@@ -15,6 +16,7 @@ import {
   placeSupplyOrder as rpcPlaceSupplyOrder,
   receiveSupplyOrder as rpcReceiveSupplyOrder,
   removeOrderRequestItem as rpcRemoveOrderRequestItem,
+  setOrderFunding as rpcSetOrderFunding,
   submitOrderRequest as rpcSubmitOrderRequest,
   unarchiveItem as rpcUnarchiveItem,
   unlinkItemFromProject as rpcUnlinkItemFromProject,
@@ -23,6 +25,8 @@ import {
   updateOrderRequestMeta as rpcUpdateOrderRequestMeta,
   updateSupplyOrder as rpcUpdateSupplyOrder,
   withdrawOrderRequest as rpcWithdrawOrderRequest,
+  type FundingDefaultRecord,
+  type FundingSourceRecord,
   type InventoryCheckRecord,
   type ItemAssociationType,
   type ItemClassification,
@@ -120,9 +124,14 @@ export interface UseSupplyWorkspaceValue extends SupplyWorkspaceSnapshot {
 
   submitOrderRequest: (requestId: string) => Promise<OrderRequestRecord>;
   withdrawOrderRequest: (requestId: string) => Promise<OrderRequestRecord>;
-  approveOrderRequest: (requestId: string, note?: string | null) => Promise<OrderRequestRecord>;
+  approveOrderRequest: (
+    requestId: string,
+    args?: { note?: string | null; fundingSourceId?: string | null; fundingRequired?: boolean }
+  ) => Promise<OrderRequestRecord>;
   denyOrderRequest: (requestId: string, note: string) => Promise<OrderRequestRecord>;
   cancelOrderRequest: (requestId: string) => Promise<OrderRequestRecord>;
+  setOrderFunding: (requestId: string, fundingSourceId: string) => Promise<OrderRequestRecord>;
+  clearOrderFunding: (requestId: string) => Promise<OrderRequestRecord>;
 
   placeSupplyOrder: (args: {
     requestId: string;
@@ -162,6 +171,8 @@ const EMPTY_SNAPSHOT: SupplyWorkspaceSnapshot = {
   stockLots: EMPTY_ARRAY,
   projects: EMPTY_ARRAY,
   myProjectIds: EMPTY_ARRAY,
+  fundingSources: EMPTY_ARRAY,
+  fundingDefaults: EMPTY_ARRAY,
 };
 
 export function useSupplyWorkspace(
@@ -179,6 +190,8 @@ export function useSupplyWorkspace(
   const [stockLots, setStockLots] = useState<StockLotRecord[]>(EMPTY_ARRAY);
   const [projects, setProjects] = useState<ProjectOptionRecord[]>(EMPTY_ARRAY);
   const [myProjectIds, setMyProjectIds] = useState<string[]>(EMPTY_ARRAY);
+  const [fundingSources, setFundingSources] = useState<FundingSourceRecord[]>(EMPTY_ARRAY);
+  const [fundingDefaults, setFundingDefaults] = useState<FundingDefaultRecord[]>(EMPTY_ARRAY);
 
   const hydrate = useCallback(async () => {
     if (!labId || !userId) {
@@ -191,6 +204,8 @@ export function useSupplyWorkspace(
       setStockLots(EMPTY_SNAPSHOT.stockLots);
       setProjects(EMPTY_SNAPSHOT.projects);
       setMyProjectIds(EMPTY_SNAPSHOT.myProjectIds);
+      setFundingSources(EMPTY_SNAPSHOT.fundingSources);
+      setFundingDefaults(EMPTY_SNAPSHOT.fundingDefaults);
       setStatus("idle");
       setError(null);
       return;
@@ -209,6 +224,8 @@ export function useSupplyWorkspace(
       setStockLots(next.stockLots);
       setProjects(next.projects);
       setMyProjectIds(next.myProjectIds);
+      setFundingSources(next.fundingSources);
+      setFundingDefaults(next.fundingDefaults);
       setStatus("ready");
     } catch (err) {
       setStatus("error");
@@ -405,9 +422,29 @@ export function useSupplyWorkspace(
   );
 
   const approveOrderRequest = useCallback<UseSupplyWorkspaceValue["approveOrderRequest"]>(
-    async (requestId, note) => {
+    async (requestId, args) => {
       requireIdentity();
-      const updated = await rpcApproveOrderRequest(requestId, note);
+      const updated = await rpcApproveOrderRequest(requestId, args);
+      await hydrate();
+      return updated;
+    },
+    [hydrate, requireIdentity]
+  );
+
+  const setOrderFunding = useCallback<UseSupplyWorkspaceValue["setOrderFunding"]>(
+    async (requestId, fundingSourceId) => {
+      requireIdentity();
+      const updated = await rpcSetOrderFunding(requestId, fundingSourceId);
+      await hydrate();
+      return updated;
+    },
+    [hydrate, requireIdentity]
+  );
+
+  const clearOrderFunding = useCallback<UseSupplyWorkspaceValue["clearOrderFunding"]>(
+    async (requestId) => {
+      requireIdentity();
+      const updated = await rpcClearOrderFunding(requestId);
       await hydrate();
       return updated;
     },
@@ -476,6 +513,8 @@ export function useSupplyWorkspace(
     stockLots,
     projects,
     myProjectIds,
+    fundingSources,
+    fundingDefaults,
     refresh: hydrate,
     createItem,
     updateItem,
@@ -496,6 +535,8 @@ export function useSupplyWorkspace(
     approveOrderRequest,
     denyOrderRequest,
     cancelOrderRequest,
+    setOrderFunding,
+    clearOrderFunding,
     placeSupplyOrder,
     updateSupplyOrder,
     receiveSupplyOrder,

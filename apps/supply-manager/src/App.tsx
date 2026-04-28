@@ -25,7 +25,14 @@ import {
   type StatusTone,
 } from "@ilm/ui";
 import { useSupplyWorkspace } from "./lib/useSupplyWorkspace";
+import { suggestFundingSourceForOrder, type FundingSuggestion } from "./lib/suggestFunding";
+import {
+  fundingVisibilityLabel,
+  getFundingStatus,
+  isFundingSourceAssignable,
+} from "@ilm/utils";
 import type {
+  FundingSourceRecord,
   InventoryCheckRecord,
   ItemAssociationType,
   ItemClassification,
@@ -242,6 +249,16 @@ export const App = () => {
   const projectsById = useMemo(
     () => new Map(workspace.projects.map((p) => [p.id, p])),
     [workspace.projects]
+  );
+
+  const fundingSourcesById = useMemo(
+    () => new Map(workspace.fundingSources.map((s) => [s.id, s])),
+    [workspace.fundingSources]
+  );
+
+  const assignableFundingSources = useMemo(
+    () => workspace.fundingSources.filter((s) => isFundingSourceAssignable(s)),
+    [workspace.fundingSources]
   );
 
   const latestCheckByItem = useMemo(() => {
@@ -834,6 +851,8 @@ export const App = () => {
               orders={ordersByRequest.get(req.id) ?? []}
               itemsById={itemsById}
               projectsById={projectsById}
+              fundingSourcesById={fundingSourcesById}
+              assignableFundingSources={assignableFundingSources}
               currentUserId={user?.id ?? null}
               isAdmin={isAdmin}
               lotsByOrder={lotsByOrder}
@@ -845,6 +864,17 @@ export const App = () => {
               onPlaceOrder={() => setModal({ kind: "place-order", requestId: req.id })}
               onUpdateOrder={(orderId) => setModal({ kind: "update-order", orderId })}
               onReceiveOrder={(orderId) => setModal({ kind: "receive-order", orderId })}
+              onSetFunding={
+                isAdmin
+                  ? (fundingSourceId) =>
+                      void wrap(() => workspace.setOrderFunding(req.id, fundingSourceId))
+                  : undefined
+              }
+              onClearFunding={
+                isAdmin
+                  ? () => void wrap(() => workspace.clearOrderFunding(req.id))
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -867,11 +897,19 @@ export const App = () => {
               orders={ordersByRequest.get(req.id) ?? []}
               itemsById={itemsById}
               projectsById={projectsById}
+              fundingSourcesById={fundingSourcesById}
+              assignableFundingSources={assignableFundingSources}
               currentUserId={user?.id ?? null}
               isAdmin={isAdmin}
               lotsByOrder={lotsByOrder}
               onApprove={() => setModal({ kind: "review-request", requestId: req.id, mode: "approve" })}
               onDeny={() => setModal({ kind: "review-request", requestId: req.id, mode: "deny" })}
+              onSetFunding={(fundingSourceId) =>
+                void wrap(() => workspace.setOrderFunding(req.id, fundingSourceId))
+              }
+              onClearFunding={() =>
+                void wrap(() => workspace.clearOrderFunding(req.id))
+              }
             />
           ))}
         </div>
@@ -1059,19 +1097,39 @@ export const App = () => {
       case "review-request": {
         const req = workspace.orderRequests.find((r) => r.id === modal.requestId);
         if (!req) return null;
+        const reqItems = requestItemsByRequest.get(req.id) ?? [];
+        const suggestion =
+          modal.mode === "approve"
+            ? suggestFundingSourceForOrder({
+                request: req,
+                requestItems: reqItems,
+                itemsById,
+                fundingSources: workspace.fundingSources,
+                fundingDefaults: workspace.fundingDefaults,
+              })
+            : null;
         return (
           <ReviewRequestModal
             request={req}
-            requestItems={requestItemsByRequest.get(req.id) ?? []}
+            requestItems={reqItems}
             itemsById={itemsById}
             projectsById={projectsById}
             mode={modal.mode}
+            suggestion={suggestion}
+            assignableFundingSources={assignableFundingSources}
             onClose={closeModal}
-            onSubmit={async (note) => {
-              const result =
-                modal.mode === "approve"
-                  ? await wrap(() => workspace.approveOrderRequest(req.id, note))
-                  : await wrap(() => workspace.denyOrderRequest(req.id, note));
+            onApprove={async ({ note, fundingSourceId, fundingRequired }) => {
+              const result = await wrap(() =>
+                workspace.approveOrderRequest(req.id, {
+                  note,
+                  fundingSourceId,
+                  fundingRequired,
+                })
+              );
+              if (result) closeModal();
+            }}
+            onDeny={async (note) => {
+              const result = await wrap(() => workspace.denyOrderRequest(req.id, note));
               if (result) closeModal();
             }}
           />
@@ -1361,6 +1419,113 @@ const WarehouseToolbar = ({
 );
 
 // ---------------------------------------------------------------------------
+// Funding assignment line (rendered inside RequestCard)
+// ---------------------------------------------------------------------------
+
+const FundingAssignmentLine = ({
+  request,
+  fundingSourcesById,
+  assignableFundingSources,
+  isAdmin,
+  onSetFunding,
+  onClearFunding,
+}: {
+  request: OrderRequestRecord;
+  fundingSourcesById: Map<string, FundingSourceRecord>;
+  assignableFundingSources: FundingSourceRecord[];
+  isAdmin: boolean;
+  onSetFunding?: (fundingSourceId: string) => void;
+  onClearFunding?: () => void;
+}) => {
+  const status = request.funding_assignment_status;
+  const assigned = request.approved_funding_source_id
+    ? fundingSourcesById.get(request.approved_funding_source_id) ?? null
+    : null;
+  const assignedStatus = assigned ? getFundingStatus(assigned) : null;
+
+  // Member-facing summary. Members never see grant identifier and never see
+  // the funding dropdown.
+  if (!isAdmin) {
+    if (request.status === "draft" || status === "unassigned") return null;
+    if (status === "not_required") {
+      return (
+        <InlineNote>
+          <strong>Funding:</strong> not required for this order.
+        </InlineNote>
+      );
+    }
+    return (
+      <InlineNote>
+        <strong>Funding:</strong>{" "}
+        {assigned
+          ? `Assigned by reviewer — ${assigned.nickname}`
+          : "Assigned by reviewer."}
+      </InlineNote>
+    );
+  }
+
+  // Admin view: show the assignment with the grant id, and let them change
+  // or clear it while the request is still actionable.
+  const canChange =
+    !!onSetFunding &&
+    (request.status === "submitted" ||
+      request.status === "approved" ||
+      request.status === "ordered");
+
+  return (
+    <div className="sm-funding-line">
+      <div className="sm-funding-line-summary">
+        <strong>Funding:</strong>{" "}
+        {status === "unassigned" ? (
+          <span style={{ color: "var(--rl-muted)" }}>Unassigned</span>
+        ) : status === "not_required" ? (
+          <Badge tone="neutral">Not required</Badge>
+        ) : assigned ? (
+          <>
+            <strong>{assigned.nickname}</strong>
+            {assigned.grant_identifier ? (
+              <code className="sm-funding-grant-id">{assigned.grant_identifier}</code>
+            ) : null}
+            {assignedStatus ? (
+              <Badge tone={assignedStatus.badgeTone}>{assignedStatus.label}</Badge>
+            ) : null}
+            {status === "changed" ? <Badge tone="info">Changed</Badge> : null}
+          </>
+        ) : (
+          <em style={{ color: "var(--rl-muted)" }}>Source unavailable</em>
+        )}
+      </div>
+      {canChange ? (
+        <div className="sm-funding-line-actions">
+          <Select
+            value={assigned?.id ?? ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value) onSetFunding!(value);
+            }}
+          >
+            <option value="">Change funding source…</option>
+            {assignableFundingSources.map((s) => {
+              const st = getFundingStatus(s);
+              return (
+                <option key={s.id} value={s.id}>
+                  {s.nickname} ({st.label})
+                </option>
+              );
+            })}
+          </Select>
+          {assigned && onClearFunding ? (
+            <Button size="sm" variant="ghost" onClick={onClearFunding}>
+              Clear
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Request card (shared by Orders and Review tabs)
 // ---------------------------------------------------------------------------
 
@@ -1370,6 +1535,8 @@ const RequestCard = ({
   orders,
   itemsById,
   projectsById,
+  fundingSourcesById,
+  assignableFundingSources,
   currentUserId,
   isAdmin,
   lotsByOrder,
@@ -1383,12 +1550,16 @@ const RequestCard = ({
   onReceiveOrder,
   onApprove,
   onDeny,
+  onSetFunding,
+  onClearFunding,
 }: {
   request: OrderRequestRecord;
   items: OrderRequestItemRecord[];
   orders: OrderRecord[];
   itemsById: Map<string, ItemRecord>;
   projectsById: Map<string, { id: string; name: string }>;
+  fundingSourcesById: Map<string, FundingSourceRecord>;
+  assignableFundingSources: FundingSourceRecord[];
   currentUserId: string | null;
   isAdmin: boolean;
   lotsByOrder: Map<string, StockLotRecord[]>;
@@ -1402,6 +1573,8 @@ const RequestCard = ({
   onReceiveOrder?: (orderId: string) => void;
   onApprove?: () => void;
   onDeny?: () => void;
+  onSetFunding?: (fundingSourceId: string) => void;
+  onClearFunding?: () => void;
 }) => {
   const isMine = request.requested_by === currentUserId;
   const canAct = (isAdmin || isMine) && request.status === "draft";
@@ -1459,6 +1632,16 @@ const RequestCard = ({
           {request.reviewed_at ? ` (${formatDateTime(request.reviewed_at)})` : null}
         </InlineNote>
       ) : null}
+
+      <FundingAssignmentLine
+        request={request}
+        fundingSourcesById={fundingSourcesById}
+        assignableFundingSources={assignableFundingSources}
+        isAdmin={isAdmin}
+        onSetFunding={onSetFunding}
+        onClearFunding={onClearFunding}
+      />
+
 
       {orders.length > 0 ? (
         <div style={{ display: "grid", gap: "0.4rem" }}>
@@ -2583,32 +2766,83 @@ const ReviewRequestModal = ({
   itemsById,
   projectsById,
   mode,
+  suggestion,
+  assignableFundingSources,
   onClose,
-  onSubmit,
+  onApprove,
+  onDeny,
 }: {
   request: OrderRequestRecord;
   requestItems: OrderRequestItemRecord[];
   itemsById: Map<string, ItemRecord>;
   projectsById: Map<string, { id: string; name: string }>;
   mode: "approve" | "deny";
+  suggestion: FundingSuggestion | null;
+  assignableFundingSources: FundingSourceRecord[];
   onClose: () => void;
-  onSubmit: (note: string) => Promise<void>;
+  onApprove: (args: {
+    note: string | null;
+    fundingSourceId: string | null;
+    fundingRequired: boolean;
+  }) => Promise<void>;
+  onDeny: (note: string) => Promise<void>;
 }) => {
+  // Pre-select the suggestion if it's still assignable (active or expiring,
+  // but not archived/expired). An invalid suggestion forces a fresh pick.
+  const initialFundingId =
+    mode === "approve" && suggestion && !suggestion.invalid
+      ? suggestion.fundingSource.id
+      : "";
+
   const [note, setNote] = useState("");
+  const [fundingSourceId, setFundingSourceId] = useState<string>(initialFundingId);
+  const [fundingNotRequired, setFundingNotRequired] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const project = request.project_id ? projectsById.get(request.project_id) : null;
 
+  const selectedFunding = fundingSourceId
+    ? assignableFundingSources.find((s) => s.id === fundingSourceId) ?? null
+    : null;
+  const selectedStatus = selectedFunding ? getFundingStatus(selectedFunding) : null;
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (mode === "deny" && !note.trim()) {
-      setError("A denial note is required.");
+    setError(null);
+
+    if (mode === "deny") {
+      if (!note.trim()) {
+        setError("A denial note is required.");
+        return;
+      }
+      setBusy(true);
+      try {
+        await onDeny(note);
+      } catch (err) {
+        setError(errorMessage(err));
+      } finally {
+        setBusy(false);
+      }
       return;
     }
+
+    // Approve path: require either a funding source or the explicit
+    // "not required" toggle. Mirrors the SQL-side validation so the user
+    // gets a clearer message before round-tripping.
+    if (!fundingNotRequired && !fundingSourceId) {
+      setError(
+        "Pick a funding source for this approval, or check 'funding not required' if this order should bypass routing."
+      );
+      return;
+    }
+
     setBusy(true);
-    setError(null);
     try {
-      await onSubmit(note);
+      await onApprove({
+        note: note.trim() || null,
+        fundingSourceId: fundingNotRequired ? null : fundingSourceId,
+        fundingRequired: !fundingNotRequired,
+      });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -2641,6 +2875,83 @@ const ReviewRequestModal = ({
             );
           })}
         </ul>
+
+        {mode === "approve" ? (
+          <fieldset className="sm-funding-fieldset">
+            <legend>Funding assignment</legend>
+
+            {suggestion ? (
+              <InlineNote>
+                <strong>Suggested:</strong> {suggestion.fundingSource.nickname}
+                {" — "}
+                {suggestion.reason}
+                {suggestion.invalid ? (
+                  <>
+                    {" "}
+                    <Badge tone="danger">{suggestion.status.label}</Badge> Previously used
+                    funding source is no longer assignable. Please choose a new one.
+                  </>
+                ) : (
+                  <>
+                    {" "}
+                    <Badge tone={suggestion.status.badgeTone}>{suggestion.status.label}</Badge>
+                  </>
+                )}
+              </InlineNote>
+            ) : null}
+
+            <FormField label="Approved funding source">
+              <Select
+                value={fundingSourceId}
+                onChange={(e) => setFundingSourceId(e.target.value)}
+                disabled={fundingNotRequired}
+              >
+                <option value="">— Select a funding source —</option>
+                {assignableFundingSources.map((s) => {
+                  const status = getFundingStatus(s);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.nickname} ({status.label})
+                      {s.grant_identifier ? ` · ${s.grant_identifier}` : ""}
+                    </option>
+                  );
+                })}
+              </Select>
+            </FormField>
+
+            {selectedFunding && selectedStatus ? (
+              <div className="sm-funding-detail">
+                <div>
+                  <span className="sm-funding-meta">Grant identifier</span>
+                  <code>{selectedFunding.grant_identifier ?? "—"}</code>
+                </div>
+                <div>
+                  <span className="sm-funding-meta">Status</span>
+                  <Badge tone={selectedStatus.badgeTone}>{selectedStatus.label}</Badge>
+                </div>
+                <div>
+                  <span className="sm-funding-meta">Visibility</span>
+                  <Badge tone="neutral">{fundingVisibilityLabel(selectedFunding.visibility)}</Badge>
+                </div>
+                {selectedStatus.kind === "ending_soon" || selectedStatus.kind === "expiring_soon" ? (
+                  <InlineNote>
+                    This funding source expires in {selectedStatus.daysUntilExpiration} day
+                    {selectedStatus.daysUntilExpiration === 1 ? "" : "s"}. Confirm before
+                    assigning it to this order.
+                  </InlineNote>
+                ) : null}
+              </div>
+            ) : null}
+
+            <CheckboxField
+              label="Funding not required for this order"
+              hint="Use sparingly — most orders should be routed to a funding source."
+              checked={fundingNotRequired}
+              onChange={(e) => setFundingNotRequired(e.target.checked)}
+            />
+          </fieldset>
+        ) : null}
+
         <FormField label={mode === "approve" ? "Approval note (optional)" : "Denial reason (required)"}>
           <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
         </FormField>

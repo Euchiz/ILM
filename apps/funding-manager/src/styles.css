@@ -4,59 +4,68 @@
 @import "../../../packages/ui/src/lab-shell.css";
 
 /* =========================================================
-   Funding Manager app-local styles
-   Shared shell, topbar, cards, and account link come from
-   @ilm/ui. Only funding-specific compositions live here.
-========================================================= */
+   Funding Directory app-local styles
+   Shared shell, topbar, primitives, and tokens come from
+   @ilm/ui. Only directory-specific composition lives here.
+   ========================================================= */
 
-.funding-hero-card {
-  grid-column: 1 / -1;
-}
-
-.funding-stat-grid {
+.funding-directory-panel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
-.funding-stat-grid > div {
-  color: var(--rl-fg-2);
-}
-
-.funding-stat-grid span {
-  color: var(--rl-muted);
-  font-family: var(--rl-font-display);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.funding-stat-grid strong {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--rl-ink);
-  font-family: var(--rl-font-display);
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.funding-stat-grid small {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--rl-muted);
-}
-
-.funding-list {
-  margin: 0;
-  padding-left: 1.1rem;
+.funding-filter-bar {
   display: grid;
-  gap: 0.55rem;
-  color: var(--rl-fg-2);
+  grid-template-columns: minmax(220px, 2fr) repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--rl-line);
+  border-bottom: 1px solid var(--rl-line);
 }
 
-@media (max-width: 900px) {
-  .funding-stat-grid {
+.funding-filter-bar > .rl-checkbox-field {
+  align-self: end;
+  margin-bottom: 0.55rem;
+}
+
+.funding-table-scroll {
+  overflow-x: auto;
+}
+
+.funding-table-scroll table {
+  min-width: 720px;
+}
+
+.funding-grant-id {
+  font-family: var(--rl-font-mono, monospace);
+  font-size: 0.85rem;
+  background: var(--rl-soft);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--rl-radius-sm);
+  color: var(--rl-fg-2);
+  white-space: nowrap;
+}
+
+.funding-note-cell {
+  max-width: 280px;
+  color: var(--rl-fg-2);
+  font-size: 0.85rem;
+}
+
+.funding-action-cell {
+  display: flex;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.funding-modal-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  .funding-filter-bar {
     grid-template-columns: 1fr;
   }
 }

@@ -1,4 +1,11 @@
-import { getSupabaseClient } from "@ilm/utils";
+import {
+  getSupabaseClient,
+  type FundingAssignmentStatus,
+  type FundingDefaultRecord,
+  type FundingSourceRecord,
+} from "@ilm/utils";
+
+export type { FundingAssignmentStatus, FundingDefaultRecord, FundingSourceRecord };
 
 // ---------------------------------------------------------------------------
 // Domain types
@@ -78,6 +85,12 @@ export interface OrderRequestRecord {
   review_note: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  requested_funding_source_id: string | null;
+  suggested_funding_source_id: string | null;
+  approved_funding_source_id: string | null;
+  funding_assignment_status: FundingAssignmentStatus;
+  funding_assigned_by: string | null;
+  funding_assigned_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +151,8 @@ export interface SupplyWorkspaceSnapshot {
   stockLots: StockLotRecord[];
   projects: ProjectOptionRecord[];
   myProjectIds: string[];
+  fundingSources: FundingSourceRecord[];
+  fundingDefaults: FundingDefaultRecord[];
 }
 
 const client = () => getSupabaseClient();
@@ -152,7 +167,10 @@ const INVENTORY_CHECK_FIELDS =
   "id, item_id, stock_status, estimated_quantity, unit, location, note, checked_by, checked_at";
 
 const ORDER_REQUEST_FIELDS =
-  "id, lab_id, requested_by, project_id, status, reason, review_note, reviewed_by, reviewed_at, created_at, updated_at";
+  "id, lab_id, requested_by, project_id, status, reason, review_note, reviewed_by, reviewed_at, requested_funding_source_id, suggested_funding_source_id, approved_funding_source_id, funding_assignment_status, funding_assigned_by, funding_assigned_at, created_at, updated_at";
+
+const FUNDING_DEFAULT_FIELDS =
+  "id, lab_id, funding_source_id, item_id, project_id, category, confidence_level, set_by_user_id, last_used_order_id, last_used_at, created_at, updated_at";
 
 const ORDER_REQUEST_ITEM_FIELDS =
   "id, order_request_id, item_id, requested_quantity, unit, priority, note, created_at";
@@ -181,6 +199,8 @@ export async function listSupplyWorkspace(
     stockLotsResult,
     projectsResult,
     myProjectsResult,
+    fundingSourcesResult,
+    fundingDefaultsResult,
   ] = await Promise.all([
     client().from("items").select(ITEM_FIELDS).eq("lab_id", labId).order("name", { ascending: true }),
     client().from("item_projects").select(ITEM_PROJECT_FIELDS),
@@ -191,6 +211,11 @@ export async function listSupplyWorkspace(
     client().from("stock_lots").select(STOCK_LOT_FIELDS).order("received_at", { ascending: false }),
     client().from("projects").select("id, name").eq("lab_id", labId).order("name", { ascending: true }),
     client().from("project_members").select("project_id").eq("user_id", userId),
+    client().rpc("list_funding_sources", { p_lab_id: labId }),
+    // funding_defaults is admin-only at the SQL boundary; members get an
+    // empty list back (RLS suppresses rows) and the suggestion engine
+    // falls through to "no suggestion".
+    client().from("funding_defaults").select(FUNDING_DEFAULT_FIELDS).eq("lab_id", labId),
   ]);
 
   if (itemsResult.error) throw itemsResult.error;
@@ -202,6 +227,9 @@ export async function listSupplyWorkspace(
   if (stockLotsResult.error) throw stockLotsResult.error;
   if (projectsResult.error) throw projectsResult.error;
   if (myProjectsResult.error) throw myProjectsResult.error;
+  if (fundingSourcesResult.error) throw fundingSourcesResult.error;
+  // funding_defaults selection failure is non-fatal — members can't read it
+  // and the suggestion engine handles an empty list gracefully.
 
   const myProjectIds = ((myProjectsResult.data ?? []) as Array<{ project_id: string }>).map(
     (row) => row.project_id
@@ -217,6 +245,10 @@ export async function listSupplyWorkspace(
     stockLots: (stockLotsResult.data as StockLotRecord[]) ?? [],
     projects: (projectsResult.data as ProjectOptionRecord[]) ?? [],
     myProjectIds,
+    fundingSources: (fundingSourcesResult.data as FundingSourceRecord[]) ?? [],
+    fundingDefaults: fundingDefaultsResult.error
+      ? []
+      : ((fundingDefaultsResult.data as FundingDefaultRecord[]) ?? []),
   };
 }
 
@@ -482,10 +514,41 @@ export async function withdrawOrderRequest(requestId: string): Promise<OrderRequ
 
 export async function approveOrderRequest(
   requestId: string,
-  note?: string | null
+  args?: {
+    note?: string | null;
+    fundingSourceId?: string | null;
+    fundingRequired?: boolean;
+  }
 ): Promise<OrderRequestRecord> {
   const { data, error } = await client()
-    .rpc("approve_order_request", { p_request_id: requestId, p_note: note ?? null })
+    .rpc("approve_order_request", {
+      p_request_id: requestId,
+      p_note: args?.note ?? null,
+      p_funding_source_id: args?.fundingSourceId ?? null,
+      p_funding_required: args?.fundingRequired ?? true,
+    })
+    .single();
+  if (error) throw error;
+  return data as OrderRequestRecord;
+}
+
+export async function setOrderFunding(
+  requestId: string,
+  fundingSourceId: string
+): Promise<OrderRequestRecord> {
+  const { data, error } = await client()
+    .rpc("set_order_funding", {
+      p_request_id: requestId,
+      p_funding_source_id: fundingSourceId,
+    })
+    .single();
+  if (error) throw error;
+  return data as OrderRequestRecord;
+}
+
+export async function clearOrderFunding(requestId: string): Promise<OrderRequestRecord> {
+  const { data, error } = await client()
+    .rpc("clear_order_funding", { p_request_id: requestId })
     .single();
   if (error) throw error;
   return data as OrderRequestRecord;
