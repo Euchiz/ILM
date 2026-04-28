@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -7,6 +7,7 @@ import {
   FormRow,
   Input,
   InlineError,
+  InlineNote,
   Panel,
   SectionHeader,
   Select,
@@ -22,6 +23,13 @@ import type {
   ResourceRecord,
 } from "../lib/cloudAdapter";
 import { formatDateTime, formatDuration } from "../lib/datetime";
+import { BookingCalendarPanel } from "./BookingCalendarPanel";
+
+/** A completed booking lingers in the table for this long after its
+ *  actual end (or last update if no actual_end_time was recorded), then
+ *  drops off unless the user explicitly filters by status = completed.
+ *  It still shows up — grayed out — on the resource calendar above. */
+const COMPLETED_GRACE_MS = 30 * 60 * 1000;
 
 const STATUS_TONES: Record<BookingStatus, StatusTone> = {
   draft: "draft",
@@ -84,6 +92,14 @@ export const BookingsView = ({
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
+  // Tick once a minute so completed bookings drop off the table after
+  // their 30-min grace window without requiring a manual refresh.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const resourcesById = useMemo(
     () => new Map(resources.map((r) => [r.id, r])),
     [resources]
@@ -93,6 +109,12 @@ export const BookingsView = ({
     [projects]
   );
 
+  const isStaleCompleted = (b: BookingRecord, now: number): boolean => {
+    if (b.status !== "completed") return false;
+    const reference = b.actual_end_time ?? b.updated_at;
+    return now - new Date(reference).getTime() > COMPLETED_GRACE_MS;
+  };
+
   const filteredBookings = useMemo(() => {
     const fromMs = fromDate ? new Date(fromDate).getTime() : null;
     const toMs = toDate ? new Date(toDate).getTime() + 86_400_000 : null;
@@ -101,6 +123,10 @@ export const BookingsView = ({
       if (projectFilter !== "all" && b.project_id !== projectFilter) return false;
       if (statusFilter !== "all" && b.status !== statusFilter) return false;
       if (mineOnly && b.user_id !== currentUserId) return false;
+      // Completed bookings older than 30 min drop out of the "any
+      // status" view — the user can still surface them by switching
+      // the Status filter to Completed.
+      if (statusFilter === "all" && isStaleCompleted(b, nowTick)) return false;
       const startMs = new Date(b.start_time).getTime();
       if (fromMs !== null && startMs < fromMs) return false;
       if (toMs !== null && startMs >= toMs) return false;
@@ -115,7 +141,16 @@ export const BookingsView = ({
     fromDate,
     toDate,
     currentUserId,
+    nowTick,
   ]);
+
+  const hiddenCompletedCount = useMemo(() => {
+    if (statusFilter !== "all") return 0;
+    return bookings.reduce(
+      (acc, b) => (isStaleCompleted(b, nowTick) ? acc + 1 : acc),
+      0
+    );
+  }, [bookings, statusFilter, nowTick]);
 
   const wrap = async (id: string, op: () => Promise<unknown>) => {
     setActionError(null);
@@ -212,7 +247,9 @@ export const BookingsView = ({
   };
 
   return (
-    <Panel>
+    <div className="sch-bookings-stack">
+      <BookingCalendarPanel bookings={bookings} resources={resources} />
+      <Panel>
       <SectionHeader
         title="Bookings"
         meta={`${filteredBookings.length} of ${bookings.length}`}
@@ -287,6 +324,14 @@ export const BookingsView = ({
         </FormField>
       </FormRow>
       {actionError ? <InlineError>{actionError}</InlineError> : null}
+      {hiddenCompletedCount > 0 ? (
+        <InlineNote>
+          {hiddenCompletedCount} completed booking
+          {hiddenCompletedCount === 1 ? "" : "s"} hidden after the 30-min grace
+          window — switch the Status filter to <strong>Completed</strong> to
+          see them.
+        </InlineNote>
+      ) : null}
       {bookings.length === 0 ? (
         <EmptyState
           title="No bookings yet"
@@ -347,6 +392,7 @@ export const BookingsView = ({
           </tbody>
         </Table>
       )}
-    </Panel>
+      </Panel>
+    </div>
   );
 };
