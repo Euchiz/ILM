@@ -5,8 +5,8 @@
 
 /* =========================================================
    Scheduler app-local styles
-   Shared shell + topbar come from lab-shell.css. Scheduler-
-   specific composition uses the .sch- prefix.
+   Shared shell + topbar + primitives come from @ilm/ui.
+   App-local selectors all use the .sch- prefix.
 ========================================================= */
 
 .sch-subbar {
@@ -45,6 +45,304 @@
   color: var(--rl-fg-2);
 }
 
+.sch-loading {
+  color: var(--rl-muted);
+  padding: 0.5rem 0;
+}
+
+.sch-muted {
+  color: var(--rl-muted);
+}
+
+/* ----- Forms ----- */
+
+.sch-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.sch-actions-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sch-filter-row {
+  align-items: end;
+  margin: 0.5rem 0 0.85rem;
+}
+
+.sch-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--rl-fg-2);
+  padding: 0.45rem 0.65rem;
+  background: var(--rl-surface-2, var(--rl-surface));
+  border: 1px solid var(--rl-border);
+  border-radius: var(--rl-radius-sm, 6px);
+}
+
+.sch-toggle input {
+  accent-color: var(--rl-accent);
+}
+
+.sch-resource-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background: var(--rl-surface-2, var(--rl-surface));
+  border: 1px solid var(--rl-border);
+  border-radius: var(--rl-radius-sm, 6px);
+}
+
+.sch-resource-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--rl-fg-2);
+}
+
+.sch-resource-checkbox input {
+  accent-color: var(--rl-accent);
+}
+
+/* ----- Cells & rows ----- */
+
+.sch-cell-title {
+  font-weight: 600;
+  color: var(--rl-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sch-cell-meta {
+  color: var(--rl-muted);
+  font-size: 0.78rem;
+}
+
+.sch-archived-pill {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sch-upcoming-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+}
+
+/* ----- Calendar grid ----- */
+
+.sch-calendar-panel {
+  --sch-cal-row: 56px;
+}
+
+.sch-cal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.sch-cal-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
+  border: 1px solid var(--rl-border);
+  border-radius: var(--rl-radius-sm, 6px);
+  background: var(--rl-surface);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.sch-cal-grid-corner {
+  border-right: 1px solid var(--rl-border);
+  border-bottom: 1px solid var(--rl-border);
+  background: var(--rl-surface-2, var(--rl-surface));
+}
+
+.sch-cal-day-head {
+  padding: 0.4rem 0.5rem;
+  border-right: 1px solid var(--rl-border);
+  border-bottom: 1px solid var(--rl-border);
+  background: var(--rl-surface-2, var(--rl-surface));
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.sch-cal-day-head:last-child {
+  border-right: none;
+}
+
+.sch-cal-day-head.is-today {
+  background: var(--rl-accent-soft, rgba(64, 128, 192, 0.08));
+}
+
+.sch-cal-day-label {
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rl-muted);
+}
+
+.sch-cal-day-num {
+  font-family: var(--rl-font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--rl-ink);
+}
+
+.sch-cal-hour-col {
+  grid-column: 1;
+  display: grid;
+  grid-template-rows: repeat(var(--sch-cal-rows), var(--sch-cal-row));
+  border-right: 1px solid var(--rl-border);
+}
+
+.sch-cal-hour-cell {
+  padding: 0.2rem 0.4rem;
+  font-family: var(--rl-font-mono, var(--rl-font-display));
+  font-size: 0.7rem;
+  color: var(--rl-muted);
+  text-align: right;
+  border-bottom: 1px dashed var(--rl-border-soft, var(--rl-border));
+}
+
+.sch-cal-day-col {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(var(--sch-cal-rows), var(--sch-cal-row));
+  border-right: 1px solid var(--rl-border);
+}
+
+.sch-cal-day-col:last-child {
+  border-right: none;
+}
+
+.sch-cal-slot {
+  border-bottom: 1px dashed var(--rl-border-soft, var(--rl-border));
+}
+
+.sch-cal-event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 5px;
+  border: 1px solid var(--rl-border);
+  background: var(--rl-surface);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--rl-ink);
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.sch-cal-event:hover {
+  border-color: var(--rl-accent);
+}
+
+.sch-cal-event-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sch-cal-event-meta {
+  font-size: 0.72rem;
+  color: var(--rl-muted);
+}
+
+.sch-cal-event--meeting     { border-left: 3px solid #4080c0; }
+.sch-cal-event--experiment  { border-left: 3px solid #1f9d6c; }
+.sch-cal-event--reminder    { border-left: 3px solid #8a8a8a; }
+.sch-cal-event--deadline    { border-left: 3px solid #c0392b; }
+.sch-cal-event--maintenance { border-left: 3px solid #d39e00; }
+.sch-cal-event--general     { border-left: 3px solid #555;   }
+
+/* ----- Conflict panel ----- */
+
+.sch-conflict-panel {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--rl-surface-2, var(--rl-surface));
+  border: 1px solid var(--rl-border);
+  border-radius: var(--rl-radius-sm, 6px);
+}
+
+.sch-conflict-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--rl-fg-2);
+}
+
+/* ----- Task cards ----- */
+
+.sch-task-grid {
+  margin-top: 0.5rem;
+}
+
+.sch-task-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sch-task-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sch-task-card-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--rl-ink);
+  font-family: var(--rl-font-display);
+}
+
+.sch-task-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.sch-task-card-desc {
+  margin: 0;
+  color: var(--rl-fg-2);
+  font-size: 0.85rem;
+}
+
+.sch-task-card-actions {
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+
+/* ----- Top status grid (foundation cards) ----- */
+
 .sch-stat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -82,6 +380,12 @@
   display: grid;
   gap: 0.55rem;
   color: var(--rl-fg-2);
+}
+
+@media (max-width: 1100px) {
+  .sch-cal-grid {
+    grid-template-columns: 56px repeat(7, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
