@@ -279,3 +279,84 @@
   margin: 0.1rem 0 0;
   color: var(--rl-fg-2);
 }
+
+/* ========================================================
+   Funding assignment surface (Review modal + Request card)
+   ======================================================== */
+
+.sm-funding-fieldset {
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+.sm-funding-fieldset legend {
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rl-muted);
+  padding: 0 0.4rem;
+}
+
+.sm-funding-detail {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--rl-soft);
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.85rem;
+}
+.sm-funding-detail > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.sm-funding-meta {
+  color: var(--rl-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  min-width: 7.5rem;
+}
+.sm-funding-detail code {
+  font-size: 0.85rem;
+  background: var(--rl-bg);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--rl-radius-sm);
+}
+
+.sm-funding-line {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px dashed var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.85rem;
+  color: var(--rl-fg-2);
+}
+.sm-funding-line-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sm-funding-line-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sm-funding-grant-id {
+  font-family: var(--rl-font-mono, monospace);
+  background: var(--rl-soft);
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--rl-radius-sm);
+  color: var(--rl-fg-2);
+}
+
