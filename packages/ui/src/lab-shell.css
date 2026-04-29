@@ -21,128 +21,6 @@ body {
   min-height: 100vh;
   color: var(--ilm-ink);
   font-family: var(--rl-font-body);
-  position: relative;
-  isolation: isolate;
-}
-
-/* ----- Futurism atmosphere ------------------------------------- */
-/* Faint scanlines + prismatic corner blooms behind the shell so
-   glass surfaces have something to refract. */
-.ils-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(40, 103, 95, 0.035) 0 1px,
-      transparent 1px 3px
-    ),
-    radial-gradient(
-      900px 360px at 78% -10%,
-      rgba(120, 200, 220, 0.16),
-      transparent 60%
-    ),
-    radial-gradient(
-      700px 280px at 8% 120%,
-      rgba(78, 159, 146, 0.14),
-      transparent 60%
-    );
-}
-/* Slow scanning beam, behind every surface. */
-.ils-shell::after {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(78, 159, 146, 0.6),
-    transparent
-  );
-  filter: blur(0.4px);
-  z-index: 1;
-  pointer-events: none;
-  animation: ils-futur-scan 9s linear infinite;
-}
-@keyframes ils-futur-scan {
-  0%   { transform: translateY(0); opacity: 0; }
-  10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: translateY(100vh); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ils-shell::after { animation: none; opacity: 0; }
-}
-/* Keep sidebar + main above the atmosphere. */
-.ils-sidebar,
-.ils-main { position: relative; z-index: 2; }
-
-/* ----- Futurism utilities -------------------------------------- */
-/* Prismatic top edge — apply to any card/lozenge for a chromatic
-   highlight that reads as glass refraction. */
-.futur-edge { position: relative; }
-.futur-edge::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -1px;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 200, 220, 0.0),
-    rgba(255, 200, 220, 0.45) 25%,
-    rgba(255, 255, 255, 0.85) 50%,
-    rgba(120, 200, 220, 0.45) 75%,
-    rgba(120, 200, 220, 0.0)
-  );
-  pointer-events: none;
-}
-.futur-corners::before,
-.futur-corners::after {
-  content: "";
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid var(--ilm-viridian);
-  pointer-events: none;
-  opacity: 0.55;
-}
-.futur-corners::before { top: -4px; left: -4px; border-right: 0; border-bottom: 0; }
-.futur-corners::after  { bottom: -4px; right: -4px; border-left: 0; border-top: 0; }
-.futur-meta {
-  font-family: var(--rl-font-mono);
-  font-size: 0.66rem;
-  color: var(--ilm-fg-3);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-.futur-meta b { color: var(--ilm-viridian); font-weight: 600; }
-.futur-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ilm-viridian);
-  box-shadow:
-    0 0 0 3px rgba(78, 159, 146, 0.18),
-    0 0 8px rgba(78, 159, 146, 0.6);
-  animation: ils-futur-blink 1.6s ease-in-out infinite;
-  vertical-align: 1px;
-  margin-right: 5px;
-}
-@keyframes ils-futur-blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .futur-dot { animation: none; }
 }
 
 /* ----- Sidebar -------------------------------------------------- */
@@ -313,44 +191,16 @@ body {
 }
 .ils-side-profile:hover { background: var(--ilm-surface); }
 .ils-side-orb {
-  position: relative;
   width: 38px;
   height: 38px;
-  border-radius: 999px;
-  color: rgba(20, 32, 31, 0.78);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0 18%, var(--ilm-viridian) 22% 60%, #1f2a28 62% 100%);
+  color: rgba(255,255,255,0.95);
   font-family: var(--rl-font-display);
   font-size: 0.72rem;
-  font-weight: 600;
   display: grid;
   place-items: center;
-  isolation: isolate;
-  filter: drop-shadow(0 4px 6px rgba(20, 32, 31, 0.10));
-}
-.ils-side-orb::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 35%, rgba(255,255,255,0) 65%),
-    rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-}
-.ils-side-orb::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1.5px 0 rgba(255, 255, 255, 0.5),
-    inset -2px 0 4px rgba(120, 200, 220, 0.20),
-    inset 2px 0 4px rgba(255, 200, 220, 0.12);
+  box-shadow: inset -5px -6px 12px rgba(0,0,0,0.2), 0 6px 12px rgba(0,0,0,0.1);
 }
 .ils-side-profile-copy { display: grid; gap: 0.05rem; min-width: 0; }
 .ils-side-profile-copy strong {
@@ -396,22 +246,6 @@ body {
   align-items: end;
   gap: 1.2rem;
   padding: 2rem 2.2rem 1.2rem;
-  position: relative;
-}
-/* Telemetry meta strip — mono read-out anchored under the topbar. */
-.ils-topbar::after {
-  content: "T+0426.117 · STREAM ▮ NOMINAL · LAT 14ms";
-  position: absolute;
-  left: 2.2rem;
-  bottom: 0.4rem;
-  font-family: var(--rl-font-mono);
-  font-size: 0.6rem;
-  color: var(--ilm-fg-4);
-  letter-spacing: 0.06em;
-  pointer-events: none;
-}
-@media (max-width: 960px) {
-  .ils-topbar::after { left: 1rem; }
 }
 .ils-topbar-copy { min-width: 0; }
 .ils-kicker {
