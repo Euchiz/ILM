@@ -161,7 +161,7 @@ type ReviewLink = {
   description: string;
 };
 
-const buildReviewLinks = (mode: "owner" | "admin" | "lead"): ReviewLink[] => {
+const buildReviewLinks = (mode: "owner" | "admin" | "lead" | "data"): ReviewLink[] => {
   const projectsLink: ReviewLink = {
     key: "projects",
     label: "Projects",
@@ -186,6 +186,12 @@ const buildReviewLinks = (mode: "owner" | "admin" | "lead"): ReviewLink[] => {
     href: `${appUrl("scheduler/", APP_BASE_URL)}#bookings`,
     description: "Resource bookings needing approval",
   };
+  const datasetsLink: ReviewLink = {
+    key: "datasets",
+    label: "Data requests",
+    href: `${appUrl("data-hub/", APP_BASE_URL)}#requests`,
+    description: "Dataset access requests awaiting review",
+  };
   const protocolsLink: ReviewLink = {
     key: "protocols",
     label: "Protocols",
@@ -193,8 +199,9 @@ const buildReviewLinks = (mode: "owner" | "admin" | "lead"): ReviewLink[] => {
     description: "Submissions for your projects",
   };
 
-  if (mode === "owner") return [projectsLink, ordersLink, membersLink];
-  if (mode === "admin") return [projectsLink, ordersLink, membersLink, bookingsLink];
+  if (mode === "owner") return [projectsLink, ordersLink, membersLink, datasetsLink];
+  if (mode === "admin") return [projectsLink, ordersLink, membersLink, bookingsLink, datasetsLink];
+  if (mode === "data") return [datasetsLink];
   return [protocolsLink];
 };
 
@@ -202,7 +209,7 @@ const ReviewQueueCard = ({
   mode,
   pending,
 }: {
-  mode: "owner" | "admin" | "lead" | "none";
+  mode: "owner" | "admin" | "lead" | "data" | "none";
   pending: PendingReviews;
 }) => {
   const links = useMemo(() => (mode === "none" ? [] : buildReviewLinks(mode)), [mode]);
@@ -214,6 +221,8 @@ const ReviewQueueCard = ({
         ? "ADMIN REVIEW QUEUE"
         : mode === "lead"
           ? "PROJECT-LEAD REVIEW QUEUE"
+          : mode === "data"
+            ? "DATA REVIEW QUEUE"
           : "REVIEW QUEUE";
 
   return (
@@ -224,7 +233,7 @@ const ReviewQueueCard = ({
       </header>
       {mode === "none" ? (
         <p className="ovw-empty">
-          No review surfaces for your role. Owners, admins, and project leads see review queues here.
+          No review surfaces for your role. Owners, admins, project leads, and dataset owners see review queues here.
         </p>
       ) : (
         <ul className="ovw-review-grid">
@@ -460,25 +469,33 @@ const TeamCard = ({ team }: { team: TeamStats }) => {
 
 export const OverviewView = () => {
   const { activeLab, user } = useAuth();
-  const data = useDashboardData(activeLab?.id ?? null, user?.id ?? null);
+  const data = useDashboardData(activeLab?.id ?? null, user?.id ?? null, activeLab?.role ?? null);
 
   const role = activeLab?.role;
-  const reviewMode: "owner" | "admin" | "lead" | "none" =
+  const reviewMode: "owner" | "admin" | "lead" | "data" | "none" =
     role === "owner"
       ? "owner"
       : role === "admin"
         ? "admin"
         : data.isProjectLead
           ? "lead"
+          : data.pending.datasets > 0
+            ? "data"
           : "none";
 
   const visiblePending = useMemo(() => {
-    if (reviewMode === "owner") return data.pending.projects + data.pending.orders + data.pending.members;
+    if (reviewMode === "owner")
+      return data.pending.projects + data.pending.orders + data.pending.members + data.pending.datasets;
     if (reviewMode === "admin")
       return (
-        data.pending.projects + data.pending.orders + data.pending.members + data.pending.bookings
+        data.pending.projects +
+        data.pending.orders +
+        data.pending.members +
+        data.pending.bookings +
+        data.pending.datasets
       );
     if (reviewMode === "lead") return data.pending.protocols;
+    if (reviewMode === "data") return data.pending.datasets;
     return 0;
   }, [reviewMode, data.pending]);
 

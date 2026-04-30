@@ -46,6 +46,7 @@ export type PendingReviews = {
   orders: number;
   members: number;
   bookings: number;
+  datasets: number;
 };
 
 export type ScheduleEntry = {
@@ -85,7 +86,7 @@ const emptyState: Omit<DashboardData, "refresh"> = {
   protocols: { total: 0, active: 0, inReview: 0, archived: 0 },
   inventory: { total: 0, reagents: 0, consumables: 0, supplies: 0, samples: 0, other: 0, criticalLow: 0, inOrder: 0, unchecked: 0 },
   team: { total: 0, owners: 0, admins: 0, members: 0, recentAvatars: [] },
-  pending: { protocols: 0, projects: 0, orders: 0, members: 0, bookings: 0 },
+  pending: { protocols: 0, projects: 0, orders: 0, members: 0, bookings: 0, datasets: 0 },
   schedule: [],
   activity: [],
   isProjectLead: false,
@@ -128,7 +129,11 @@ const readDocStatus = (doc: ProtocolRow["document_json"]): { lifecycle: string |
   };
 };
 
-export const useDashboardData = (labId: string | null, userId: string | null): DashboardData => {
+export const useDashboardData = (
+  labId: string | null,
+  userId: string | null,
+  role: "owner" | "admin" | "member" | null = null
+): DashboardData => {
   const [state, setState] = useState<Omit<DashboardData, "refresh">>(emptyState);
 
   const load = useCallback(
@@ -158,6 +163,7 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
           pendingOrdersRes,
           pendingJoinRes,
           pendingBookingsRes,
+          pendingDatasetRequestsRes,
           eventsRes,
           bookingsRes,
           recentOrdersRes,
@@ -202,6 +208,16 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
             .eq("status", "requested")
             .order("start_time", { ascending: true })
             .limit(50),
+          supabase
+            .from("dataset_access_requests")
+            .select(
+              "id, requester_user_id, datasets!inner(lab_id, owner_user_id, contact_user_id)",
+              { count: "exact" }
+            )
+            .eq("lab_id", labId)
+            .eq("status", "pending")
+            .eq("datasets.lab_id", labId)
+            .limit(200),
           supabase
             .from("calendar_events")
             .select("id, title, start_time, end_time, location, status")
@@ -349,12 +365,34 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
         // Pending counts
         type PendingJoinRow = { id: string };
         const joinRows = (pendingJoinRes.data as PendingJoinRow[] | null) ?? [];
+        type PendingDatasetRequestRow = {
+          id: string;
+          requester_user_id: string | null;
+          datasets:
+            | { owner_user_id: string | null; contact_user_id: string | null }
+            | { owner_user_id: string | null; contact_user_id: string | null }[]
+            | null;
+        };
+        const datasetRequestRows =
+          (pendingDatasetRequestsRes.data as PendingDatasetRequestRow[] | null) ?? [];
+        const isLabReviewer = role === "owner" || role === "admin";
+        const pendingDatasetRequestsCount = isLabReviewer
+          ? (pendingDatasetRequestsRes.count ?? datasetRequestRows.length)
+          : datasetRequestRows.filter((row) => {
+              const dataset = Array.isArray(row.datasets) ? row.datasets[0] : row.datasets;
+              return (
+                userId &&
+                row.requester_user_id !== userId &&
+                (dataset?.owner_user_id === userId || dataset?.contact_user_id === userId)
+              );
+            }).length;
         const pending: PendingReviews = {
           protocols: pendingProtocolsRes.count ?? 0,
           projects: pendingProjectsCount,
           orders: pendingOrdersRes.count ?? 0,
           members: joinRows.length,
           bookings: pendingBookingsRes.count ?? 0,
+          datasets: pendingDatasetRequestsCount,
         };
 
         // Schedule (calendar_events + upcoming bookings, merged + sorted)
@@ -459,7 +497,7 @@ export const useDashboardData = (labId: string | null, userId: string | null): D
         setState((prev) => ({ ...prev, loading: false, refreshing: false, error: errorMessage(err) }));
       }
     },
-    [labId, userId]
+    [labId, role, userId]
   );
 
   // Initial load + reload on labId/userId change.
