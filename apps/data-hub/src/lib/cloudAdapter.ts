@@ -182,6 +182,16 @@ export interface DatasetStorageLinkRecord {
   created_at: string;
 }
 
+export interface DatasetAccessGrantRecord {
+  id: string;
+  lab_id: string;
+  dataset_id: string;
+  user_id: string;
+  granted_by: string | null;
+  granted_at: string;
+  note: string | null;
+}
+
 export interface ProjectOptionRecord {
   id: string;
   name: string;
@@ -194,6 +204,7 @@ export interface DataHubWorkspaceSnapshot {
   requests: DatasetAccessRequestRecord[];
   tags: DatasetTagRecord[];
   storageLinks: DatasetStorageLinkRecord[];
+  accessGrants: DatasetAccessGrantRecord[];
   projects: ProjectOptionRecord[];
   labMembers: LabMemberRecord[];
 }
@@ -251,6 +262,8 @@ const REQUEST_FIELDS =
 const TAG_FIELDS = "id, lab_id, dataset_id, tag, created_at";
 const STORAGE_FIELDS =
   "id, lab_id, dataset_id, dataset_version_id, label, storage_uri, storage_type, notes, created_by, created_at";
+const GRANT_FIELDS =
+  "id, lab_id, dataset_id, user_id, granted_by, granted_at, note";
 
 const normalizeTags = (tags: string[]) =>
   Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean))).slice(0, 24);
@@ -263,6 +276,7 @@ export async function listDataHubWorkspace(labId: string): Promise<DataHubWorksp
     requestsResult,
     tagsResult,
     storageLinksResult,
+    accessGrantsResult,
     projectsResult,
     members,
   ] = await Promise.all([
@@ -272,6 +286,7 @@ export async function listDataHubWorkspace(labId: string): Promise<DataHubWorksp
     client().from("dataset_access_requests").select(REQUEST_FIELDS).eq("lab_id", labId).order("created_at", { ascending: false }),
     client().from("dataset_tags").select(TAG_FIELDS).eq("lab_id", labId).order("tag", { ascending: true }),
     client().from("dataset_storage_links").select(STORAGE_FIELDS).eq("lab_id", labId).order("created_at", { ascending: true }),
+    client().from("dataset_access_grants").select(GRANT_FIELDS).eq("lab_id", labId).order("granted_at", { ascending: true }),
     client().from("projects").select("id, name").eq("lab_id", labId).order("name", { ascending: true }),
     listLabMembers(labId).catch(() => [] as LabMemberRecord[]),
   ]);
@@ -282,6 +297,7 @@ export async function listDataHubWorkspace(labId: string): Promise<DataHubWorksp
   if (requestsResult.error) throw requestsResult.error;
   if (tagsResult.error) throw tagsResult.error;
   if (storageLinksResult.error) throw storageLinksResult.error;
+  if (accessGrantsResult.error) throw accessGrantsResult.error;
   if (projectsResult.error) throw projectsResult.error;
 
   return {
@@ -291,6 +307,7 @@ export async function listDataHubWorkspace(labId: string): Promise<DataHubWorksp
     requests: (requestsResult.data as DatasetAccessRequestRecord[]) ?? [],
     tags: (tagsResult.data as DatasetTagRecord[]) ?? [],
     storageLinks: (storageLinksResult.data as DatasetStorageLinkRecord[]) ?? [],
+    accessGrants: (accessGrantsResult.data as DatasetAccessGrantRecord[]) ?? [],
     projects: (projectsResult.data as ProjectOptionRecord[]) ?? [],
     labMembers: members,
   };
@@ -389,6 +406,37 @@ export async function restoreDataset(datasetId: string): Promise<DatasetRecord> 
     .single();
   if (error) throw error;
   return data as DatasetRecord;
+}
+
+export async function deleteDataset(datasetId: string): Promise<void> {
+  const { error } = await client().rpc("delete_dataset", { p_dataset_id: datasetId });
+  if (error) throw error;
+}
+
+export async function deleteDatasetVersion(versionId: string): Promise<void> {
+  const { error } = await client().rpc("delete_dataset_version", { p_version_id: versionId });
+  if (error) throw error;
+}
+
+export async function grantDatasetAccess(args: {
+  datasetId: string;
+  userId: string;
+  note?: string | null;
+}): Promise<DatasetAccessGrantRecord> {
+  const { data, error } = await client()
+    .rpc("grant_dataset_access", {
+      p_dataset_id: args.datasetId,
+      p_user_id: args.userId,
+      p_note: args.note ?? null,
+    })
+    .single();
+  if (error) throw error;
+  return data as DatasetAccessGrantRecord;
+}
+
+export async function revokeDatasetAccess(grantId: string): Promise<void> {
+  const { error } = await client().rpc("revoke_dataset_access", { p_grant_id: grantId });
+  if (error) throw error;
 }
 
 export async function createDatasetVersion(args: {

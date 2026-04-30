@@ -34,6 +34,7 @@ import {
   SOURCE_TYPES,
   VERSION_TYPES,
   type AccessLevel,
+  type DatasetAccessGrantRecord,
   type DatasetAccessRequestRecord,
   type DatasetInput,
   type DatasetRecord,
@@ -123,6 +124,19 @@ const accessTone = (level: AccessLevel): BadgeTone => {
   return "danger";
 };
 
+const ACCESS_LEVEL_DESCRIPTIONS: Record<AccessLevel, string> = {
+  "open-lab":
+    "Open lab — every member sees metadata and storage. No request; uses are recorded directly.",
+  "request-required":
+    "Request required — every member sees metadata. Storage location is revealed only after the owner approves a request.",
+  "restricted":
+    "Restricted — owner, contact, and lab admins see it. Owner can also grant access to additional members one by one.",
+  "private":
+    "Private — only the creator/owner and lab admins/owners see it. Cannot be shared; switch to Restricted to add members.",
+};
+
+const accessLevelDescription = (level: AccessLevel) => ACCESS_LEVEL_DESCRIPTIONS[level];
+
 const requestTone = (status: DatasetAccessRequestRecord["status"]): BadgeTone => {
   if (status === "approved") return "success";
   if (status === "denied") return "danger";
@@ -144,6 +158,9 @@ const getRequestAction = (
       label: hasRecordedUse ? "Record another use" : "Record use",
       disabled: false,
     };
+  }
+  if (dataset.access_level === "restricted" || dataset.access_level === "private") {
+    return { label: "Owner-managed access", disabled: true };
   }
   if (mine.some((request) => request.status === "pending")) {
     return { label: "Pending", disabled: true };
@@ -198,6 +215,7 @@ export const App = () => {
   const versionsByDatasetId = useMemo(() => groupBy(workspace.versions, "dataset_id"), [workspace.versions]);
   const requestsByDatasetId = useMemo(() => groupBy(workspace.requests, "dataset_id"), [workspace.requests]);
   const storageByDatasetId = useMemo(() => groupBy(workspace.storageLinks, "dataset_id"), [workspace.storageLinks]);
+  const grantsByDatasetId = useMemo(() => groupBy(workspace.accessGrants, "dataset_id"), [workspace.accessGrants]);
 
   const allTags = useMemo(
     () => Array.from(new Set(workspace.tags.map((tag) => tag.tag))).sort((a, b) => a.localeCompare(b)),
@@ -288,10 +306,40 @@ export const App = () => {
           versions={versionsByDatasetId.get(selectedDataset.id) ?? []}
           requests={requestsByDatasetId.get(selectedDataset.id) ?? []}
           storageLinks={storageByDatasetId.get(selectedDataset.id) ?? []}
+          accessGrants={grantsByDatasetId.get(selectedDataset.id) ?? []}
+          labMembers={workspace.labMembers}
+          onGrantAccess={(userId) =>
+            wrap(() => workspace.grantDatasetAccess({ datasetId: selectedDataset.id, userId }))
+          }
+          onRevokeAccess={(grantId) => wrap(() => workspace.revokeDatasetAccess(grantId))}
           onBack={() => setSelectedDatasetId(null)}
           onEdit={() => setModal({ kind: "dataset", dataset: selectedDataset })}
           onArchive={() => wrap(() => workspace.archiveDataset(selectedDataset.id))}
           onRestore={() => wrap(() => workspace.restoreDataset(selectedDataset.id))}
+          onDelete={async () => {
+            if (
+              typeof window !== "undefined" &&
+              !window.confirm(
+                `Permanently delete "${selectedDataset.name}"? This removes all versions, tags, project links, requests, and storage references and cannot be undone.`
+              )
+            ) {
+              return;
+            }
+            const ok = await wrap(async () => {
+              await workspace.deleteDataset(selectedDataset.id);
+              return true;
+            });
+            if (ok) setSelectedDatasetId(null);
+          }}
+          onDeleteVersion={async (versionId, versionName) => {
+            if (
+              typeof window !== "undefined" &&
+              !window.confirm(`Delete version "${versionName}"? This cannot be undone.`)
+            ) {
+              return;
+            }
+            await wrap(() => workspace.deleteDatasetVersion(versionId));
+          }}
           onAddVersion={() => setModal({ kind: "version", datasetId: selectedDataset.id })}
           onRequestAccess={() => setModal({ kind: "request", datasetId: selectedDataset.id })}
           onReview={(request, decision) => setModal({ kind: "review", request, decision })}
@@ -885,10 +933,16 @@ function DatasetDetailView({
   versions,
   requests,
   storageLinks,
+  accessGrants,
+  labMembers,
+  onGrantAccess,
+  onRevokeAccess,
   onBack,
   onEdit,
   onArchive,
   onRestore,
+  onDelete,
+  onDeleteVersion,
   onAddVersion,
   onRequestAccess,
   onReview,
@@ -905,10 +959,16 @@ function DatasetDetailView({
   versions: DatasetVersionRecord[];
   requests: DatasetAccessRequestRecord[];
   storageLinks: DatasetStorageLinkRecord[];
+  accessGrants: DatasetAccessGrantRecord[];
+  labMembers: LabMemberRecord[];
+  onGrantAccess: (userId: string) => void;
+  onRevokeAccess: (grantId: string) => void;
   onBack: () => void;
   onEdit: () => void;
   onArchive: () => void;
   onRestore: () => void;
+  onDelete: () => void;
+  onDeleteVersion: (versionId: string, versionName: string) => void;
   onAddVersion: () => void;
   onRequestAccess: () => void;
   onReview: (request: DatasetAccessRequestRecord, decision: "approved" | "denied") => void;
@@ -949,9 +1009,16 @@ function DatasetDetailView({
             ) : canEdit ? (
               <Button variant="ghost" onClick={onArchive}>Archive</Button>
             ) : null}
+            {isAdmin ? (
+              <Button variant="danger" onClick={onDelete}>Delete</Button>
+            ) : null}
           </div>
         </div>
         <p className="dh-detail-description">{dataset.description ?? "No description yet."}</p>
+        <InlineNote>
+          <strong>{labelize(dataset.access_level)}.</strong>{" "}
+          {accessLevelDescription(dataset.access_level)}
+        </InlineNote>
       </Panel>
 
       <div className="dh-detail-grid">
@@ -1028,20 +1095,38 @@ function DatasetDetailView({
           meta={`${versions.length}`}
           actions={canEdit ? <Button size="sm" variant="secondary" onClick={onAddVersion}>+ Add version</Button> : null}
         />
-        <VersionList versions={versions} storageLinks={storageLinks} />
+        <VersionList
+          versions={versions}
+          storageLinks={storageLinks}
+          canEdit={canEdit}
+          onDeleteVersion={onDeleteVersion}
+        />
       </Panel>
 
-      <RequestsDashboard
-        requests={requests}
-        datasets={[dataset]}
-        projectsById={projectsById}
-        membersById={membersById}
-        currentUserId={currentUserId}
-        isAdmin={isAdmin}
-        onOpenDataset={() => undefined}
-        onReview={onReview}
-        onWithdraw={onWithdraw}
-      />
+      {dataset.access_level === "restricted" && canEdit ? (
+        <PermittedUsersPanel
+          dataset={dataset}
+          accessGrants={accessGrants}
+          labMembers={labMembers}
+          membersById={membersById}
+          onGrantAccess={onGrantAccess}
+          onRevokeAccess={onRevokeAccess}
+        />
+      ) : null}
+
+      {dataset.access_level === "request-required" || dataset.access_level === "open-lab" ? (
+        <RequestsDashboard
+          requests={requests}
+          datasets={[dataset]}
+          projectsById={projectsById}
+          membersById={membersById}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          onOpenDataset={() => undefined}
+          onReview={onReview}
+          onWithdraw={onWithdraw}
+        />
+      ) : null}
 
       {dataset.notes ? (
         <Panel>
@@ -1053,12 +1138,91 @@ function DatasetDetailView({
   );
 }
 
+function PermittedUsersPanel({
+  dataset,
+  accessGrants,
+  labMembers,
+  membersById,
+  onGrantAccess,
+  onRevokeAccess,
+}: {
+  dataset: DatasetRecord;
+  accessGrants: DatasetAccessGrantRecord[];
+  labMembers: LabMemberRecord[];
+  membersById: Map<string, LabMemberRecord>;
+  onGrantAccess: (userId: string) => void;
+  onRevokeAccess: (grantId: string) => void;
+}) {
+  const [pendingUserId, setPendingUserId] = useState("");
+  const grantedUserIds = new Set(accessGrants.map((grant) => grant.user_id));
+  const reservedUserIds = new Set(
+    [dataset.owner_user_id, dataset.contact_user_id].filter((id): id is string => Boolean(id))
+  );
+  const candidates = labMembers.filter(
+    (member) => !grantedUserIds.has(member.user_id) && !reservedUserIds.has(member.user_id)
+  );
+
+  const handleAdd = () => {
+    if (!pendingUserId) return;
+    onGrantAccess(pendingUserId);
+    setPendingUserId("");
+  };
+
+  return (
+    <Panel>
+      <SectionHeader title="Permitted users" meta={`${accessGrants.length}`} />
+      <InlineNote>
+        Owner, contact, and lab admins always have access. Add anyone else who should see this {labelize(dataset.access_level).toLowerCase()} dataset in their library.
+      </InlineNote>
+      <div className="dh-grant-add">
+        <Select value={pendingUserId} onChange={(event) => setPendingUserId(event.target.value)}>
+          <option value="">Select a lab member…</option>
+          {candidates.map((member) => (
+            <option key={member.user_id} value={member.user_id}>{memberLabel(member)}</option>
+          ))}
+        </Select>
+        <Button variant="secondary" onClick={handleAdd} disabled={!pendingUserId}>
+          Grant access
+        </Button>
+      </div>
+      {accessGrants.length === 0 ? (
+        <EmptyState description="No additional users granted yet. Owner, contact, and admins still see this dataset." />
+      ) : (
+        <div className="dh-grant-list">
+          {accessGrants.map((grant) => {
+            const member = membersById.get(grant.user_id);
+            const grantedBy = membersById.get(grant.granted_by ?? "");
+            return (
+              <div key={grant.id} className="dh-grant-row">
+                <div>
+                  <strong>{memberLabel(member, grant.user_id)}</strong>
+                  <div className="dh-cell-meta">
+                    Granted {formatDate(grant.granted_at)}
+                    {grantedBy ? ` by ${memberLabel(grantedBy)}` : ""}
+                  </div>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => onRevokeAccess(grant.id)}>
+                  Revoke
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 function VersionList({
   versions,
   storageLinks,
+  canEdit,
+  onDeleteVersion,
 }: {
   versions: DatasetVersionRecord[];
   storageLinks: DatasetStorageLinkRecord[];
+  canEdit: boolean;
+  onDeleteVersion: (versionId: string, versionName: string) => void;
 }) {
   if (versions.length === 0) {
     return <EmptyState description="No versions recorded yet." />;
@@ -1076,6 +1240,7 @@ function VersionList({
             <th>QC</th>
             <th>Location</th>
             <th>Created</th>
+            {canEdit ? <th aria-label="Actions" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -1093,6 +1258,17 @@ function VersionList({
                 <td className="dh-note-cell">{version.qc_summary ?? "-"}</td>
                 <td>{location ? <code>{location.storage_uri}</code> : "-"}</td>
                 <td>{formatDate(version.created_at)}</td>
+                {canEdit ? (
+                  <td className="dh-actions-cell">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onDeleteVersion(version.id, version.version_name)}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                ) : null}
               </tr>
             );
           })}
@@ -1219,9 +1395,6 @@ function DatasetFormModal({
     <Modal open onClose={onClose} title={dataset ? "Edit dataset" : "Register dataset"} width="wide">
       <form className="dh-form" onSubmit={handleSubmit}>
         {error ? <InlineError>{error}</InlineError> : null}
-        {accessLevel === "restricted" || accessLevel === "private" ? (
-          <InlineNote>Restricted and private datasets reduce discoverability. Use them only when metadata visibility itself is sensitive.</InlineNote>
-        ) : null}
         <FormField label="Dataset name *">
           <Input value={name} onChange={(event) => setName(event.target.value)} required />
         </FormField>
@@ -1246,7 +1419,7 @@ function DatasetFormModal({
           </FormField>
         </FormRow>
         <FormRow>
-          <FormField label="Access level">
+          <FormField label="Access level" hint={accessLevelDescription(accessLevel)}>
             <Select value={accessLevel} onChange={(event) => setAccessLevel(event.target.value as AccessLevel)}>
               {ACCESS_LEVELS.map((level) => <option key={level} value={level}>{labelize(level)}</option>)}
             </Select>
@@ -1258,6 +1431,17 @@ function DatasetFormModal({
             <MemberSelect value={contactUserId} onChange={setContactUserId} members={labMembers} />
           </FormField>
         </FormRow>
+        <fieldset className="dh-fieldset">
+          <legend>Access tier reference</legend>
+          <ul className="dh-tier-legend">
+            {ACCESS_LEVELS.map((level) => (
+              <li key={level} className={level === accessLevel ? "is-active" : undefined}>
+                <Badge tone={accessTone(level)}>{labelize(level)}</Badge>
+                <span>{accessLevelDescription(level)}</span>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
         <FormRow>
           <FormField label="Organism">
             <Input value={organism} onChange={(event) => setOrganism(event.target.value)} />

@@ -4,13 +4,18 @@ import {
   createDataset as rpcCreateDataset,
   createDatasetAccessRequest as rpcCreateDatasetAccessRequest,
   createDatasetVersion as rpcCreateDatasetVersion,
+  deleteDataset as rpcDeleteDataset,
+  deleteDatasetVersion as rpcDeleteDatasetVersion,
+  grantDatasetAccess as rpcGrantDatasetAccess,
   listDataHubWorkspace,
   recordDatasetUse as rpcRecordDatasetUse,
   restoreDataset as rpcRestoreDataset,
   reviewDatasetAccessRequest as rpcReviewDatasetAccessRequest,
+  revokeDatasetAccess as rpcRevokeDatasetAccess,
   updateDataset as rpcUpdateDataset,
   withdrawDatasetAccessRequest as rpcWithdrawDatasetAccessRequest,
   type DataHubWorkspaceSnapshot,
+  type DatasetAccessGrantRecord,
   type DatasetAccessRequestRecord,
   type DatasetInput,
   type DatasetRecord,
@@ -41,6 +46,14 @@ export interface UseDataHubWorkspaceValue extends DataHubWorkspaceSnapshot {
   }) => Promise<DatasetRecord>;
   archiveDataset: (datasetId: string) => Promise<DatasetRecord>;
   restoreDataset: (datasetId: string) => Promise<DatasetRecord>;
+  deleteDataset: (datasetId: string) => Promise<void>;
+  deleteDatasetVersion: (versionId: string) => Promise<void>;
+  grantDatasetAccess: (args: {
+    datasetId: string;
+    userId: string;
+    note?: string | null;
+  }) => Promise<DatasetAccessGrantRecord>;
+  revokeDatasetAccess: (grantId: string) => Promise<void>;
   createDatasetVersion: (args: {
     datasetId: string;
     data: VersionInput;
@@ -77,6 +90,7 @@ const EMPTY_SNAPSHOT: DataHubWorkspaceSnapshot = {
   requests: [],
   tags: [],
   storageLinks: [],
+  accessGrants: [],
   projects: [],
   labMembers: [],
 };
@@ -159,6 +173,43 @@ export function useDataHubWorkspace(args: {
     [hydrate, requireIdentity]
   );
 
+  const deleteDataset = useCallback<UseDataHubWorkspaceValue["deleteDataset"]>(
+    async (datasetId) => {
+      requireIdentity();
+      await rpcDeleteDataset(datasetId);
+      await hydrate();
+    },
+    [hydrate, requireIdentity]
+  );
+
+  const deleteDatasetVersion = useCallback<UseDataHubWorkspaceValue["deleteDatasetVersion"]>(
+    async (versionId) => {
+      requireIdentity();
+      await rpcDeleteDatasetVersion(versionId);
+      await hydrate();
+    },
+    [hydrate, requireIdentity]
+  );
+
+  const grantDatasetAccess = useCallback<UseDataHubWorkspaceValue["grantDatasetAccess"]>(
+    async (input) => {
+      requireIdentity();
+      const created = await rpcGrantDatasetAccess(input);
+      await hydrate();
+      return created;
+    },
+    [hydrate, requireIdentity]
+  );
+
+  const revokeDatasetAccess = useCallback<UseDataHubWorkspaceValue["revokeDatasetAccess"]>(
+    async (grantId) => {
+      requireIdentity();
+      await rpcRevokeDatasetAccess(grantId);
+      await hydrate();
+    },
+    [hydrate, requireIdentity]
+  );
+
   const createDatasetVersion = useCallback<UseDataHubWorkspaceValue["createDatasetVersion"]>(
     async (input) => {
       const identity = requireIdentity();
@@ -218,6 +269,10 @@ export function useDataHubWorkspace(args: {
     updateDataset,
     archiveDataset,
     restoreDataset,
+    deleteDataset,
+    deleteDatasetVersion,
+    grantDatasetAccess,
+    revokeDatasetAccess,
     createDatasetVersion,
     createDatasetAccessRequest,
     recordDatasetUse,
