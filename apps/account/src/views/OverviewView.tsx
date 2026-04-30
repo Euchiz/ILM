@@ -263,15 +263,13 @@ const ReviewQueueCard = ({
 // ---------------------------------------------------------------------------
 
 const InventoryRadar = ({ stats, stockedPct }: { stats: InventoryStats; stockedPct: number | null }) => {
-  // Six axes: 4 known classifications + 2 placeholder slots so the polygon
-  // still reads as a hexagon while we wait for additional taxonomy.
   const axes: { label: string; value: number }[] = [
     { label: "Reagents", value: stats.reagents },
     { label: "Supplies", value: stats.supplies },
     { label: "Samples", value: stats.samples },
     { label: "Consumables", value: stats.consumables },
-    { label: "Other 1", value: stats.other },
-    { label: "Other 2", value: 0 },
+    { label: "Equipment", value: stats.equipment },
+    { label: "Kits", value: stats.kits },
   ];
   const max = Math.max(1, ...axes.map((a) => a.value));
   const cx = 75;

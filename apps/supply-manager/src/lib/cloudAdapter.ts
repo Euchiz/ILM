@@ -11,7 +11,14 @@ export type { FundingAssignmentStatus, FundingDefaultRecord, FundingSourceRecord
 // Domain types
 // ---------------------------------------------------------------------------
 
-export type ItemClassification = "reagent" | "consumable" | "supply" | "sample" | "other";
+export type ItemClassification =
+  | "reagent"
+  | "consumable"
+  | "supply"
+  | "sample"
+  | "equipment"
+  | "kit"
+  | "other";
 
 export type StockStatus = "plenty" | "medium" | "low" | "out" | "unknown";
 
