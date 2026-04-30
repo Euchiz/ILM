@@ -1,0 +1,349 @@
+/* ============================================================
+   LabShell — shared sidebar + topbar chrome for all ILM apps.
+   Class prefix: ils-* ("integrated lab shell").
+
+   Apps that use <LabShell /> must @import this file in their
+   styles.css after tokens.css.
+   ============================================================ */
+
+html,
+body {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(78, 159, 146, 0.10), transparent 35%),
+    radial-gradient(circle at 95% 85%, rgba(92, 125, 143, 0.08), transparent 35%),
+    var(--ilm-canvas);
+  min-height: 100vh;
+}
+
+.ils-shell {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  min-height: 100vh;
+  color: var(--ilm-ink);
+  font-family: var(--rl-font-body);
+}
+
+/* ----- Sidebar -------------------------------------------------- */
+.ils-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.6rem 1rem 1rem;
+  background: rgba(249, 250, 248, 0.85);
+  border-right: 1px solid var(--ilm-line);
+  backdrop-filter: blur(6px);
+  z-index: 5;
+}
+
+.ils-brand { padding: 0 0.4rem 0.4rem; }
+.ils-brand-mark {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-family: var(--rl-font-display);
+}
+.ils-brand-mark strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ilm-ink);
+}
+.ils-brand-mark span {
+  color: var(--ilm-fg-4);
+  font-weight: 500;
+}
+.ils-brand-tag {
+  margin: 0.35rem 0 0;
+  font-family: var(--rl-font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ilm-muted);
+}
+.ils-brand-tag b {
+  color: var(--ilm-viridian);
+  font-weight: 700;
+}
+
+.ils-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+}
+.ils-nav-item {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: var(--rl-radius-sm);
+  text-decoration: none;
+  color: var(--ilm-ink);
+  font-family: var(--rl-font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.ils-nav-item:hover {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: var(--ilm-hairline);
+}
+.ils-nav-item.is-active {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--ilm-line);
+  color: var(--ilm-viridian);
+  box-shadow: 0 12px 22px rgba(30, 46, 30, 0.05);
+}
+.ils-nav-item.is-soon { color: var(--ilm-muted); }
+.ils-nav-glyph-cell {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
+.ils-nav-glyph {
+  font-family: var(--rl-font-display);
+  line-height: 1;
+}
+.ils-nav-pip {
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  background: var(--ilm-surface-soft);
+  color: var(--ilm-muted);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--rl-radius-pill);
+  border: 1px solid var(--ilm-hairline);
+}
+.ils-nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ils-side-status {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  margin-top: auto;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--ilm-mint-dim);
+  border-radius: var(--rl-radius-sm);
+  background: rgba(244, 249, 241, 0.78);
+}
+.ils-side-status-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 40%, rgba(78,159,146,0.45), transparent 60%),
+    var(--ilm-surface);
+  border: 1px solid var(--ilm-mint-dim);
+  display: grid;
+  place-items: center;
+}
+.ils-side-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ilm-viridian);
+  box-shadow: 0 0 0 4px rgba(78,159,146,0.2);
+}
+.ils-side-status-title {
+  margin: 0;
+  font-family: var(--rl-font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--ilm-muted);
+}
+.ils-side-status-copy {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ilm-viridian);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ils-side-profile {
+  display: grid;
+  grid-template-columns: 38px 1fr 14px;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--ilm-line);
+  border-radius: var(--rl-radius-sm);
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.ils-side-profile:hover { background: var(--ilm-surface); }
+.ils-side-orb {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0 18%, var(--ilm-viridian) 22% 60%, #1f2a28 62% 100%);
+  color: rgba(255,255,255,0.95);
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  display: grid;
+  place-items: center;
+  box-shadow: inset -5px -6px 12px rgba(0,0,0,0.2), 0 6px 12px rgba(0,0,0,0.1);
+}
+.ils-side-profile-copy { display: grid; gap: 0.05rem; min-width: 0; }
+.ils-side-profile-copy strong {
+  font-family: var(--rl-font-display);
+  font-size: 0.85rem;
+  color: var(--ilm-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ils-side-profile-copy span {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--ilm-muted);
+}
+.ils-side-profile-chev { color: var(--ilm-fg-4); }
+
+.ils-side-signout {
+  appearance: none;
+  border: 1px solid var(--ilm-line);
+  background: transparent;
+  color: var(--ilm-muted);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.ils-side-signout:hover {
+  background: var(--ilm-surface);
+  color: var(--ilm-ink);
+}
+
+/* ----- Main column --------------------------------------------- */
+.ils-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ils-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) auto;
+  align-items: end;
+  gap: 1.2rem;
+  padding: 2rem 2.2rem 1.2rem;
+}
+.ils-topbar-copy { min-width: 0; }
+.ils-kicker {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  margin-bottom: 0.45rem;
+  background: var(--ilm-ink);
+  color: #fff;
+  font-family: var(--rl-font-display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.ils-title {
+  margin: 0;
+  font-family: var(--rl-font-display);
+  font-size: clamp(1.4rem, 1.8vw + 0.4rem, 1.95rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--ilm-ink);
+}
+.ils-subtitle {
+  margin: 0.4rem 0 0;
+  color: var(--ilm-muted);
+  font-size: 0.85rem;
+}
+
+.ils-search {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 36px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--ilm-line);
+  border-radius: var(--rl-radius-sm);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ilm-fg-4);
+  font-size: 0.78rem;
+}
+
+.ils-org {
+  text-align: right;
+  font-family: var(--rl-font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ilm-ink);
+}
+.ils-org-pill {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--ilm-ink);
+  color: #fff;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+}
+.ils-org small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--ilm-muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+}
+
+/* ----- Subbar (optional secondary nav under topbar) ------------ */
+.ils-subbar {
+  padding: 0 2.2rem;
+  border-bottom: 1px solid var(--ilm-line);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ----- Body wrapper -------------------------------------------- */
+.ils-body {
+  padding: 0.6rem 2.2rem 2.5rem;
+  flex: 1;
+  min-width: 0;
+}
+.ils-body--flush {
+  padding: 0;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 960px) {
+  .ils-shell { grid-template-columns: 1fr; }
+  .ils-sidebar {
+    position: static;
+    height: auto;
+  }
+  .ils-topbar {
+    grid-template-columns: 1fr;
+    padding: 1.2rem 1rem;
+  }
+  .ils-org { text-align: left; }
+  .ils-body { padding: 0.6rem 1rem 2rem; }
+  .ils-subbar { padding: 0 1rem; }
+}

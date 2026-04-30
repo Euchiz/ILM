@@ -4,7 +4,6 @@ export type AppId =
   | "project-manager"
   | "supply-manager"
   | "funding-manager"
-  | "data-hub"
   | "scheduler"
   | "account";
 
@@ -20,7 +19,6 @@ const APP_LINKS: AppLink[] = [
   { id: "project-manager", label: "Projects", href: "project-manager/" },
   { id: "supply-manager", label: "Supply", href: "supply-manager/" },
   { id: "funding-manager", label: "Funding", href: "funding-manager/" },
-  { id: "data-hub", label: "Data Hub", href: "data-hub/" },
   { id: "scheduler", label: "Scheduler", href: "scheduler/" },
 ];
 
@@ -32,7 +30,6 @@ const APP_ROOT_SEGMENTS = new Set<string>([
   "project-manager/",
   "supply-manager/",
   "funding-manager/",
-  "data-hub/",
   "scheduler/",
 ]);
 

@@ -66,6 +66,13 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      - name: Build Data Hub for Pages
+        run: npm run build -w @ilm/data-hub
+        env:
+          VITE_BASE_PATH: /ILM/data-hub/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Build Scheduler for Pages
         run: npm run build -w @ilm/scheduler
         env:
@@ -76,12 +83,13 @@ jobs:
       - name: Assemble Pages artifact
         run: |
           rm -rf .pages-dist
-          mkdir -p .pages-dist/protocol-manager .pages-dist/project-manager .pages-dist/supply-manager .pages-dist/funding-manager .pages-dist/scheduler
+          mkdir -p .pages-dist/protocol-manager .pages-dist/project-manager .pages-dist/supply-manager .pages-dist/funding-manager .pages-dist/data-hub .pages-dist/scheduler
           cp -R apps/account/dist/. .pages-dist/
           cp -R apps/protocol-manager/dist/. .pages-dist/protocol-manager/
           cp -R apps/project-manager/dist/. .pages-dist/project-manager/
           cp -R apps/supply-manager/dist/. .pages-dist/supply-manager/
           cp -R apps/funding-manager/dist/. .pages-dist/funding-manager/
+          cp -R apps/data-hub/dist/. .pages-dist/data-hub/
           cp -R apps/scheduler/dist/. .pages-dist/scheduler/
           # SPA fallback: GitHub Pages serves /<site>/404.html for any missing
           # path under the site. The Account shell now lives at the site root

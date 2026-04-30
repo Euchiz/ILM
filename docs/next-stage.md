@@ -1,52 +1,56 @@
-# ILM — Next stage plan
+# ILM - Next stage plan
 
 Rewrite this file when priorities change. It always describes *the current planned next stage*, not historical stages.
 
 ---
 
-## Stage 4e: Scheduler — polish + cross-app surfacing
+## Stage 4f: Data Hub - v1 hardening + cross-app surfacing
 
-**Why now.** The four core views (Calendar / Bookings / Unscheduled / Resources) and all of their modals shipped on top of the foundation schema + RPCs. Remaining work is the polish around the edges: cross-app surfacing on the home dashboard, a quick daily-use record path, and the visibility-enforcement tightening called out in the original tradeoffs.
+**Why now.** Data Hub now has the first end-to-end dataset registry: lab-scoped schema, RLS, library search/filtering, dataset detail pages, versions, storage references, project links, and access/reuse requests. The next useful work is tightening the edges after real lab use starts.
 
-**Scope for this stage.** Three small pieces, all incremental:
+**Scope for this stage.** Four incremental follow-ups:
 
-1. **Home dashboard — Upcoming Schedule card.** The Account app's Overview page already has a placeholder "Upcoming Schedule" slot. Pull from `apps/scheduler`'s `useSchedulerWorkspace`-equivalent query: top 5 upcoming `bookings` + `calendar_events` (next 7 days) for the current lab, sorted by start_time. Click-through deep-links to the Scheduler with the matching week pre-selected. No new RPCs — the existing select policies are enough.
-2. **Daily-use quick record.** On a soft-booking resource, drop a one-click "Record use" action that calls `book_resource` with `booking_type = 'daily_use'` and a default 30-min window starting now. This is the "no strict booking, but record it" path from the spec. Surface it in `ResourcesView` for soft-booking resources only.
-3. **Visibility tightening.** Add an optional RLS clause to `calendar_events_select` so `visibility = 'private'` rows are only visible to the organizer + admins, and `visibility = 'project'` rows require membership in `linked_project_id`. Default `lab` and `equipment_visible` keep current behavior. Migrations-only change; the UI already writes the field.
+1. **Home dashboard card.** Add a small Data Hub card to the Account overview: recently updated datasets, pending access requests to review, and a quick link to `/data-hub/`.
+2. **Project cross-links.** Surface datasets linked to each project inside Project Manager, grouped by relationship type (`generated-by`, `used-by`, `derived-from`, etc.).
+3. **Visibility audit pass.** Add SQL smoke tests or documented manual checks for `request-required`, `restricted`, and `private` datasets, especially storage-link visibility before and after approval.
+4. **Dataset detail polish.** Improve relationship-specific project linking, request history grouping, and version lineage readability after seeing real metadata density.
 
-Out of scope: Google Calendar sync, notifications, auto-scheduling optimization, full RRULE editing, calendar export.
+Out of scope: file upload/storage, checksum indexing, HPC directory crawling, Globus/S3/Drive integration, DOI/Zenodo/GEO/SRA submission helpers, and automated duplicate detection.
 
-### Step 1 — Home dashboard card
+### Step 1 - Home dashboard card
 
-- Extend `apps/account`'s `useDashboardData` (or sibling) with a Scheduler block: union the next 7 days of `calendar_events` (status `scheduled`) and `bookings` (status `approved` / `active`), order by start_time, slice 5.
-- Render in the Overview page's existing Upcoming Schedule slot, with a "Open Scheduler" link that resolves to `${siteRoot}/scheduler/`.
+- Extend the Account app's dashboard query with Data Hub counts and recent rows.
+- Show pending review count for owners/admins/dataset owners.
+- Link to `${siteRoot}/data-hub/` and `${siteRoot}/data-hub/#requests`.
 
-### Step 2 — Daily-use quick record
+### Step 2 - Project cross-links
 
-- In `ResourcesView`, when `booking_mode === 'soft_booking'` and the user is a lab member, expose a "Record use" button alongside Edit. Opens a tiny modal with project / sample-count / notes; defaults to a `daily_use` 30-min window from now.
-- Reuse `bookResource` — no schema change.
+- In Project Manager, add a read-only "Datasets" section to project detail views.
+- Pull `dataset_project_links` for the active lab/project and display dataset status/access badges.
+- Keep edits in Data Hub for now; Project Manager should deep-link to the dataset detail page.
 
-### Step 3 — Visibility RLS
+### Step 3 - Visibility checks
 
-- New migration: rewrite `calendar_events_select` to OR together `visibility in ('lab','equipment_visible')`, `(visibility = 'private' and (organizer_user_id = auth.uid() or is_lab_admin(lab_id)))`, and `(visibility = 'project' and linked_project_id is not null and exists project_members)`.
-- Add a single audit-friendly test query in the migration body.
+- Document or automate checks for:
+  - lab member can discover `request-required` metadata but cannot see storage links before approval;
+  - approved requester can see storage links;
+  - `restricted` is hidden until approval except for owner/contact/admin;
+  - `private` remains owner/contact/admin only.
 
-### Step 4 — Docs
+### Step 4 - Detail polish
 
-- Update `docs/features.md` Scheduler section to mention the home dashboard card + daily-use action + visibility tightening when each lands.
-
-### Tradeoffs
-
-- **Visibility default.** Existing rows default to `lab` so the stricter SELECT clause changes nothing for them. Net new private events surface only to organizer + admins; that matches the principle of least access without breaking historical data.
-- **Daily-use UX.** A separate one-click button avoids forcing users through the full booking form for "I just used the Qubit" flows. The data model is the same (`bookings` row with `booking_type = 'daily_use'`).
+- Allow per-project relationship choice instead of one relationship applied to all selected projects in the dataset form.
+- Make parent/derived version lineage more visually obvious.
+- Add clearer grouping for requests to review vs my requests vs request history.
 
 ---
 
 ## Deferred
 
-- **Stage 4d-full — Funding Manager (financial).** The lightweight directory shipped (see `features.md` Funding Directory) — alias / grant id / validity / brief note for routing approved orders. The fuller scope (grant total budgets, remaining balance, burn rate, allocations, expense ledger linked to received Supply orders) is intentionally still deferred because the lab does not currently need to track financial state on this site. Revive only if a lab requests it.
-- **UI kit Phase F.** `packages/ui/README.md` + `docs/design-system.md` describing primitives, the `--rl-*` token contract, and the "first use local, second use promote" rule. Phase E (LabShell unification) shipped.
-- **Stage 4f — Supply Manager v2.** Per-experiment consumption logging (links `experiments` to a new `stock_movements` ledger), supplier/catalog import, barcode scanning, lot/expiry alerts.
-- **Stage 4g — Reporting / exports.** Cross-app digests (weekly lab activity, grant-period spend, protocol publication log).
+- **Stage 4d-full - Funding Manager (financial).** The lightweight directory shipped (alias / grant id / validity / brief note for routing approved orders). Full financial tracking remains deferred unless a lab requests it.
+- **Stage 4e Scheduler polish.** Daily-use quick record and stricter calendar visibility are still useful, but Data Hub follow-up is now the active priority.
+- **UI kit Phase F.** `packages/ui/README.md` + `docs/design-system.md` describing primitives, the `--rl-*` token contract, and the "first use local, second use promote" rule.
+- **Stage 4f Supply Manager v2.** Per-experiment consumption logging, supplier/catalog import, barcode scanning, lot/expiry alerts.
+- **Stage 4g Reporting / exports.** Cross-app digests and export surfaces.
 - **Rotatable share-link token.** Replace the raw lab UUID in the Account share link with a signed HMAC + revocation.
-- **Deferred housekeeping.** Fractional `sort_order`, layout polish (InfoTab responsive grid, roadmap card ellipsis, recycle-bin visual differentiation), dead-code simplify pass.
+- **Deferred housekeeping.** Fractional `sort_order`, layout polish, recycle-bin differentiation, and dead-code cleanup.

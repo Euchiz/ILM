@@ -1,0 +1,224 @@
+/* ============================================================
+   Viridian Blue Labs — Colors & Type
+   Foundational tokens for Neo-skeuomorphic Futurism.
+   ============================================================ */
+
+/* Local brand font — Space Grotesk.
+   Prefers the variable TTF (one file, all weights); falls back to per-weight statics. */
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-VariableFont_wght.ttf") format("truetype-variations");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Inter (body) and JetBrains Mono (figures) — still loaded from Google Fonts.
+   Drop local files into fonts/ and replace these @imports if you license them. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
+
+:root {
+  /* Core hues */
+  --vbl-viridian:          #2f7d72;
+  --vbl-viridian-light:    #4e9f92;
+  --vbl-viridian-deep:     #28675f;
+  --vbl-viridian-soft:     #dff1ec;
+  --vbl-blue:              #5c7d8f;
+  --vbl-blue-soft:         #dcecf3;
+  --vbl-mint:              #c9eee2;
+  --vbl-mint-dim:          #a8d6ca;
+
+  /* Neutrals */
+  --vbl-canvas:            #f7f9f7;
+  --vbl-canvas-alt:        #f1f6f4;
+  --vbl-surface:           #ffffff;
+  --vbl-surface-glass:     rgba(255, 255, 255, 0.78);
+  --vbl-surface-soft:      #edf4f1;
+  --vbl-surface-raised:    #e5eeea;
+
+  /* Ink */
+  --vbl-ink:               #14201f;
+  --vbl-ink-2:             #0f1716;
+  --vbl-fg-2:              #2d3b39;
+  --vbl-fg-3:              #60716e;
+  --vbl-fg-4:              #9aa7a3;
+
+  /* Lines */
+  --vbl-line:              #d9e3df;
+  --vbl-hairline:          #c9d7d2;
+  --vbl-outline:           #72807c;
+
+  /* Status */
+  --vbl-amber:             #9a5b1e;
+  --vbl-amber-soft:        #fff2df;
+  --vbl-amber-line:        #e0bd8d;
+  --vbl-red:               #b42318;
+  --vbl-red-soft:          #ffded8;
+  --vbl-red-deep:          #8f170f;
+  --vbl-success:           #2f7d72;
+  --vbl-success-deep:      #225c55;
+
+  /* Type families */
+  --vbl-font-display:      "Space Grotesk", Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --vbl-font-body:         Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --vbl-font-mono:         "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --vbl-font-icon:         "Material Symbols Outlined";
+
+  /* Spacing */
+  --vbl-space-1: 4px;
+  --vbl-space-2: 8px;
+  --vbl-space-3: 12px;
+  --vbl-space-4: 16px;
+  --vbl-space-5: 24px;
+  --vbl-space-6: 32px;
+  --vbl-space-7: 48px;
+  --vbl-space-8: 64px;
+
+  /* Radii */
+  --vbl-radius-xs:      6px;
+  --vbl-radius-sm:      8px;
+  --vbl-radius-md:      10px;
+  --vbl-radius-soft:    12px;
+  --vbl-radius-lg:      16px;
+  --vbl-radius-xl:      24px;
+  --vbl-radius-pill:    999px;
+
+  /* Shadows — luminous, soft viridian glow */
+  --vbl-shadow-step:        0 0 18px rgba(78, 159, 146, 0.08);
+  --vbl-shadow-soft:        0 14px 34px rgba(40, 69, 65, 0.08);
+  --vbl-shadow-ambient:     0 18px 48px rgba(59, 99, 91, 0.13);
+  --vbl-shadow-float:       0 24px 64px rgba(40, 69, 65, 0.18);
+  --vbl-shadow-glow:        0 0 12px rgba(78, 159, 146, 0.34);
+  --vbl-shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* Motion */
+  --vbl-dur-fast: 120ms;
+  --vbl-dur-base: 140ms;
+  --vbl-dur-slow: 200ms;
+  --vbl-ease:     ease;
+  --vbl-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Semantic product roles (ILM canonical aliases) */
+  --ilm-canvas:            var(--vbl-canvas);
+  --ilm-canvas-alt:        var(--vbl-canvas-alt);
+  --ilm-surface:           var(--vbl-surface);
+  --ilm-surface-glass:     var(--vbl-surface-glass);
+  --ilm-surface-soft:      var(--vbl-surface-soft);
+  --ilm-surface-raised:    var(--vbl-surface-raised);
+  --ilm-ink:               var(--vbl-ink);
+  --ilm-ink-2:             var(--vbl-ink-2);
+  --ilm-muted:             var(--vbl-fg-3);
+  --ilm-muted-2:           #7b8a86;
+  --ilm-outline:           var(--vbl-outline);
+  --ilm-line:              var(--vbl-line);
+  --ilm-hairline:          var(--vbl-hairline);
+  --ilm-fg-1:              var(--vbl-ink);
+  --ilm-fg-2:              var(--vbl-fg-2);
+  --ilm-fg-3:              var(--vbl-fg-3);
+  --ilm-fg-4:              var(--vbl-fg-4);
+  --ilm-viridian:          var(--vbl-viridian);
+  --ilm-viridian-2:        var(--vbl-viridian-light);
+  --ilm-viridian-3:        var(--vbl-viridian-deep);
+  --ilm-viridian-soft:     var(--vbl-viridian-soft);
+  --ilm-blue:              var(--vbl-blue);
+  --ilm-blue-soft:         var(--vbl-blue-soft);
+  --ilm-mint:              var(--vbl-mint);
+  --ilm-mint-dim:          var(--vbl-mint-dim);
+  --ilm-amber:             var(--vbl-amber);
+  --ilm-amber-soft:        var(--vbl-amber-soft);
+  --ilm-amber-line:        var(--vbl-amber-line);
+  --ilm-red:               var(--vbl-red);
+  --ilm-red-soft:          var(--vbl-red-soft);
+  --ilm-red-deep:          var(--vbl-red-deep);
+  --ilm-success:           var(--vbl-success);
+  --ilm-success-deep:      var(--vbl-success-deep);
+  --ilm-font-body:         var(--vbl-font-body);
+  --ilm-font-display:      var(--vbl-font-display);
+  --ilm-font-mono:         var(--vbl-font-mono);
+  --ilm-font-icon:         var(--vbl-font-icon);
+}
+
+html, body {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(78, 159, 146, 0.10), transparent 35%),
+    radial-gradient(circle at 95% 85%, rgba(92, 125, 143, 0.08), transparent 35%),
+    var(--vbl-canvas);
+  color: var(--vbl-ink);
+  font-family: var(--vbl-font-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  margin: 0;
+}
+
+::selection { background: var(--vbl-ink); color: #fff; }
+
+/* Type roles */
+.vbl-display { font-family: var(--vbl-font-display); font-weight: 600; font-size: clamp(2.8rem, 5vw, 4.4rem); line-height: 0.98; letter-spacing: -0.01em; color: var(--vbl-ink); margin: 0; }
+.vbl-h1 { font-family: var(--vbl-font-display); font-weight: 600; font-size: clamp(2rem, 3.4vw, 3.1rem); line-height: 1.05; color: var(--vbl-ink); margin: 0; }
+.vbl-h2 { font-family: var(--vbl-font-display); font-weight: 600; font-size: 1.45rem; color: var(--vbl-ink); margin: 0; }
+.vbl-h3 { font-family: var(--vbl-font-display); font-weight: 600; font-size: 1.05rem; color: var(--vbl-ink); margin: 0; }
+.vbl-body { font-family: var(--vbl-font-body); font-size: 0.95rem; line-height: 1.6; color: var(--vbl-ink); }
+.vbl-body-lg { font-family: var(--vbl-font-body); font-size: 1.02rem; line-height: 1.8; color: var(--vbl-fg-2); }
+.vbl-label { font-family: var(--vbl-font-display); font-size: 0.78rem; font-weight: 600; color: var(--vbl-fg-2); }
+.vbl-meta { font-family: var(--vbl-font-display); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--vbl-fg-3); }
+.vbl-meta-tight { font-family: var(--vbl-font-display); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--vbl-fg-4); }
+.vbl-mono { font-family: var(--vbl-font-mono); font-variant-numeric: tabular-nums; font-size: 0.9em; }
+.vbl-figure { font-family: var(--vbl-font-display); font-weight: 600; font-size: 2.1rem; line-height: 1; color: var(--vbl-ink); }
+
+.vbl-kicker {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  background: var(--vbl-ink);
+  color: #fff;
+  font-family: var(--vbl-font-display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vbl-brackets { position: relative; }
+.vbl-brackets::before,
+.vbl-brackets::after {
+  content: ""; position: absolute; width: 12px; height: 12px;
+  border-color: var(--vbl-ink); border-style: solid; pointer-events: none;
+}
+.vbl-brackets::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+.vbl-brackets::after { right: -1px; bottom: -1px; border-width: 0 2px 2px 0; }

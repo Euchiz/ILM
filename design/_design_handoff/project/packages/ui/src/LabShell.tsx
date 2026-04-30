@@ -2,23 +2,11 @@ import type { ReactNode } from "react";
 import { appUrl } from "./AppSwitcher";
 import { useAuth } from "./auth/AuthProvider";
 
-// Single source of truth for the product + OS branding. The sidebar brand
-// mark reads PRODUCT_NAME; the brand-tag and topbar pill read OS_NAME /
-// OS_VERSION. Bump these in one place when the product or OS evolves —
-// every surface that references the names reads from here. Apps that need
-// to override for a specific tenant can pass a custom `meta` prop to
-// <LabTopbar /> or render their own sidebar brand.
-export const PRODUCT_NAME = "Integrated Lab Manager";
-export const OS_NAME = "RHINE OS";
-export const OS_VERSION = "v1.0";
-export const OS_LABEL = `${OS_NAME} - ${OS_VERSION}`;
-
 export type LabNavId =
   | "overview"
   | "projects"
   | "protocols"
   | "inventory"
-  | "data"
   | "funding"
   | "calendar"
   | "team"
@@ -71,13 +59,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Funding",
     glyph: "$",
     buildHref: (_, base) => appUrl("funding-manager/", base),
-    tone: "external",
-  },
-  {
-    id: "data",
-    label: "Data Hub",
-    glyph: "D",
-    buildHref: (_, base) => appUrl("data-hub/", base),
     tone: "external",
   },
   {
@@ -149,9 +130,10 @@ export const LabSidebar = ({ activeNavId, baseUrl, onOpenProfile }: LabSidebarPr
       <div className="ils-brand">
         <div className="ils-brand-mark">
           <strong>{labName}</strong>
+          <span>— ∞</span>
         </div>
         <p className="ils-brand-tag">
-          {OS_NAME} <b>- {OS_VERSION}</b>
+          INTEGRATED LAB MANAGER <b>OS</b>
         </p>
       </div>
 
@@ -221,15 +203,18 @@ export interface LabTopbarProps {
   subtitle?: ReactNode;
   /** Replaces the search field on the right. Passing null hides it entirely. */
   search?: ReactNode | null;
-  /** Far-right slot. Defaults to the active lab name + the {@link OS_LABEL} pill. */
+  /** Far-right slot. Defaults to the active lab name + "SECTOR OS" pill. */
   meta?: ReactNode;
 }
 
 export const LabTopbar = ({ kicker, title, subtitle, search, meta }: LabTopbarProps) => {
+  const { activeLab } = useAuth();
+
   const defaultMeta = (
     <div className="ils-org">
-      <strong>{PRODUCT_NAME}</strong>
-      <span className="ils-org-pill">{OS_LABEL}</span>
+      <strong>{activeLab?.name ?? "—"}</strong>
+      <span className="ils-org-pill">SECTOR OS</span>
+      <small>LAB MANAGER SYSTEM</small>
     </div>
   );
 

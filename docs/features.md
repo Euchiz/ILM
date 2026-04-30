@@ -6,7 +6,7 @@ Cumulative log of what's shipped. Update after each PR that lands meaningful fun
 
 ## Foundation
 
-- **Monorepo**: npm workspaces with apps (`account`, `funding-manager`, `project-manager`, `protocol-manager`, `scheduler`, `supply-manager`) and shared packages (`@ilm/ai-import`, `@ilm/types`, `@ilm/ui`, `@ilm/utils`, `@ilm/validation`).
+- **Monorepo**: npm workspaces with apps (`account`, `data-hub`, `funding-manager`, `project-manager`, `protocol-manager`, `scheduler`, `supply-manager`) and shared packages (`@ilm/ai-import`, `@ilm/types`, `@ilm/ui`, `@ilm/utils`, `@ilm/validation`).
 - **Supabase backend**: Postgres schema under `supabase/migrations/`, Supabase Auth for identity, RLS on every app table.
 - **Static deploy**: GitHub Pages, no custom backend server; only `VITE_SUPABASE_URL` + anon key ship to the browser.
 
@@ -120,9 +120,18 @@ A privacy-preserving alias book for routing approved supply orders to the right 
 - **Supply Manager integration.** The Review modal now requires a funding source before approve unless the reviewer explicitly toggles "funding not required". The selected source's grant identifier and validity-window badge are shown next to the picker, with an inline warning when the source is within 30 days of expiration. Funding is set or changed **only inside the Review tab** (during the review modal flow, or via the inline change-source dropdown on a still-actionable card in the Review tab) — the Orders tab renders the funding line read-only for everyone, including admins, so the assignment can't be edited outside the review path. Members see only "Funding: assigned by reviewer — {nickname}" with no grant id anywhere.
 - **Roles today.** `admin` / `owner` act as the spec's "reviewer / lab manager / PI" tier; `member` is the regular requester. A future role expansion (a dedicated `pi` or `reviewer` tier on `lab_memberships`) can be layered on without touching the column or RPC contracts — see `roleNote` markers in `supabase/migrations/20260502000000_funding_directory.sql`.
 
+## Data Hub (Dataset Registry)
+
+- **Schema.** Six lab-scoped tables behind RLS: `datasets`, `dataset_versions`, `dataset_project_links`, `dataset_access_requests`, `dataset_tags`, and `dataset_storage_links`. Data Hub tracks metadata, locations, ownership, access level, linked projects, version lineage, and reuse requests. ILM stores references only; raw data files stay in their existing storage systems.
+- **Visibility model.** Dataset metadata is discoverable for `open-lab` and `request-required` records. `restricted` records are visible to owners, contacts, admins, and approved requesters; `private` records stay owner/contact/admin only. Storage links are separately gated by `can_view_dataset_storage(dataset_id)` so request-required locations are hidden until approval.
+- **Lifecycle RPCs.** `archive_dataset`, `restore_dataset`, `withdraw_dataset_access_request`, and `review_dataset_access_request` are SECURITY DEFINER RPCs with audit entries for archive/restore and request decisions. Approving a request can automatically create a `used-by` project link.
+- **Frontend.** `apps/data-hub` runs inside the shared `<LabShell>` at `/ILM/data-hub/`, mounted to the new Data Hub sidebar slot. The app uses shared `@ilm/ui` primitives (`Panel`, `Table`, `Modal`, `Button`, `Badge`, `StatusPill`, `FormField`, `EmptyState`, `InlineNote`) plus focused `dh-*` local CSS.
+- **Views.** Library tab with search and filters for type, source, status, access, owner, project, and tag; My Datasets tab for owned/requested/incomplete records; Requests tab for requester and owner/admin review queues; dataset detail page with summary, storage/location references, scientific context, linked projects, versions/lineage, requests, and notes.
+- **Forms.** Dataset create/edit covers required metadata, access level, owner/contact, storage URI or accession/citation, recommended use, "do not use for", QC notes, tags, and project links. Version form records parent version, processing summary, software environment, QC/file summary, and version-level storage reference. Request and review modals cover intended use, requested access type, approval conditions, denial notes, withdrawal, and optional reuse-link creation.
+
 ## Audit & security
 
-- `audit_log` table captures state transitions only — submit / approve / reject / recycle / restore / purge for projects and protocols, plus submit / withdraw / approve / deny / cancel / place / update / receive for supply orders. Draft edits, roadmap reorders, and inventory checks are not logged.
+- `audit_log` table captures state transitions only — submit / approve / reject / recycle / restore / purge for projects and protocols, plus submit / withdraw / approve / deny / cancel / place / update / receive for supply orders, and archive / restore / request review transitions for datasets. Draft edits, roadmap reorders, and inventory checks are not logged.
 - `.gitleaks.toml` + `.github/workflows/secret-scan.yml` run gitleaks on push / PR / manual dispatch.
 
 ## Known gaps (see `next-stage.md`)

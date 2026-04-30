@@ -1,0 +1,537 @@
+.ilm-auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: var(--rl-paper);
+}
+
+.ilm-auth-card {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--rl-surface);
+  border: 1px solid var(--rl-line);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: var(--rl-shadow-soft);
+}
+
+.ilm-auth-title {
+  margin: 0 0 1rem;
+  font-family: var(--rl-font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.ilm-auth-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rl-line);
+}
+
+.ilm-auth-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--rl-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.ilm-auth-tab-active {
+  color: var(--rl-ink);
+  border-bottom-color: var(--rl-green-2);
+  font-weight: 600;
+}
+
+.ilm-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.ilm-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.ilm-auth-field span {
+  font-family: var(--rl-font-display);
+  color: var(--rl-muted);
+  font-weight: 500;
+}
+
+.ilm-auth-field input {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--rl-line);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: var(--rl-surface);
+  color: var(--rl-ink);
+}
+
+.ilm-auth-field input:focus {
+  outline: 2px solid var(--rl-green-2);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.ilm-auth-submit {
+  appearance: none;
+  border: 0;
+  background: var(--rl-green);
+  color: #ffffff;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-family: var(--rl-font-display);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.ilm-auth-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ilm-auth-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.ilm-auth-note {
+  color: var(--rl-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.ilm-auth-hint {
+  color: var(--rl-muted);
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0;
+}
+
+.ilm-text-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--rl-green-2);
+  font-family: var(--rl-font-display);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.ilm-text-button:hover {
+  text-decoration: underline;
+}
+
+.ilm-lab-picker {
+  max-width: 32rem;
+}
+
+.ilm-lab-picker-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ilm-lab-section-title {
+  font-family: var(--rl-font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.25rem 0 -0.25rem;
+}
+
+.ilm-lab-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ilm-lab-list-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--rl-line);
+  background: var(--rl-surface);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.ilm-lab-list-item:hover {
+  border-color: var(--rl-green-2);
+}
+
+.ilm-lab-list-name {
+  font-weight: 500;
+  color: var(--rl-ink);
+}
+
+.ilm-lab-list-meta {
+  font-size: 0.8rem;
+  color: var(--rl-muted);
+  text-transform: capitalize;
+}
+
+.ilm-app-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ilm-app-switcher-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--rl-line);
+  border-radius: 999px;
+  background: var(--rl-surface);
+  color: var(--rl-muted);
+  text-decoration: none;
+  font-family: var(--rl-font-display);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.ilm-app-switcher-link:hover {
+  border-color: var(--rl-green-2);
+  color: var(--rl-ink);
+}
+
+.ilm-app-switcher-link-active {
+  background: var(--rl-green-2);
+  border-color: var(--rl-green-2);
+  color: #ffffff;
+}
+
+.ilm-admin-card {
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-lg);
+  background: var(--ilm-surface-glass);
+  padding: 1.25rem;
+  box-shadow: var(--rl-shadow-soft);
+}
+
+.ilm-admin-header,
+.ilm-admin-form-header,
+.ilm-admin-list-item,
+.ilm-admin-actions,
+.ilm-admin-field-row,
+.ilm-admin-split {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ilm-admin-header,
+.ilm-admin-form-header,
+.ilm-admin-list-item {
+  justify-content: space-between;
+  align-items: start;
+}
+
+.ilm-admin-form-header,
+.ilm-admin-project-meta {
+  margin-bottom: 0.75rem;
+}
+
+.ilm-admin-header {
+  margin-bottom: 1rem;
+}
+
+.ilm-admin-header h2,
+.ilm-admin-form-header h3 {
+  margin: 0;
+  font-family: var(--rl-font-display);
+}
+
+.ilm-admin-pill,
+.ilm-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ilm-admin-pill {
+  background: var(--rl-green-sec-c);
+  color: var(--rl-green-sec);
+}
+
+.ilm-admin-badge {
+  background: var(--rl-surface-2);
+  color: var(--rl-muted);
+  text-transform: capitalize;
+}
+
+.ilm-admin-badge-owner {
+  background: var(--rl-green);
+  color: #ffffff;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--rl-radius-xs);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ilm-admin-badge-admin {
+  background: var(--rl-green-sec-c);
+  color: var(--rl-green-sec);
+}
+
+.ilm-admin-badge-member {
+  background: var(--rl-surface-2);
+  color: var(--rl-muted);
+}
+
+.ilm-admin-badge-pending {
+  background: var(--rl-warn-bg);
+  color: var(--rl-warn);
+}
+
+.ilm-admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ilm-admin-list-item {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-soft);
+  background: var(--rl-paper-alt);
+}
+
+.ilm-admin-list-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ilm-admin-list-copy strong {
+  color: var(--rl-ink);
+}
+
+.ilm-admin-list-copy span,
+.ilm-admin-list-copy small,
+.ilm-admin-helper,
+.ilm-admin-empty,
+.ilm-admin-project-meta span {
+  color: var(--rl-muted);
+}
+
+.ilm-admin-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ilm-admin-form,
+.ilm-admin-invitations {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rl-line);
+}
+
+.ilm-admin-field-row {
+  align-items: end;
+  margin-bottom: 0.85rem;
+}
+
+.ilm-admin-field-row > * {
+  flex: 1 1 0;
+}
+
+.ilm-admin-form select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  font-size: 0.95rem;
+  background: var(--rl-surface);
+  color: var(--rl-ink);
+}
+
+.ilm-admin-project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ilm-admin-split {
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.ilm-admin-split > * {
+  flex: 1 1 0;
+}
+
+@media (max-width: 720px) {
+  .ilm-admin-field-row,
+  .ilm-admin-split,
+  .ilm-admin-list-item {
+    flex-direction: column;
+  }
+
+  .ilm-admin-actions {
+    justify-content: start;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Submission history link + drawer
+ * ----------------------------------------------------------------*/
+.ilm-history-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--rl-muted);
+  font-family: var(--rl-font-display);
+  font-size: 0.78rem;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ilm-history-link:hover { color: var(--rl-ink); }
+
+.ilm-history-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 22, 0.46);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.ilm-history-sheet {
+  background: var(--rl-surface);
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-lg);
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 1rem 1.25rem;
+  box-shadow: var(--rl-shadow-float);
+}
+.ilm-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.ilm-history-head h3 {
+  margin: 0;
+  font-family: var(--rl-font-display);
+  font-size: 1rem;
+}
+.ilm-history-empty {
+  color: var(--rl-muted);
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+.ilm-history-log {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ilm-history-entry {
+  border-left: 3px solid var(--rl-line);
+  padding: 0.5rem 0.75rem;
+  background: var(--rl-surface-2);
+  border-radius: var(--rl-radius-xs);
+}
+.ilm-history-entry-submitted { border-left-color: var(--rl-green-sec); }
+.ilm-history-entry-approved { border-left-color: var(--rl-green); }
+.ilm-history-entry-rejected { border-left-color: var(--rl-error); }
+.ilm-history-entry-head {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.ilm-history-entry-head strong {
+  font-family: var(--rl-font-display);
+  font-size: 0.85rem;
+}
+.ilm-history-actor {
+  color: var(--rl-muted);
+  margin-left: auto;
+}
+.ilm-history-comment {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.ilm-history-no-comment { color: var(--rl-muted); font-style: italic; }
+
+/* Account link card: shared account/lab-settings entry point */
+.ilm-account-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--rl-radius-sm);
+  border: 1px solid var(--rl-line);
+  background: var(--ilm-surface-glass);
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--rl-dur-base) var(--rl-ease), border-color var(--rl-dur-base) var(--rl-ease);
+}
+.ilm-account-link:hover,
+.ilm-account-link:focus-visible {
+  background: var(--rl-surface);
+  border-color: var(--rl-green-2);
+  outline: none;
+}
+.ilm-account-link-head {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.ilm-account-link-head span {
+  font-size: 0.82rem;
+  color: var(--rl-muted);
+}
+.ilm-account-link-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--rl-muted);
+}
+.ilm-account-link-cta {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--rl-green-2);
+  font-family: var(--rl-font-display);
+}

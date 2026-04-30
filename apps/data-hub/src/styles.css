@@ -1,0 +1,350 @@
+@import "../../../packages/ui/src/tokens.css";
+@import "../../../packages/ui/src/reset.css";
+@import "../../../packages/ui/src/primitives/primitives.css";
+@import "../../../packages/ui/src/lab-shell.css";
+
+/* =========================================================
+   Data Hub app-local styles. Shell, topbar, and primitives
+   come from @ilm/ui. App-specific selectors use .dh-*.
+========================================================= */
+
+.dh-subbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dh-subbar-spacer {
+  flex: 1 1 auto;
+}
+
+.dh-subtab {
+  appearance: none;
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0.55rem 0.85rem;
+  font-family: var(--rl-font-display);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--rl-muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.dh-subtab:hover {
+  color: var(--rl-ink);
+}
+
+.dh-subtab.is-active {
+  color: var(--rl-green);
+  font-weight: 600;
+}
+
+.dh-subtab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: -0.6rem;
+  height: 2px;
+  background: var(--rl-green);
+}
+
+.dh-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.dh-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(4, minmax(150px, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.dh-table-scroll {
+  overflow: auto;
+}
+
+.dh-link-button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--rl-ink);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dh-link-button:hover {
+  color: var(--rl-green);
+}
+
+.dh-cell-meta {
+  margin-top: 0.2rem;
+  color: var(--rl-muted);
+  font-size: 0.78rem;
+  max-width: 34rem;
+}
+
+.dh-actions-cell {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.dh-actions-cell .rl-btn {
+  margin-left: 0.3rem;
+}
+
+.dh-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.dh-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.dh-muted {
+  color: var(--rl-muted);
+}
+
+.dh-note-cell {
+  color: var(--rl-fg-2);
+  max-width: 28rem;
+}
+
+.dh-note-text {
+  margin: 0;
+  color: var(--rl-fg-2);
+  white-space: pre-wrap;
+}
+
+.dh-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.dh-tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rl-line);
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+  background: var(--rl-soft);
+  color: var(--rl-fg-2);
+  font-size: 0.72rem;
+}
+
+.dh-project-list {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--rl-fg-2);
+  font-size: 0.82rem;
+}
+
+.dh-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.8rem;
+}
+
+.dh-dataset-card {
+  appearance: none;
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  background: var(--rl-bg);
+  color: var(--rl-ink);
+  padding: 0.9rem;
+  text-align: left;
+  display: grid;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.dh-dataset-card:hover {
+  border-color: var(--rl-green);
+  background: var(--rl-soft);
+}
+
+.dh-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.dh-card-head strong {
+  font-family: var(--rl-font-display);
+}
+
+.dh-dataset-card p {
+  margin: 0;
+  color: var(--rl-fg-2);
+  font-size: 0.86rem;
+}
+
+.dh-card-meta {
+  color: var(--rl-muted);
+  font-size: 0.78rem;
+}
+
+.dh-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dh-detail-head h2 {
+  margin: 0.4rem 0 0.45rem;
+  font-family: var(--rl-font-display);
+  font-size: 1.35rem;
+}
+
+.dh-detail-description {
+  margin: 0;
+  color: var(--rl-fg-2);
+  max-width: 78ch;
+}
+
+.dh-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 1rem;
+}
+
+.dh-description-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.dh-description-list > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+.dh-description-list dt {
+  color: var(--rl-muted);
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dh-description-list dd {
+  margin: 0;
+  color: var(--rl-fg-2);
+  white-space: pre-wrap;
+}
+
+.dh-storage-list,
+.dh-link-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dh-storage-row,
+.dh-link-row {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  background: var(--rl-bg);
+}
+
+.dh-storage-row span,
+.dh-link-row strong {
+  font-family: var(--rl-font-display);
+}
+
+.dh-storage-row code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dh-storage-row small,
+.dh-link-row small {
+  color: var(--rl-muted);
+}
+
+.dh-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.dh-fieldset {
+  border: 1px solid var(--rl-line);
+  border-radius: var(--rl-radius-sm);
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.dh-fieldset legend {
+  font-family: var(--rl-font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rl-muted);
+  padding: 0 0.35rem;
+}
+
+.dh-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.35rem;
+}
+
+.dh-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--rl-fg-2);
+  font-size: 0.86rem;
+}
+
+.dh-checkbox input {
+  accent-color: var(--rl-green);
+}
+
+@media (max-width: 1100px) {
+  .dh-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dh-detail-head,
+  .dh-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dh-detail-head {
+    display: grid;
+  }
+
+  .dh-description-list > div,
+  .dh-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dh-actions-row {
+    justify-content: flex-start;
+  }
+}

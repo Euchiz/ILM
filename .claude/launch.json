@@ -1,0 +1,41 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "account",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-w", "@ilm/account", "dev"],
+      "port": 5178
+    },
+    {
+      "name": "protocol-manager",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-w", "@ilm/protocol-manager", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "project-manager",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-w", "@ilm/project-manager", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "supply-manager",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-w", "@ilm/supply-manager", "dev"],
+      "port": 5175
+    },
+    {
+      "name": "funding-manager",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-w", "@ilm/funding-manager", "dev"],
+      "port": 5176
+    },
+    {
+      "name": "scheduler",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-w", "@ilm/scheduler", "dev"],
+      "port": 5177
+    }
+  ]
+}

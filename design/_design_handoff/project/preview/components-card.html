@@ -1,0 +1,96 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css"><title>Card surface</title></head>
+<body>
+<style>
+  .ind-card {
+    background: rgba(255,255,255,0.78);
+    border: 1px solid var(--vbl-line);
+    border-radius: 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 0 18px rgba(78,159,146,0.08);
+    padding: 18px 20px;
+    display: grid; gap: 14px;
+  }
+  .ind-head { display:flex; justify-content:space-between; align-items:baseline; }
+  .ind-kicker { font-family:var(--vbl-font-display); font-size:0.66rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--vbl-fg-3); }
+  .ind-title { font-family:var(--vbl-font-display); font-size:0.92rem; font-weight:600; color:var(--vbl-ink); margin-top:2px; }
+  .ind-link { font-family:var(--vbl-font-display); font-size:0.7rem; color:var(--vbl-viridian); cursor:pointer; }
+
+  .ind-stats { display:grid; grid-template-columns: 1fr auto; gap:18px; align-items:end; }
+  .ind-figure { font-family:var(--vbl-font-display); font-weight:500; font-size:2.4rem; line-height:1; color:var(--vbl-ink); letter-spacing:-0.01em; }
+  .ind-delta {
+    display:inline-flex; align-items:center; gap:4px;
+    font-family:var(--vbl-font-display); font-size:0.72rem; font-weight:600; color:var(--vbl-viridian-deep);
+    background: var(--vbl-viridian-soft); border:1px solid rgba(78,159,146,0.25);
+    border-radius: 4px; padding: 2px 6px;
+  }
+  .ind-delta::before { content:"▲"; font-size:0.6rem; }
+  .ind-spark { width: 110px; height: 38px; }
+
+  /* Segmented capacity bar */
+  .ind-bar {
+    display:grid; grid-template-columns: 10fr 7fr 5fr 2fr;
+    gap: 3px;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--vbl-hairline);
+    background: rgba(255,255,255,0.5);
+    padding: 1.5px;
+  }
+  .ind-bar > i { display:block; border-radius: 999px; }
+  .ind-bar > i:nth-child(1) { background: var(--vbl-viridian); }
+  .ind-bar > i:nth-child(2) { background: var(--vbl-viridian-light); }
+  .ind-bar > i:nth-child(3) { background: var(--vbl-mint-dim); }
+  .ind-bar > i:nth-child(4) { background: var(--vbl-amber-line); }
+
+  .ind-legend { display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; }
+  .ind-legend li { list-style:none; }
+  .ind-legend strong { display:block; font-family:var(--vbl-font-display); font-size:1rem; font-weight:600; color:var(--vbl-ink); line-height:1.1; }
+  .ind-legend small {
+    display:flex; align-items:center; gap:5px;
+    font-family:var(--vbl-font-display); font-size:0.62rem; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--vbl-fg-3); margin-top:3px;
+  }
+  .ind-legend small::before {
+    content:""; width:6px; height:6px; border-radius:1px; background: var(--c, var(--vbl-viridian));
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.7);
+  }
+</style>
+
+<div class="ind-card">
+  <div class="ind-head">
+    <div>
+      <div class="ind-kicker">PROJECTS OVERVIEW</div>
+      <div class="ind-title">Active portfolio</div>
+    </div>
+    <div class="ind-link">View all projects →</div>
+  </div>
+
+  <div class="ind-stats">
+    <div style="display:flex; align-items:baseline; gap:10px;">
+      <div class="ind-figure">24</div>
+      <div class="ind-delta">3 vs last week</div>
+    </div>
+    <svg class="ind-spark" viewBox="0 0 110 38" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="sg" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#4e9f92" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#4e9f92" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,28 L14,24 L26,26 L40,18 L52,20 L66,12 L80,14 L94,8 L110,10 L110,38 L0,38 Z" fill="url(#sg)"/>
+      <path d="M0,28 L14,24 L26,26 L40,18 L52,20 L66,12 L80,14 L94,8 L110,10" fill="none" stroke="#2f7d72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="110" cy="10" r="2.5" fill="#2f7d72"/>
+      <circle cx="110" cy="10" r="5" fill="#2f7d72" opacity="0.18"/>
+    </svg>
+  </div>
+
+  <div class="ind-bar"><i></i><i></i><i></i><i></i></div>
+
+  <ul class="ind-legend">
+    <li><strong>10</strong><small style="--c:var(--vbl-viridian)">In progress</small></li>
+    <li><strong>7</strong><small style="--c:var(--vbl-viridian-light)">Planning</small></li>
+    <li><strong>5</strong><small style="--c:var(--vbl-mint-dim)">On hold</small></li>
+    <li><strong>2</strong><small style="--c:var(--vbl-amber-line)">At risk</small></li>
+  </ul>
+</div>
+</body></html>

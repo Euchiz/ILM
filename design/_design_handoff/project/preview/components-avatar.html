@@ -1,0 +1,111 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css"><title>Avatar</title></head>
+<body>
+<style>
+  .vbl-card-bg {
+    background:
+      linear-gradient(135deg, #eef2ef 0%, #e1e7e3 100%);
+    background-image:
+      linear-gradient(135deg, #eef2ef 0%, #e1e7e3 100%),
+      linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+    border: 1px solid var(--vbl-line);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .vbl-avatar {
+    position: relative;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    isolation: isolate;
+    overflow: visible;
+    /* very faint cast shadow on the surface beneath */
+    filter: drop-shadow(0 4px 6px rgba(20, 32, 31, 0.08));
+  }
+  /* the glass body — almost transparent puddle */
+  .vbl-avatar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      /* top sheen */
+      linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 35%, rgba(255,255,255,0) 65%),
+      /* bottom catchlight */
+      linear-gradient(0deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%),
+      /* subtle body tint */
+      rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(2px);
+    z-index: -1;
+  }
+  /* meniscus rim with chromatic dispersion */
+  .vbl-avatar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    /* outer crisp glass edge */
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.85),
+      inset 0 1.5px 0 rgba(255,255,255,0.95),
+      inset 0 -1.5px 0 rgba(255,255,255,0.5),
+      /* prismatic kiss on the right edge */
+      inset -2px 0 4px rgba(120, 200, 220, 0.18),
+      inset 2px 0 4px rgba(255, 200, 220, 0.10);
+  }
+  .vbl-avatar > span {
+    position: relative;
+    font-family: var(--vbl-font-display);
+    font-weight: 600;
+    color: rgba(20, 32, 31, 0.7);
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.85);
+  }
+  .vbl-avatar.size-lg { width: 72px; height: 56px; }
+  .vbl-avatar.size-lg > span { font-size: 1rem; }
+  .vbl-avatar.size-md { width: 52px; height: 40px; }
+  .vbl-avatar.size-md > span { font-size: 0.78rem; }
+  .vbl-avatar.size-sm { width: 40px; height: 32px; }
+  .vbl-avatar.size-sm > span { font-size: 0.66rem; }
+
+  /* perfect-circle variant if a square avatar is needed */
+  .vbl-avatar.is-circle.size-md { width: 40px; height: 40px; }
+  .vbl-avatar.is-circle.size-sm { width: 32px; height: 32px; }
+
+  .vbl-avatar-stack { display: flex; align-items: center; }
+  .vbl-avatar-stack .vbl-avatar:not(:first-child) { margin-left: -14px; }
+
+  .vbl-avatar-more {
+    width: 40px; height: 32px; border-radius: 999px;
+    display: grid; place-items: center;
+    background: rgba(255,255,255,0.35);
+    backdrop-filter: blur(4px);
+    color: rgba(20, 32, 31, 0.65);
+    font-family: var(--vbl-font-display);
+    font-size: 0.66rem;
+    font-weight: 600;
+    margin-left: -14px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.8),
+      inset 0 1.5px 0 rgba(255,255,255,0.95),
+      0 4px 6px rgba(20,32,31,0.06);
+  }
+</style>
+<div class="card vbl-card-bg" style="background:linear-gradient(135deg,#eef2ef 0%,#dde4e0 100%);">
+  <div class="label-tight" style="color:rgba(20,32,31,0.55)">Avatar — liquid glass lozenge</div>
+  <div class="row" style="gap:22px;align-items:center;">
+    <div class="vbl-avatar size-lg"><span>AM</span></div>
+    <div class="vbl-avatar size-md"><span>JK</span></div>
+    <div class="vbl-avatar size-sm"><span>SR</span></div>
+    <div class="vbl-avatar-stack" style="margin-left:6px;">
+      <div class="vbl-avatar size-sm"><span>EL</span></div>
+      <div class="vbl-avatar size-sm"><span>MT</span></div>
+      <div class="vbl-avatar size-sm"><span>NK</span></div>
+      <div class="vbl-avatar-more">+12</div>
+    </div>
+  </div>
+  <div class="token" style="color:rgba(20,32,31,0.5)">flat lozenge · meniscus rim · prismatic edge · drop shadow</div>
+</div>
+</body></html>

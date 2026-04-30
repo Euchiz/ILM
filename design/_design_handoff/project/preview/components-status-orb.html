@@ -1,0 +1,253 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css"><title>Status orb</title></head>
+<body>
+<style>
+  /* gridded backdrop so the glass has something to refract */
+  .vsx-stage {
+    padding: 28px;
+    border-radius: 12px;
+    background:
+      linear-gradient(135deg, #eef2ef 0%, #dde4e0 100%),
+      linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: auto, 56px 56px, 56px 56px;
+    border: 1px solid var(--vbl-line);
+  }
+
+  /* ---- liquid-glass lozenge ---- */
+  .vsx-orb-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 1.05rem;
+    align-items: center;
+    padding: 0.95rem 1.2rem 0.95rem 1.05rem;
+    border-radius: 999px;
+    isolation: isolate;
+    max-width: 420px;
+    /* subtle cast shadow on the surface */
+    filter: drop-shadow(0 6px 14px rgba(20, 32, 31, 0.10));
+  }
+  /* glass body — near-transparent puddle with sheen */
+  .vsx-orb-row::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    z-index: -1;
+    background:
+      /* top sheen */
+      linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 35%, rgba(255,255,255,0) 65%),
+      /* bottom catchlight */
+      linear-gradient(0deg,   rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 28%),
+      /* faint body tint */
+      rgba(255, 255, 255, 0.20);
+    backdrop-filter: blur(6px) saturate(1.05);
+    -webkit-backdrop-filter: blur(6px) saturate(1.05);
+  }
+  /* meniscus rim + chromatic dispersion */
+  .vsx-orb-row::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.85),
+      inset 0 1.5px 0 rgba(255,255,255,0.95),
+      inset 0 -1.5px 0 rgba(255,255,255,0.5),
+      inset -3px 0 6px rgba(120, 200, 220, 0.22),
+      inset 3px 0 6px rgba(255, 200, 220, 0.14);
+  }
+
+  /* ---- orb (also a glass puddle, fuses into the lozenge body) ---- */
+  .vsx-orb {
+    position: relative;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    isolation: isolate;
+  }
+  .vsx-orb::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    z-index: -1;
+    background:
+      radial-gradient(circle at 38% 30%, rgba(255,255,255,0.85), rgba(255,255,255,0) 55%),
+      radial-gradient(circle at 50% 60%, rgba(78,159,146,0.22), transparent 65%),
+      rgba(255,255,255,0.25);
+    backdrop-filter: blur(6px) saturate(1.1);
+    -webkit-backdrop-filter: blur(6px) saturate(1.1);
+  }
+  .vsx-orb::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.85),
+      inset 0 1.5px 0 rgba(255,255,255,0.95),
+      inset 0 -1.5px 0 rgba(255,255,255,0.5),
+      inset -2px 0 4px rgba(120,200,220,0.22),
+      inset 2px 0 4px rgba(255,200,220,0.14);
+  }
+  /* slow conic sweep behind the dot (sits on the glass) */
+  .vsx-sweep {
+    position: absolute; inset: 6px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+      rgba(78,159,146,0) 0deg 220deg,
+      rgba(78,159,146,0.50) 320deg,
+      rgba(78,159,146,0) 360deg);
+    -webkit-mask: radial-gradient(circle, transparent 56%, #000 57%, #000 70%, transparent 71%);
+            mask: radial-gradient(circle, transparent 56%, #000 57%, #000 70%, transparent 71%);
+    animation: vsx-spin 6s linear infinite;
+  }
+  @keyframes vsx-spin { to { transform: rotate(360deg); } }
+
+  .vsx-dot {
+    position: relative;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--vbl-viridian);
+    box-shadow:
+      0 0 0 4px rgba(78,159,146,0.16),
+      0 0 12px rgba(78,159,146,0.55);
+    animation: vsx-breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes vsx-breathe {
+    0%, 100% { transform: scale(1);    opacity: 1;   }
+    50%      { transform: scale(0.92); opacity: 0.7; }
+  }
+
+  /* ---- type ---- */
+  .vsx-kicker {
+    font-family: var(--vbl-font-display);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(20,32,31,0.55);
+    display: flex; align-items: center; gap: 0.5rem;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+  }
+  .vsx-kicker .sep {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: rgba(20,32,31,0.25);
+  }
+  .vsx-kicker .ch {
+    color: var(--vbl-viridian);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.12em;
+  }
+
+  .vsx-line {
+    margin-top: 5px;
+    font-family: var(--vbl-font-display);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(20,32,31,0.85);
+    letter-spacing: -0.005em;
+    display: flex; align-items: baseline; gap: 0.55rem;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+  }
+  .vsx-line .status { color: var(--vbl-viridian); font-weight: 600; }
+  .vsx-line .code {
+    font-family: var(--vbl-font-mono);
+    font-size: 0.62rem;
+    font-weight: 400;
+    color: rgba(20,32,31,0.45);
+    margin-left: 0.4rem;
+    align-self: center;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .vsx-meta {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
+    padding-right: 0.15rem;
+  }
+  .vsx-bars {
+    display: flex; align-items: flex-end; gap: 2px;
+    height: 14px;
+  }
+  .vsx-bars i {
+    width: 3px;
+    background: var(--vbl-viridian);
+    border-radius: 2px;
+  }
+  .vsx-bars i:nth-child(1) { height: 35%; opacity: 0.45; }
+  .vsx-bars i:nth-child(2) { height: 60%; opacity: 0.7; }
+  .vsx-bars i:nth-child(3) { height: 80%; opacity: 0.9; }
+  .vsx-bars i:nth-child(4) { height: 100%; }
+
+  .vsx-lat {
+    font-family: var(--vbl-font-mono);
+    font-size: 0.62rem;
+    color: rgba(20,32,31,0.45);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+  }
+  .vsx-lat b {
+    color: var(--vbl-viridian);
+    font-weight: 600;
+    font-size: 0.72rem;
+  }
+
+  .vsx-foot {
+    margin-top: 0.85rem;
+    font-family: var(--vbl-font-display);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(20,32,31,0.45);
+    display: flex; align-items: center; gap: 0.55rem;
+  }
+  .vsx-foot .num {
+    font-family: var(--vbl-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--vbl-viridian);
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-weight: 600;
+  }
+  .vsx-foot .sep {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: rgba(20,32,31,0.25);
+  }
+</style>
+<div class="card">
+  <div class="label-tight">Side status — liquid-glass lozenge</div>
+  <div class="vsx-stage">
+    <div class="vsx-orb-row">
+      <div class="vsx-orb">
+        <div class="vsx-sweep"></div>
+        <div class="vsx-dot"></div>
+      </div>
+      <div>
+        <div class="vsx-kicker">
+          <span>System status</span>
+          <span class="sep"></span>
+          <span class="ch">Channel 07</span>
+        </div>
+        <div class="vsx-line">
+          <span class="status">All systems nominal</span>
+          <span class="code">200 · OK</span>
+        </div>
+      </div>
+      <div class="vsx-meta">
+        <div class="vsx-bars" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </div>
+        <div class="vsx-lat"><b>14</b>ms</div>
+      </div>
+    </div>
+    <div class="vsx-foot">
+      <span>Uplink stable</span>
+      <span class="sep"></span>
+      <span><span class="num">4 / 4</span> nodes</span>
+      <span class="sep"></span>
+      <span class="num">T+0426</span>
+    </div>
+  </div>
+</div>
+</body></html>
