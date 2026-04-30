@@ -138,14 +138,21 @@ const getRequestAction = (
   if (!currentUserId) return null;
   if (dataset.archived_at) return { label: "Archived", disabled: true };
   const mine = requests.filter((request) => request.requester_user_id === currentUserId);
+  if (dataset.access_level === "open-lab") {
+    const hasRecordedUse = mine.some((request) => request.status === "approved");
+    return {
+      label: hasRecordedUse ? "Record another use" : "Record use",
+      disabled: false,
+    };
+  }
   if (mine.some((request) => request.status === "pending")) {
     return { label: "Pending", disabled: true };
   }
   if (mine.some((request) => request.status === "approved")) {
-    return { label: dataset.access_level === "open-lab" ? "Reuse recorded" : "Approved", disabled: true };
+    return { label: "Approved", disabled: true };
   }
   return {
-    label: dataset.access_level === "open-lab" ? "Record reuse" : "Request access",
+    label: "Request access",
     disabled: false,
   };
 };
@@ -431,7 +438,12 @@ export const App = () => {
           versions={versionsByDatasetId.get(modal.datasetId) ?? []}
           onClose={closeModal}
           onSubmit={async (payload) => {
-            const saved = await wrap(() => workspace.createDatasetAccessRequest(payload));
+            const dataset = workspace.datasets.find((entry) => entry.id === payload.datasetId);
+            const saved = await wrap(() =>
+              dataset?.access_level === "open-lab"
+                ? workspace.recordDatasetUse(payload)
+                : workspace.createDatasetAccessRequest(payload)
+            );
             if (saved) closeModal();
           }}
         />
@@ -1451,6 +1463,7 @@ function AccessRequestModal({
     requestedAccessType: RequestAccessType;
   }) => Promise<void>;
 }) {
+  const isOpenLab = dataset?.access_level === "open-lab";
   const [datasetVersionId, setDatasetVersionId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [requestedAccessType, setRequestedAccessType] = useState<RequestAccessType>("reuse-in-project");
@@ -1486,12 +1499,18 @@ function AccessRequestModal({
   };
 
   return (
-    <Modal open onClose={onClose} title="Request dataset access">
+    <Modal open onClose={onClose} title={isOpenLab ? "Record dataset use" : "Request dataset access"}>
       <form className="dh-form" onSubmit={handleSubmit}>
         {error ? <InlineError>{error}</InlineError> : null}
-        <InlineNote>
-          Tell the owner how you plan to use this dataset. For open-lab datasets this records reuse; for controlled datasets it requests access and may reveal storage locations after approval.
-        </InlineNote>
+        {isOpenLab ? (
+          <InlineNote>
+            This dataset is open to the lab. Recording use adds reuse history and can link the dataset to your project immediately.
+          </InlineNote>
+        ) : (
+          <InlineNote>
+            Tell the owner how you plan to use this dataset. Approval may reveal storage locations and record reuse.
+          </InlineNote>
+        )}
         <FormField label="Dataset">
           <Input value={dataset?.name ?? ""} disabled />
         </FormField>
@@ -1517,7 +1536,9 @@ function AccessRequestModal({
         </FormField>
         <div className="rl-modal-actions">
           <Button type="button" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button type="submit" variant="primary" disabled={busy}>{busy ? "Submitting..." : "Submit request"}</Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? "Saving..." : isOpenLab ? "Record use" : "Submit request"}
+          </Button>
         </div>
       </form>
     </Modal>

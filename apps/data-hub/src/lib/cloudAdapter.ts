@@ -439,6 +439,28 @@ export async function createDatasetAccessRequest(args: {
   return data as DatasetAccessRequestRecord;
 }
 
+export async function recordDatasetUse(args: {
+  labId: string;
+  userId: string;
+  datasetId: string;
+  datasetVersionId?: string | null;
+  projectId?: string | null;
+  intendedUse: string;
+  requestedAccessType: RequestAccessType;
+}): Promise<DatasetAccessRequestRecord> {
+  const { data, error } = await client()
+    .rpc("record_dataset_use", {
+      p_dataset_id: args.datasetId,
+      p_dataset_version_id: args.datasetVersionId ?? null,
+      p_project_id: args.projectId ?? null,
+      p_intended_use: args.intendedUse,
+      p_requested_access_type: args.requestedAccessType,
+    })
+    .single();
+  if (error) throw error;
+  return data as DatasetAccessRequestRecord;
+}
+
 export async function withdrawDatasetAccessRequest(
   requestId: string
 ): Promise<DatasetAccessRequestRecord> {

@@ -5,6 +5,7 @@ import {
   createDatasetAccessRequest as rpcCreateDatasetAccessRequest,
   createDatasetVersion as rpcCreateDatasetVersion,
   listDataHubWorkspace,
+  recordDatasetUse as rpcRecordDatasetUse,
   restoreDataset as rpcRestoreDataset,
   reviewDatasetAccessRequest as rpcReviewDatasetAccessRequest,
   updateDataset as rpcUpdateDataset,
@@ -46,6 +47,13 @@ export interface UseDataHubWorkspaceValue extends DataHubWorkspaceSnapshot {
     storageUri?: string | null;
   }) => Promise<DatasetVersionRecord>;
   createDatasetAccessRequest: (args: {
+    datasetId: string;
+    datasetVersionId?: string | null;
+    projectId?: string | null;
+    intendedUse: string;
+    requestedAccessType: RequestAccessType;
+  }) => Promise<DatasetAccessRequestRecord>;
+  recordDatasetUse: (args: {
     datasetId: string;
     datasetVersionId?: string | null;
     projectId?: string | null;
@@ -171,6 +179,16 @@ export function useDataHubWorkspace(args: {
     [hydrate, requireIdentity]
   );
 
+  const recordDatasetUse = useCallback<UseDataHubWorkspaceValue["recordDatasetUse"]>(
+    async (input) => {
+      const identity = requireIdentity();
+      const created = await rpcRecordDatasetUse({ ...identity, ...input });
+      await hydrate();
+      return created;
+    },
+    [hydrate, requireIdentity]
+  );
+
   const withdrawDatasetAccessRequest = useCallback<UseDataHubWorkspaceValue["withdrawDatasetAccessRequest"]>(
     async (requestId) => {
       requireIdentity();
@@ -202,6 +220,7 @@ export function useDataHubWorkspace(args: {
     restoreDataset,
     createDatasetVersion,
     createDatasetAccessRequest,
+    recordDatasetUse,
     withdrawDatasetAccessRequest,
     reviewDatasetAccessRequest,
   };
