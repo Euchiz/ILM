@@ -130,6 +130,26 @@ const requestTone = (status: DatasetAccessRequestRecord["status"]): BadgeTone =>
   return "warning";
 };
 
+const getRequestAction = (
+  dataset: DatasetRecord,
+  requests: DatasetAccessRequestRecord[],
+  currentUserId: string | null
+) => {
+  if (!currentUserId) return null;
+  if (dataset.archived_at) return { label: "Archived", disabled: true };
+  const mine = requests.filter((request) => request.requester_user_id === currentUserId);
+  if (mine.some((request) => request.status === "pending")) {
+    return { label: "Pending", disabled: true };
+  }
+  if (mine.some((request) => request.status === "approved")) {
+    return { label: dataset.access_level === "open-lab" ? "Reuse recorded" : "Approved", disabled: true };
+  }
+  return {
+    label: dataset.access_level === "open-lab" ? "Record reuse" : "Request access",
+    disabled: false,
+  };
+};
+
 const splitTags = (value: string) =>
   value
     .split(",")
@@ -623,18 +643,7 @@ function DatasetTable({
               const projectLinks = linksByDatasetId.get(dataset.id) ?? [];
               const tags = tagsByDatasetId.get(dataset.id) ?? [];
               const requests = requestsByDatasetId.get(dataset.id) ?? [];
-              const hasPendingRequest = requests.some(
-                (request) => request.requester_user_id === currentUserId && request.status === "pending"
-              );
-              const hasApprovedRequest = requests.some(
-                (request) => request.requester_user_id === currentUserId && request.status === "approved"
-              );
-              const canRequest =
-                currentUserId &&
-                dataset.access_level !== "open-lab" &&
-                !canEditDataset(dataset) &&
-                !hasPendingRequest &&
-                !hasApprovedRequest;
+              const requestAction = getRequestAction(dataset, requests, currentUserId);
               return (
                 <tr key={dataset.id}>
                   <td>
@@ -660,8 +669,17 @@ function DatasetTable({
                     {canEditDataset(dataset) ? (
                       <Button size="sm" variant="ghost" onClick={() => onEdit(dataset)}>Edit</Button>
                     ) : null}
-                    {canRequest ? (
-                      <Button size="sm" variant="ghost" onClick={() => onRequestAccess(dataset)}>Request</Button>
+                    {requestAction ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={requestAction.disabled}
+                        onClick={() => {
+                          if (!requestAction.disabled) onRequestAccess(dataset);
+                        }}
+                      >
+                        {requestAction.label}
+                      </Button>
                     ) : null}
                   </td>
                 </tr>
@@ -886,9 +904,7 @@ function DatasetDetailView({
 }) {
   const owner = membersById.get(dataset.owner_user_id ?? "");
   const contact = membersById.get(dataset.contact_user_id ?? "");
-  const hasPending = requests.some((request) => request.requester_user_id === currentUserId && request.status === "pending");
-  const hasApproved = requests.some((request) => request.requester_user_id === currentUserId && request.status === "approved");
-  const canRequest = currentUserId && dataset.access_level !== "open-lab" && !canEdit && !hasPending && !hasApproved;
+  const requestAction = getRequestAction(dataset, requests, currentUserId);
 
   return (
     <div className="dh-stack">
@@ -904,7 +920,17 @@ function DatasetDetailView({
             </div>
           </div>
           <div className="dh-actions-row">
-            {canRequest ? <Button variant="primary" onClick={onRequestAccess}>Request access</Button> : null}
+            {requestAction ? (
+              <Button
+                variant={requestAction.disabled ? "secondary" : "primary"}
+                disabled={requestAction.disabled}
+                onClick={() => {
+                  if (!requestAction.disabled) onRequestAccess();
+                }}
+              >
+                {requestAction.label}
+              </Button>
+            ) : null}
             {canEdit ? <Button variant="secondary" onClick={onEdit}>Edit</Button> : null}
             {canEdit && dataset.archived_at ? (
               <Button variant="ghost" onClick={onRestore}>Restore</Button>
@@ -1463,7 +1489,9 @@ function AccessRequestModal({
     <Modal open onClose={onClose} title="Request dataset access">
       <form className="dh-form" onSubmit={handleSubmit}>
         {error ? <InlineError>{error}</InlineError> : null}
-        <InlineNote>Tell the owner how you plan to use this dataset. Approval may reveal storage locations and record reuse.</InlineNote>
+        <InlineNote>
+          Tell the owner how you plan to use this dataset. For open-lab datasets this records reuse; for controlled datasets it requests access and may reveal storage locations after approval.
+        </InlineNote>
         <FormField label="Dataset">
           <Input value={dataset?.name ?? ""} disabled />
         </FormField>
