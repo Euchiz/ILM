@@ -21,6 +21,8 @@ export type InventoryStats = {
   consumables: number;
   supplies: number;
   samples: number;
+  equipment: number;
+  kits: number;
   other: number;
   criticalLow: number;
   inOrder: number;
@@ -84,7 +86,19 @@ export type DashboardData = {
 const emptyState: Omit<DashboardData, "refresh"> = {
   projects: { draft: 0, published: 0, deleted: 0, total: 0 },
   protocols: { total: 0, active: 0, inReview: 0, archived: 0 },
-  inventory: { total: 0, reagents: 0, consumables: 0, supplies: 0, samples: 0, other: 0, criticalLow: 0, inOrder: 0, unchecked: 0 },
+  inventory: {
+    total: 0,
+    reagents: 0,
+    consumables: 0,
+    supplies: 0,
+    samples: 0,
+    equipment: 0,
+    kits: 0,
+    other: 0,
+    criticalLow: 0,
+    inOrder: 0,
+    unchecked: 0,
+  },
   team: { total: 0, owners: 0, admins: 0, members: 0, recentAvatars: [] },
   pending: { protocols: 0, projects: 0, orders: 0, members: 0, bookings: 0, datasets: 0 },
   schedule: [],
@@ -302,6 +316,8 @@ export const useDashboardData = (
           consumables: byClass("consumable"),
           supplies: byClass("supply"),
           samples: byClass("sample"),
+          equipment: byClass("equipment"),
+          kits: byClass("kit"),
           other: byClass("other"),
           criticalLow: 0,
           inOrder: 0,

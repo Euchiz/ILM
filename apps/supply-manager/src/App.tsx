@@ -51,7 +51,15 @@ import type {
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
-const CLASSIFICATIONS: ItemClassification[] = ["reagent", "consumable", "supply", "sample", "other"];
+const CLASSIFICATIONS: ItemClassification[] = [
+  "reagent",
+  "consumable",
+  "supply",
+  "sample",
+  "equipment",
+  "kit",
+  "other",
+];
 const STOCK_STATUSES: StockStatus[] = ["plenty", "medium", "low", "out", "unknown"];
 const REQUEST_PRIORITIES: RequestPriority[] = ["low", "normal", "high", "urgent"];
 const ASSOCIATION_TYPES: ItemAssociationType[] = ["primary", "shared", "temporary", "general"];
