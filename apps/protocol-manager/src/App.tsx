@@ -2243,8 +2243,9 @@ export const App = () => {
           />
         ) : null}
         <button type="button" className="protocol-subbar-back" onClick={() => setSidebarTab("library")}>
-          ← Library
+          ← Back to library
         </button>
+        <span className="protocol-subbar-divider" aria-hidden="true" />
       </nav>
     ) : (
       <nav className="protocol-subbar-tabs" aria-label="Protocol manager sections">
@@ -2257,6 +2258,9 @@ export const App = () => {
         {visibleReviewsTab ? (
           <button className={`protocol-subtab${sidebarTab === "reviews" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("reviews")}>
             Reviews
+            {pendingSubmissions.length > 0 ? (
+              <span className="protocol-subtab-badge">{pendingSubmissions.length}</span>
+            ) : null}
           </button>
         ) : null}
         <button className={`protocol-subtab${sidebarTab === "recycle" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("recycle")}>
