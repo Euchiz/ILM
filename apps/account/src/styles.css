@@ -33,43 +33,57 @@
   align-items: stretch;
 }
 
-/* Faded lab-corridor figure tucked into the bottom-left of the page.
-   The actual background-image URL is supplied inline by OverviewView so it
-   stays correct under a non-root VITE_BASE_PATH. */
-.ovw-corner {
-  position: fixed;
-  left: 0;
-  bottom: 0;
-  width: 360px;
-  height: 360px;
-  background-repeat: no-repeat;
-  background-position: left bottom;
-  background-size: contain;
-  opacity: 0.10;
-  pointer-events: none;
-  z-index: 0;
-}
 .ovw-grid > * {
   position: relative;
   z-index: 1;
 }
+/* Lab-corridor brand wash anchored to the bottom-right of the viewport.
+   Declared AFTER `.ovw-grid > *` so its `position: fixed` wins specificity —
+   otherwise the corner gets reverted to `relative` and steals layout space,
+   pushing the panels down the page. */
+.ovw-grid > .ovw-corner,
+.ovw-corner {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 520px;
+  height: 520px;
+  background-repeat: no-repeat;
+  background-position: right bottom;
+  background-size: contain;
+  opacity: 0.30;
+  pointer-events: none;
+  z-index: 0;
+}
 @media (max-width: 960px) {
-  .ovw-corner { width: 220px; height: 220px; opacity: 0.07; }
+  .ovw-grid > .ovw-corner,
+  .ovw-corner { width: 320px; height: 320px; opacity: 0.22; }
 }
 
+/* Overview card — solid-white panel with a liquid-glass meniscus rim.
+   The interior is pure white so content reads cleanly; the rim shadow
+   stack still catches page light at the edges. */
 .ovw-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid var(--ilm-line);
-  border-radius: var(--rl-radius-sm);
-  padding: 1rem 1.1rem;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  z-index: 1;
+  border: none;
+  border-radius: 18px;
+  padding: 1.2rem 1.4rem;
+  background: #ffffff;
+  box-shadow:
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 0.95),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.85),
+    inset 1px 1px 0px -0.5px rgba(40, 103, 95, 0.18),
+    inset -1px -1px 0px -0.5px rgba(20, 32, 31, 0.22),
+    0 10px 28px -12px rgba(40, 103, 95, 0.22),
+    0 1px 2px rgba(20, 32, 31, 0.04);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   min-width: 0;
   overflow: hidden;
 }
+.ovw-card > * { position: relative; z-index: 1; }
 
 .ovw-card header {
   display: flex;
@@ -232,7 +246,6 @@
   max-height: 240px;
   object-fit: contain;
   opacity: 0.92;
-  filter: drop-shadow(0 6px 18px rgba(47, 125, 114, 0.12));
 }
 
 /* Schedule */
@@ -309,18 +322,29 @@
   display: grid;
   grid-template-rows: auto auto auto;
   gap: 0.2rem;
-  padding: 0.85rem 0.95rem 0.75rem;
-  border: 1px solid var(--ilm-hairline);
-  border-radius: var(--rl-radius-sm);
-  background: rgba(255,255,255,0.85);
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+  box-shadow:
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 0.95),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.85),
+    inset 1px 1px 0px -0.5px rgba(40, 103, 95, 0.18),
+    inset -1px -1px 0px -0.5px rgba(20, 32, 31, 0.22),
+    0 6px 16px -10px rgba(40, 103, 95, 0.18);
 }
 .ovw-review-tile:hover {
-  border-color: var(--ilm-viridian);
-  box-shadow: 0 4px 14px rgba(47,125,114,0.12);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 1),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.95),
+    inset 1px 1px 0px -0.5px rgba(40, 103, 95, 0.28),
+    inset -1px -1px 0px -0.5px rgba(20, 32, 31, 0.30),
+    0 12px 28px -10px rgba(40, 103, 95, 0.30);
 }
 .ovw-review-tile.has-pending {
   border-color: var(--ilm-amber-line, var(--ilm-amber));
@@ -487,26 +511,51 @@
   gap: 0.4rem;
   margin: 0.3rem 0;
 }
+/* Liquid-glass lozenge avatar — flat puddle of glass with a top sheen,
+   prismatic edge kiss, and a soft drop shadow. Replaces the heavy
+   3D-orb gradient. */
 .ovw-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  position: relative;
+  width: 32px;
+  height: 24px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 30%, #f1dfc8 0 18%, transparent 19%),
-              linear-gradient(90deg, var(--ilm-viridian) 0 40%, #dbe8d6 40% 60%, var(--ilm-viridian) 60% 100%);
-  color: rgba(255,255,255,0.95);
+  isolation: isolate;
   font-family: var(--rl-font-display);
-  font-size: 0.65rem;
-  border: 2px solid var(--ilm-mint-dim);
-  box-shadow: 0 5px 10px rgba(41,95,47,0.14);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(20, 32, 31, 0.72);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+  filter: drop-shadow(0 4px 6px rgba(20, 32, 31, 0.10));
+}
+.ovw-avatar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(255, 255, 255, 0) 65%),
+    linear-gradient(0deg,   rgba(255, 255, 255, 0.4) 0%,  rgba(255, 255, 255, 0) 30%),
+    rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(3px);
+}
+.ovw-avatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1.5px 0 rgba(255, 255, 255, 0.5),
+    inset -2px 0 4px rgba(120, 200, 220, 0.20),
+    inset 2px 0 4px rgba(255, 200, 220, 0.12);
 }
 .ovw-avatar--more {
-  background: var(--ilm-surface);
-  color: var(--ilm-viridian);
-  border-color: var(--ilm-hairline);
-  text-shadow: none;
+  color: rgba(20, 32, 31, 0.65);
 }
 .ovw-team-stats {
   list-style: none;
@@ -646,13 +695,20 @@
 }
 
 .acct-card {
-  background: var(--ilm-surface);
-  border: 1px solid var(--ilm-line);
-  border-radius: var(--rl-radius-soft);
-  padding: 1rem 1.1rem;
+  position: relative;
+  border: none;
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  background: #ffffff;
+  box-shadow:
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 0.95),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.85),
+    inset 1px 1px 0px -0.5px rgba(40, 103, 95, 0.18),
+    inset -1px -1px 0px -0.5px rgba(20, 32, 31, 0.22),
+    0 8px 22px -12px rgba(40, 103, 95, 0.20);
 }
 .acct-card-header {
   display: flex;
@@ -817,20 +873,49 @@
 
 .acct-primary-button {
   appearance: none;
-  border: 1px solid var(--ilm-viridian);
-  background: var(--ilm-viridian);
+  position: relative;
+  border: none;
+  background: linear-gradient(
+    180deg,
+    rgba(78, 159, 146, 0.92) 0%,
+    rgba(47, 125, 114, 0.85) 100%
+  );
   color: #fff;
-  padding: 0.55rem 0.9rem;
-  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  font-family: var(--rl-font-display);
   font-size: 0.82rem;
   letter-spacing: 0.06em;
   font-weight: 600;
   cursor: pointer;
+  text-shadow: 0 1px 0 rgba(20, 40, 38, 0.20);
+  transition: transform 100ms ease, box-shadow 140ms ease, background 140ms ease;
+  box-shadow:
+    inset 0 0 16px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 3px 0 rgba(255, 255, 255, 0.45),
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 0.95),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.60),
+    inset 0 -1px 0 -0.5px rgba(20, 32, 31, 0.22),
+    0 8px 18px -8px rgba(40, 103, 95, 0.45),
+    0 1px 2px rgba(20, 32, 31, 0.10);
 }
 .acct-primary-button:hover:not(:disabled) {
-  background: var(--ilm-viridian-2);
-  border-color: var(--ilm-viridian-2);
+  background: linear-gradient(
+    180deg,
+    rgba(94, 175, 160, 0.95) 0%,
+    rgba(58, 140, 128, 0.90) 100%
+  );
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.25),
+    inset 0 0 3px 0 rgba(255, 255, 255, 0.55),
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 1),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.70),
+    inset 0 -1px 0 -0.5px rgba(20, 32, 31, 0.26),
+    0 12px 26px -10px rgba(40, 103, 95, 0.55),
+    0 1px 2px rgba(20, 32, 31, 0.10);
 }
+.acct-primary-button:active:not(:disabled) { transform: translateY(0) scale(0.98); }
 .acct-primary-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .acct-danger-button {

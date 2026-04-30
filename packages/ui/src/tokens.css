@@ -12,7 +12,12 @@
 
 :root {
   /* ---------- Product color roles ---------- */
-  --ilm-canvas:            #f7f9f7;
+  /* Brighter near-white canvas with a hair of mint, for the futurism atmosphere
+     while keeping the warm-stone character. The legacy `f7f9f7` lives on as
+     `--ilm-canvas-warm` for any surface that wants the older feel. */
+  --ilm-canvas:            #fafdfb;
+  --ilm-canvas-bright:     #ffffff;
+  --ilm-canvas-warm:       #f7f9f7;
   --ilm-canvas-alt:        #f1f6f4;
   --ilm-surface:           #ffffff;
   --ilm-surface-glass:     rgba(255, 255, 255, 0.78);
@@ -35,6 +40,13 @@
   --ilm-blue-soft:         #dcecf3;
   --ilm-mint:              #c9eee2;
   --ilm-mint-dim:          #a8d6ca;
+
+  /* "Life vibe" yellow-green accent — used alongside viridian for positive
+     deltas, energetic highlights, and prismatic glass kisses. */
+  --ilm-lime:              #8fb949;
+  --ilm-lime-deep:         #6f9b2f;
+  --ilm-lime-soft:         #e8f3d2;
+  --ilm-lime-glow:         rgba(143, 185, 73, 0.55);
 
   --ilm-amber:             #9a5b1e;
   --ilm-amber-soft:        #fff2df;

@@ -798,3 +798,193 @@
 .rl-avatar--initials {
   text-transform: uppercase;
 }
+
+/* ============================================================
+   Liquid-glass surface (.lg-surface)
+   Ported from Apple's Liquid Glass control-center kit. The
+   signature is a stack of inset shadows: a wide soft inner glow,
+   a tight 3px sheen, and sub-pixel light/dark rim highlights at
+   the corners that read as a glass meniscus. Adapted for the
+   warm-stone canvas (inner glow tinted faintly viridian instead
+   of pure white). Use as the touchable surface for buttons,
+   cards, panels, modals — anything that should feel reflective.
+   ============================================================ */
+.lg-surface {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.32) 100%
+  );
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  /* meniscus shadow stack — order matters */
+  box-shadow:
+    inset 0 0 22px 0 rgba(255, 255, 255, 0.78),
+    inset 0 0 4px 0 rgba(255, 255, 255, 0.85),
+    inset 1.5px 1.5px 1px -1px rgba(255, 255, 255, 1),
+    inset -1.5px -1.5px 1px -1px rgba(255, 255, 255, 0.92),
+    inset 1px 1px 0px -0.5px rgba(40, 103, 95, 0.20),
+    inset -1px -1px 0px -0.5px rgba(20, 32, 31, 0.24),
+    0 6px 18px -8px rgba(40, 103, 95, 0.16),
+    0 1px 2px rgba(20, 32, 31, 0.04);
+}
+/* Top specular highlight — the meniscus curve where light catches the
+   upper edge. Apply by ensuring `.lg-surface` is `position: relative` and
+   the surface is not `overflow: hidden` (a child wrapper can clip if needed). */
+.lg-surface::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 38%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.18) 40%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  mix-blend-mode: screen;
+}
+/* Optional prismatic chromatic kiss + diagonal shine. Drop a child
+   <span class="lg-prism"></span> inside any .lg-surface that wants the
+   moving-light reflection (cards, hero panels). */
+.lg-surface > .lg-prism {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      125deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0) 38%,
+      rgba(255, 255, 255, 0.55) 48%,
+      rgba(255, 255, 255, 0.85) 50%,
+      rgba(255, 255, 255, 0.55) 52%,
+      rgba(255, 255, 255, 0) 62%,
+      rgba(255, 255, 255, 0) 100%
+    ),
+    linear-gradient(
+      115deg,
+      rgba(255, 200, 220, 0.18) 0%,
+      rgba(255, 200, 220, 0) 30%,
+      rgba(120, 200, 220, 0) 70%,
+      rgba(120, 200, 220, 0.20) 100%
+    );
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+.lg-surface.is-interactive {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+  cursor: pointer;
+}
+.lg-surface.is-interactive:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.42) 100%
+  );
+  box-shadow:
+    inset 0 0 24px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 4px 0 rgba(255, 255, 255, 0.95),
+    inset 1.5px 1.5px 1px -1px rgba(255, 255, 255, 1),
+    inset -1.5px -1.5px 1px -1px rgba(255, 255, 255, 1),
+    inset 1px 1px 0px -0.5px rgba(40, 103, 95, 0.28),
+    inset -1px -1px 0px -0.5px rgba(20, 32, 31, 0.30),
+    0 12px 28px -10px rgba(40, 103, 95, 0.26),
+    0 0 24px -10px rgba(143, 185, 73, 0.30),
+    0 1px 2px rgba(20, 32, 31, 0.06);
+  transform: translateY(-1px);
+}
+.lg-surface.is-interactive:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 0 8px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 0.7),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.6),
+    inset 0 2px 4px rgba(40, 103, 95, 0.18),
+    0 2px 6px -4px rgba(40, 103, 95, 0.18);
+}
+/* Tinted viridian variant for primary CTAs */
+.lg-surface.is-tinted {
+  background: linear-gradient(
+    180deg,
+    rgba(78, 159, 146, 0.92) 0%,
+    rgba(47, 125, 114, 0.85) 100%
+  );
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(20, 40, 38, 0.20);
+  box-shadow:
+    inset 0 0 16px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 3px 0 rgba(255, 255, 255, 0.45),
+    inset 1px 1px 0.5px -1px rgba(255, 255, 255, 0.95),
+    inset -1px -1px 0.5px -1px rgba(255, 255, 255, 0.60),
+    inset 0 -1px 0 -0.5px rgba(20, 32, 31, 0.22),
+    0 8px 18px -8px rgba(40, 103, 95, 0.45),
+    0 1px 2px rgba(20, 32, 31, 0.10);
+}
+.lg-surface.is-tinted > .lg-prism {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.05) 40%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  mix-blend-mode: normal;
+}
+
+/* ============================================================
+   Futurism atmosphere helpers
+   `.futur-edge`  — prismatic top edge accent (used on hero / cards)
+   `.futur-meta`  — mono telemetry meta strings
+   `.futur-dot`   — live blinking telemetry dot
+   ============================================================ */
+.futur-edge { position: relative; }
+.futur-edge::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 200, 220, 0),
+    rgba(255, 200, 220, 0.45) 25%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(120, 200, 220, 0.45) 75%,
+    rgba(120, 200, 220, 0)
+  );
+  pointer-events: none;
+}
+.futur-meta {
+  font-family: var(--rl-font-mono);
+  font-size: 0.66rem;
+  color: var(--ilm-fg-4);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.futur-meta b { color: var(--ilm-viridian); font-weight: 600; }
+.futur-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ilm-viridian);
+  box-shadow:
+    0 0 0 3px rgba(78, 159, 146, 0.18),
+    0 0 8px rgba(78, 159, 146, 0.6);
+  animation: futur-blink 1.6s ease-in-out infinite;
+  vertical-align: 1px;
+  margin-right: 5px;
+}
+@keyframes futur-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
