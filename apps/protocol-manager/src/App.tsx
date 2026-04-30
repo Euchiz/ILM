@@ -2371,9 +2371,22 @@ const PRINT_WINDOW_STYLES = `
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
 
+  body.print-window-body {
+    --print-recommended-scale: 0.8;
+  }
+
   .print-document {
     max-width: 900px;
     margin: 0 auto;
+    zoom: var(--print-recommended-scale);
+    transform-origin: top center;
+  }
+
+  @supports not (zoom: 1) {
+    .print-document {
+      transform: scale(var(--print-recommended-scale));
+      width: calc(100% / var(--print-recommended-scale));
+    }
   }
 
   .preview-section,
