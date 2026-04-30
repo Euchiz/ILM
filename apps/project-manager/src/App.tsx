@@ -695,10 +695,7 @@ export const App = () => {
     return set;
   }, [projectMembers, user?.id]);
 
-  const canReviewProject = useCallback(
-    (project: ProjectRecord) => isAdmin || myLeadProjectIds.has(project.id),
-    [isAdmin, myLeadProjectIds]
-  );
+  const canReviewProject = useCallback((_: ProjectRecord) => isAdmin, [isAdmin]);
 
   const pendingForMyReview = useMemo(
     () => pendingForReview.filter((project) => isAdmin || myLeadProjectIds.has(project.id)),
