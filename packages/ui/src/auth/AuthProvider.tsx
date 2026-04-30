@@ -28,6 +28,7 @@ type AuthContextValue = {
   signUp: (email: string, password: string, displayName?: string) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string, redirectTo?: string) => Promise<void>;
+  updatePassword: (nextPassword: string) => Promise<void>;
 
   // Profile actions
   updateProfile: (changes: { display_name?: string | null; headshot_url?: string | null }) => Promise<Profile>;
@@ -290,6 +291,23 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setActiveLabId(labId);
   }, []);
 
+  const updatePassword = useCallback(
+    async (nextPassword: string): Promise<void> => {
+      if (!user) throw new Error("Not signed in");
+      const normalized = nextPassword.trim();
+      if (normalized.length < 8) {
+        throw new Error("Password must be at least 8 characters.");
+      }
+      setError(null);
+      const { error: err } = await supabase.auth.updateUser({ password: normalized });
+      if (err) {
+        setError(err.message);
+        throw err;
+      }
+    },
+    [supabase, user]
+  );
+
   const updateProfile = useCallback(
     async (changes: { display_name?: string | null; headshot_url?: string | null }): Promise<Profile> => {
       if (!user) throw new Error("Not signed in");
@@ -306,10 +324,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         if (!profile) throw new Error("Profile not loaded");
         return profile;
       }
+      const payload = { ...patch, id: user.id, email: user.email ?? null };
       const { data, error: err } = await supabase
         .from("profiles")
-        .update(patch)
-        .eq("id", user.id)
+        .upsert(payload, { onConflict: "id" })
         .select("id, display_name, email, headshot_url")
         .single();
       if (err) {
@@ -357,6 +375,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     signUp,
     signOut,
     sendPasswordReset,
+    updatePassword,
     updateProfile,
     selectLab,
     createLab,
