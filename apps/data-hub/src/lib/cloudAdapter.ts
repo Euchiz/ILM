@@ -252,11 +252,6 @@ const TAG_FIELDS = "id, lab_id, dataset_id, tag, created_at";
 const STORAGE_FIELDS =
   "id, lab_id, dataset_id, dataset_version_id, label, storage_uri, storage_type, notes, created_by, created_at";
 
-const clean = (value: string | null | undefined) => {
-  const trimmed = value?.trim() ?? "";
-  return trimmed || null;
-};
-
 const normalizeTags = (tags: string[]) =>
   Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean))).slice(0, 24);
 
@@ -310,45 +305,34 @@ export async function createDataset(args: {
   storageUri?: string | null;
 }): Promise<DatasetRecord> {
   const { data, error } = await client()
-    .from("datasets")
-    .insert({
-      lab_id: args.labId,
-      created_by: args.userId,
-      updated_by: args.userId,
-      name: args.data.name.trim(),
-      description: clean(args.data.description),
-      dataset_type: args.data.dataset_type ?? "other",
-      source_type: args.data.source_type ?? "internal-generated",
-      status: args.data.status ?? "planned",
-      access_level: args.data.access_level ?? "request-required",
-      owner_user_id: args.data.owner_user_id ?? args.userId,
-      contact_user_id: args.data.contact_user_id ?? args.data.owner_user_id ?? args.userId,
-      organism: clean(args.data.organism),
-      sample_type: clean(args.data.sample_type),
-      assay_platform: clean(args.data.assay_platform),
-      primary_storage_uri: null,
-      external_accession: clean(args.data.external_accession),
-      citation: clean(args.data.citation),
-      license: clean(args.data.license),
-      usage_conditions: clean(args.data.usage_conditions),
-      recommended_use: clean(args.data.recommended_use),
-      not_recommended_use: clean(args.data.not_recommended_use),
-      qc_summary: clean(args.data.qc_summary),
-      notes: clean(args.data.notes),
+    .rpc("create_dataset", {
+      p_lab_id: args.labId,
+      p_name: args.data.name,
+      p_description: args.data.description ?? null,
+      p_dataset_type: args.data.dataset_type ?? "other",
+      p_source_type: args.data.source_type ?? "internal-generated",
+      p_status: args.data.status ?? "planned",
+      p_access_level: args.data.access_level ?? "request-required",
+      p_owner_user_id: args.data.owner_user_id ?? args.userId,
+      p_contact_user_id: args.data.contact_user_id ?? args.data.owner_user_id ?? args.userId,
+      p_organism: args.data.organism ?? null,
+      p_sample_type: args.data.sample_type ?? null,
+      p_assay_platform: args.data.assay_platform ?? null,
+      p_external_accession: args.data.external_accession ?? null,
+      p_citation: args.data.citation ?? null,
+      p_license: args.data.license ?? null,
+      p_usage_conditions: args.data.usage_conditions ?? null,
+      p_recommended_use: args.data.recommended_use ?? null,
+      p_not_recommended_use: args.data.not_recommended_use ?? null,
+      p_qc_summary: args.data.qc_summary ?? null,
+      p_notes: args.data.notes ?? null,
+      p_tags: normalizeTags(args.tags ?? []),
+      p_project_links: args.projectLinks ?? [],
+      p_storage_uri: args.storageUri ?? null,
     })
-    .select(DATASET_FIELDS)
     .single();
   if (error) throw error;
-  const dataset = data as DatasetRecord;
-  await syncDatasetChildren({
-    labId: args.labId,
-    userId: args.userId,
-    datasetId: dataset.id,
-    tags: args.tags ?? [],
-    projectLinks: args.projectLinks ?? [],
-    storageUri: args.storageUri ?? null,
-  });
-  return dataset;
+  return data as DatasetRecord;
 }
 
 export async function updateDataset(args: {
@@ -361,103 +345,34 @@ export async function updateDataset(args: {
   storageUri?: string | null;
 }): Promise<DatasetRecord> {
   const { data, error } = await client()
-    .from("datasets")
-    .update({
-      updated_by: args.userId,
-      name: args.data.name.trim(),
-      description: clean(args.data.description),
-      dataset_type: args.data.dataset_type ?? "other",
-      source_type: args.data.source_type ?? "internal-generated",
-      status: args.data.status ?? "planned",
-      access_level: args.data.access_level ?? "request-required",
-      owner_user_id: args.data.owner_user_id ?? null,
-      contact_user_id: args.data.contact_user_id ?? null,
-      organism: clean(args.data.organism),
-      sample_type: clean(args.data.sample_type),
-      assay_platform: clean(args.data.assay_platform),
-      primary_storage_uri: null,
-      external_accession: clean(args.data.external_accession),
-      citation: clean(args.data.citation),
-      license: clean(args.data.license),
-      usage_conditions: clean(args.data.usage_conditions),
-      recommended_use: clean(args.data.recommended_use),
-      not_recommended_use: clean(args.data.not_recommended_use),
-      qc_summary: clean(args.data.qc_summary),
-      notes: clean(args.data.notes),
+    .rpc("update_dataset", {
+      p_dataset_id: args.datasetId,
+      p_name: args.data.name,
+      p_description: args.data.description ?? null,
+      p_dataset_type: args.data.dataset_type ?? "other",
+      p_source_type: args.data.source_type ?? "internal-generated",
+      p_status: args.data.status ?? "planned",
+      p_access_level: args.data.access_level ?? "request-required",
+      p_owner_user_id: args.data.owner_user_id ?? null,
+      p_contact_user_id: args.data.contact_user_id ?? null,
+      p_organism: args.data.organism ?? null,
+      p_sample_type: args.data.sample_type ?? null,
+      p_assay_platform: args.data.assay_platform ?? null,
+      p_external_accession: args.data.external_accession ?? null,
+      p_citation: args.data.citation ?? null,
+      p_license: args.data.license ?? null,
+      p_usage_conditions: args.data.usage_conditions ?? null,
+      p_recommended_use: args.data.recommended_use ?? null,
+      p_not_recommended_use: args.data.not_recommended_use ?? null,
+      p_qc_summary: args.data.qc_summary ?? null,
+      p_notes: args.data.notes ?? null,
+      p_tags: normalizeTags(args.tags ?? []),
+      p_project_links: args.projectLinks ?? [],
+      p_storage_uri: args.storageUri ?? null,
     })
-    .eq("id", args.datasetId)
-    .select(DATASET_FIELDS)
     .single();
   if (error) throw error;
-  await syncDatasetChildren({
-    labId: args.labId,
-    userId: args.userId,
-    datasetId: args.datasetId,
-    tags: args.tags ?? [],
-    projectLinks: args.projectLinks ?? [],
-    storageUri: args.storageUri ?? null,
-  });
   return data as DatasetRecord;
-}
-
-async function syncDatasetChildren(args: {
-  labId: string;
-  userId: string;
-  datasetId: string;
-  tags: string[];
-  projectLinks: ProjectLinkInput[];
-  storageUri: string | null;
-}) {
-  await Promise.all([
-    client().from("dataset_tags").delete().eq("dataset_id", args.datasetId),
-    client().from("dataset_project_links").delete().eq("dataset_id", args.datasetId),
-    client().from("dataset_storage_links").delete().eq("dataset_id", args.datasetId).is("dataset_version_id", null),
-  ]);
-
-  const tags = normalizeTags(args.tags);
-  const inserts: PromiseLike<unknown>[] = [];
-  if (tags.length > 0) {
-    inserts.push(
-      client().from("dataset_tags").insert(
-        tags.map((tag) => ({
-          lab_id: args.labId,
-          dataset_id: args.datasetId,
-          tag,
-        }))
-      )
-    );
-  }
-  if (args.projectLinks.length > 0) {
-    inserts.push(
-      client().from("dataset_project_links").insert(
-        args.projectLinks.map((link) => ({
-          lab_id: args.labId,
-          dataset_id: args.datasetId,
-          project_id: link.project_id,
-          relationship_type: link.relationship_type,
-          note: clean(link.note),
-          created_by: args.userId,
-        }))
-      )
-    );
-  }
-  if (clean(args.storageUri)) {
-    inserts.push(
-      client().from("dataset_storage_links").insert({
-        lab_id: args.labId,
-        dataset_id: args.datasetId,
-        dataset_version_id: null,
-        label: "Primary location",
-        storage_uri: clean(args.storageUri),
-        storage_type: inferStorageType(args.storageUri ?? ""),
-        created_by: args.userId,
-      })
-    );
-  }
-  const results = await Promise.all(inserts);
-  for (const result of results as Array<{ error?: unknown }>) {
-    if (result.error) throw result.error;
-  }
 }
 
 export async function archiveDataset(datasetId: string): Promise<DatasetRecord> {
@@ -484,40 +399,22 @@ export async function createDatasetVersion(args: {
   storageUri?: string | null;
 }): Promise<DatasetVersionRecord> {
   const { data, error } = await client()
-    .from("dataset_versions")
-    .insert({
-      lab_id: args.labId,
-      dataset_id: args.datasetId,
-      version_name: args.data.version_name.trim(),
-      version_type: args.data.version_type ?? "processed",
-      description: clean(args.data.description),
-      storage_uri: null,
-      parent_version_id: args.data.parent_version_id ?? null,
-      processing_summary: clean(args.data.processing_summary),
-      software_environment: clean(args.data.software_environment),
-      qc_summary: clean(args.data.qc_summary),
-      file_summary: clean(args.data.file_summary),
-      notes: clean(args.data.notes),
-      created_by: args.userId,
-      updated_by: args.userId,
+    .rpc("create_dataset_version", {
+      p_dataset_id: args.datasetId,
+      p_version_name: args.data.version_name,
+      p_version_type: args.data.version_type ?? "processed",
+      p_description: args.data.description ?? null,
+      p_parent_version_id: args.data.parent_version_id ?? null,
+      p_processing_summary: args.data.processing_summary ?? null,
+      p_software_environment: args.data.software_environment ?? null,
+      p_qc_summary: args.data.qc_summary ?? null,
+      p_file_summary: args.data.file_summary ?? null,
+      p_notes: args.data.notes ?? null,
+      p_storage_uri: args.storageUri ?? null,
     })
-    .select(VERSION_FIELDS)
     .single();
   if (error) throw error;
-  const version = data as DatasetVersionRecord;
-  if (clean(args.storageUri)) {
-    const storageResult = await client().from("dataset_storage_links").insert({
-      lab_id: args.labId,
-      dataset_id: args.datasetId,
-      dataset_version_id: version.id,
-      label: `${version.version_name} location`,
-      storage_uri: clean(args.storageUri),
-      storage_type: inferStorageType(args.storageUri ?? ""),
-      created_by: args.userId,
-    });
-    if (storageResult.error) throw storageResult.error;
-  }
-  return version;
+  return data as DatasetVersionRecord;
 }
 
 export async function createDatasetAccessRequest(args: {
@@ -530,18 +427,13 @@ export async function createDatasetAccessRequest(args: {
   requestedAccessType: RequestAccessType;
 }): Promise<DatasetAccessRequestRecord> {
   const { data, error } = await client()
-    .from("dataset_access_requests")
-    .insert({
-      lab_id: args.labId,
-      dataset_id: args.datasetId,
-      dataset_version_id: args.datasetVersionId ?? null,
-      requester_user_id: args.userId,
-      project_id: args.projectId ?? null,
-      intended_use: args.intendedUse.trim(),
-      requested_access_type: args.requestedAccessType,
-      status: "pending",
+    .rpc("submit_dataset_access_request", {
+      p_dataset_id: args.datasetId,
+      p_dataset_version_id: args.datasetVersionId ?? null,
+      p_project_id: args.projectId ?? null,
+      p_intended_use: args.intendedUse,
+      p_requested_access_type: args.requestedAccessType,
     })
-    .select(REQUEST_FIELDS)
     .single();
   if (error) throw error;
   return data as DatasetAccessRequestRecord;
@@ -577,10 +469,3 @@ export async function reviewDatasetAccessRequest(args: {
   return data as DatasetAccessRequestRecord;
 }
 
-function inferStorageType(value: string): StorageType {
-  const lower = value.toLowerCase();
-  if (lower.startsWith("http://") || lower.startsWith("https://")) return "url";
-  if (lower.startsWith("doi:") || lower.includes("doi.org/")) return "doi";
-  if (/^(geo|sra|ena|prjna|gse|srp|erp)/i.test(value.trim())) return "accession";
-  return "path";
-}
