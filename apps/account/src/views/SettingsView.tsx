@@ -58,7 +58,16 @@ const downscaleToDataUrl = (dataUrl: string): Promise<string> =>
   });
 
 export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
-  const { activeLab, profile, user, signOut, updateProfile, renameLab, refreshLabs } = useAuth();
+  const {
+    activeLab,
+    profile,
+    user,
+    signOut,
+    updateProfile,
+    updatePassword,
+    renameLab,
+    refreshLabs,
+  } = useAuth();
   const tier: MembershipTier = (activeLab?.role as MembershipTier | undefined) ?? "member";
   const isOwner = tier === "owner";
   const email = profile?.email ?? user?.email ?? "";
@@ -76,6 +85,14 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
   const [labBusy, setLabBusy] = useState(false);
   const [labError, setLabError] = useState<string | null>(null);
   const [labNotice, setLabNotice] = useState<string | null>(null);
+
+  // Password editor state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
 
   // Re-sync local state when the underlying profile/lab changes.
   useEffect(() => {
@@ -130,6 +147,37 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
       setProfileError(errorMessage(err));
     } finally {
       setProfileBusy(false);
+    }
+  };
+
+
+  const handleChangePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPasswordError(null);
+    setPasswordNotice(null);
+    if (!currentPassword.trim()) {
+      setPasswordError("Enter your current password for confirmation.");
+      return;
+    }
+    if (newPassword.trim().length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      await updatePassword(newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordNotice("Password updated.");
+    } catch (err) {
+      setPasswordError(errorMessage(err));
+    } finally {
+      setPasswordBusy(false);
     }
   };
 
@@ -238,6 +286,60 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
               disabled={profileBusy}
             >
               Sign out
+            </button>
+          </div>
+        </form>
+      </section>
+
+
+      <section className="acct-card">
+        <div className="acct-card-header">
+          <div>
+            <h2>Password</h2>
+            <p>Change the password used to sign in to your account.</p>
+          </div>
+        </div>
+
+        <form className="acct-form" onSubmit={handleChangePassword}>
+          <label className="acct-field">
+            <span>Current password</span>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              autoComplete="current-password"
+              disabled={passwordBusy}
+            />
+          </label>
+          <label className="acct-field">
+            <span>New password</span>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              disabled={passwordBusy}
+            />
+          </label>
+          <label className="acct-field">
+            <span>Confirm new password</span>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              disabled={passwordBusy}
+            />
+          </label>
+
+          {passwordError ? <p className="acct-error">{passwordError}</p> : null}
+          {passwordNotice ? <small style={{ color: "var(--ilm-viridian)" }}>{passwordNotice}</small> : null}
+
+          <div className="acct-row-actions">
+            <button type="submit" className="acct-primary-button" disabled={passwordBusy}>
+              {passwordBusy ? "Updating…" : "Change password"}
             </button>
           </div>
         </form>
