@@ -4,7 +4,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -144,11 +143,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     [loadLabs, loadProfile]
   );
 
-  const mountedRef = useRef(false);
   useEffect(() => {
-    if (mountedRef.current) return;
-    mountedRef.current = true;
-
+    // Effect is idempotent: the `cancelled` flag drops a stale resolution
+    // from any previous mount, and the cleanup unsubscribes its own listener.
+    // Don't add a `mountedRef` guard — that breaks under React.StrictMode's
+    // intentional double-mount (the first mount cancels itself, the second
+    // mount skips firing, and status hangs on "loading" forever).
     let cancelled = false;
 
     supabase.auth.getSession().then(({ data }) => {
@@ -157,6 +157,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (cancelled) return;
       refreshAll(nextSession);
     });
 
