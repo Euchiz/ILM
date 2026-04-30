@@ -60,12 +60,35 @@
   border: 1px solid var(--rl-line);
   background: #fff;
   color: var(--rl-ink);
-  padding: 0.4rem 0.7rem;
+  padding: 0.4rem 0.8rem;
   border-radius: var(--rl-radius-sm);
   font-size: 0.78rem;
+   font-weight: 600;
+  letter-spacing: 0.03em;
   cursor: pointer;
 }
-.protocol-subbar-back:hover { background: var(--rl-soft); }
+.protocol-subbar-back:hover {
+  background: var(--rl-soft);
+  border-color: var(--rl-green);
+  color: var(--rl-green);
+}
+.protocol-subbar-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.2rem 0.45rem;
+  background: var(--rl-line);
+}
+.protocol-subtab-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  background: var(--rl-green);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  letter-spacing: 0.04em;
+}
 
 /* When viewing a protocol the body becomes the editor 3-pane and needs to
    stretch full-bleed under the subbar without the default LabShell gutter. */
