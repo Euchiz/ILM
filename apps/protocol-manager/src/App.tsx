@@ -97,6 +97,20 @@ type ProjectGroup = {
   proposed: number;
 };
 
+const SIDEBAR_TAB_LABELS: Record<Exclude<SidebarTab, "view">, string> = {
+  overview: "Overview",
+  library: "Library",
+  reviews: "Reviews",
+  recycle: "Recycle bin",
+};
+
+const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+  summary: "Summary",
+  step: "Editor",
+  preview: "Preview",
+  transfer: "Transfer",
+};
+
 const STATUS_TONE_MAP: Record<string, string> = {
   active: "active",
   archived: "archived",
@@ -2273,6 +2287,8 @@ export const App = () => {
       </nav>
     );
 
+  const topbarTitle = sidebarTab === "view" ? VIEW_MODE_LABELS[viewMode] : SIDEBAR_TAB_LABELS[sidebarTab];
+
   return (
     <LabShell
       activeNavId="protocols"
@@ -2281,7 +2297,7 @@ export const App = () => {
       topbar={
         <LabTopbar
           kicker="PROTOCOLS"
-          title="Protocol Manager"
+          title={topbarTitle}
           subtitle="Authoring, review, and rendering for the active lab's protocols."
         />
       }
