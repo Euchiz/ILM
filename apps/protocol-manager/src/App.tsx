@@ -2066,9 +2066,14 @@ export const App = () => {
       <button className={`protocol-subtab${sidebarTab === "overview" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("overview")}>
         Overview
       </button>
-      <button className={`protocol-subtab${sidebarTab === "library" || sidebarTab === "view" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("library")}>
+      <button className={`protocol-subtab${sidebarTab === "library" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("library")}>
         Library
       </button>
+      {editor ? (
+        <button className={`protocol-subtab${sidebarTab === "view" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("view")}>
+          Editor
+        </button>
+      ) : null}
       {visibleReviewsTab ? (
         <button className={`protocol-subtab${sidebarTab === "reviews" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("reviews")}>
           Reviews
