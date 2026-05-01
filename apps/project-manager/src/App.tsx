@@ -1314,12 +1314,6 @@ export const App = () => {
 
   const overviewPanel = (
     <div className="pm-panel-body">
-      <header className="pm-panel-header">
-        <div>
-          <h2>Overview</h2>
-          <p>Lab projects at a glance.</p>
-        </div>
-      </header>
       <section className="pm-summary-grid">
         <article className="pm-summary-card">
           <span className="pm-summary-kicker">Active lab</span>
@@ -1367,12 +1361,6 @@ export const App = () => {
 
   const libraryPanel = (
     <div className="pm-panel-body">
-      <header className="pm-panel-header">
-        <div>
-          <h2>Library</h2>
-          <p>Browse drafts and published projects. Open one to edit in the View tab.</p>
-        </div>
-      </header>
       {actionError ? <p className="pm-page-error">{actionError}</p> : null}
 
       {isOwner ? (
@@ -1453,12 +1441,6 @@ export const App = () => {
 
   const reviewPanel = (
     <div className="pm-panel-body">
-      <header className="pm-panel-header">
-        <div>
-          <h2>Review</h2>
-          <p>Only drafts that have been explicitly submitted for first publication appear here.</p>
-        </div>
-      </header>
       {actionError ? <p className="pm-page-error">{actionError}</p> : null}
       {pendingForMyReview.length > 0 ? (
         <section className="pm-panel-section">
