@@ -2276,10 +2276,6 @@ export const App = () => {
       {sidebarTab === "view" ? (
         <>
           <nav className="protocol-subsubbar-tabs" aria-label="Protocol editor modes">
-            <button type="button" className="protocol-subbar-back" onClick={() => setSidebarTab("library")}>
-              ← Back to library
-            </button>
-            <span className="protocol-subsubbar-spacer" />
             <button className={`protocol-subsubtab${viewMode === "summary" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("summary")}>
               Summary
             </button>
@@ -2300,6 +2296,9 @@ export const App = () => {
                 linkLabel="Submission history"
               />
             ) : null}
+            <button type="button" className="protocol-subbar-back" onClick={() => setSidebarTab("library")}>
+              ← Back to library
+            </button>
           </nav>
           {viewWorkspace}
         </>
