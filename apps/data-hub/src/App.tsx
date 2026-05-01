@@ -51,6 +51,12 @@ import {
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
 type DataHubTab = "library" | "my-datasets" | "requests";
+
+const TAB_LABELS: Record<DataHubTab, string> = {
+  library: "Library",
+  "my-datasets": "My Datasets",
+  requests: "Requests",
+};
 type ModalState =
   | { kind: "none" }
   | { kind: "dataset"; dataset: DatasetRecord | null }
@@ -411,17 +417,13 @@ export const App = () => {
       topbar={
         <LabTopbar
           kicker="DATA HUB"
-          title="Data Hub"
+          title={TAB_LABELS[tab]}
           subtitle="Find, register, request, and reuse lab datasets without storing raw files in ILM."
         />
       }
       subbar={
         <nav className="dh-subbar" aria-label="Data Hub sections">
-          {[
-            ["library", "Library"],
-            ["my-datasets", "My Datasets"],
-            ["requests", "Requests"],
-          ].map(([id, label]) => (
+          {(Object.entries(TAB_LABELS) as [DataHubTab, string][]).map(([id, label]) => (
             <button
               key={id}
               type="button"

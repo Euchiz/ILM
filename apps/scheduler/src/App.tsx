@@ -145,7 +145,7 @@ export const App = () => {
       topbar={
         <LabTopbar
           kicker="SCHEDULER"
-          title="Scheduler"
+          title={TAB_LABELS[tab]}
           subtitle="Plan lab work, meetings, and equipment usage."
         />
       }
