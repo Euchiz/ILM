@@ -90,6 +90,38 @@
   letter-spacing: 0.04em;
 }
 
+.protocol-subsubbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid var(--rl-line);
+  background: color-mix(in oklab, var(--rl-soft) 75%, white);
+}
+.protocol-subsubbar-spacer { flex: 1; }
+.protocol-subsubtab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--rl-muted);
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.protocol-subsubtab:hover:not(:disabled) {
+  color: var(--rl-ink);
+  border-color: var(--rl-line);
+  background: #fff;
+}
+.protocol-subsubtab.is-active {
+  color: var(--rl-green);
+  border-color: color-mix(in oklab, var(--rl-green) 35%, var(--rl-line));
+  background: color-mix(in oklab, var(--rl-green) 14%, white);
+}
+
 /* When viewing a protocol the body becomes the editor 3-pane and needs to
    stretch full-bleed under the subbar without the default LabShell gutter. */
 .ils-body.protocol-body--workspace {

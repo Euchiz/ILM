@@ -97,6 +97,20 @@ type ProjectGroup = {
   proposed: number;
 };
 
+const SIDEBAR_TAB_LABELS: Record<Exclude<SidebarTab, "view">, string> = {
+  overview: "Overview",
+  library: "Library",
+  reviews: "Reviews",
+  recycle: "Recycle bin",
+};
+
+const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+  summary: "Summary",
+  step: "Editor",
+  preview: "Preview",
+  transfer: "Transfer",
+};
+
 const STATUS_TONE_MAP: Record<string, string> = {
   active: "active",
   archived: "archived",
@@ -2216,62 +2230,33 @@ export const App = () => {
     </section>
   );
 
-  // Sub-section nav: in the workspace view, swap the section tabs for the
-  // view-mode tabs (Summary / Step / Preview / Transfer). Library/Overview/
-  // Reviews/Recycle live behind the section tabs.
-  const subbar =
-    sidebarTab === "view" ? (
-      <nav className="protocol-subbar-tabs" aria-label="Protocol view modes">
-        <button className={`protocol-subtab${viewMode === "summary" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("summary")}>
-          Summary
+  const subbar = (
+    <nav className="protocol-subbar-tabs" aria-label="Protocol manager sections">
+      <button className={`protocol-subtab${sidebarTab === "overview" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("overview")}>
+        Overview
+      </button>
+      <button className={`protocol-subtab${sidebarTab === "library" || sidebarTab === "view" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("library")}>
+        Library
+      </button>
+      {visibleReviewsTab ? (
+        <button className={`protocol-subtab${sidebarTab === "reviews" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("reviews")}>
+          Reviews
+          {pendingSubmissions.length > 0 ? (
+            <span className="protocol-subtab-badge">{pendingSubmissions.length}</span>
+          ) : null}
         </button>
-        <button className={`protocol-subtab${viewMode === "step" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("step")}>
-          Step
-        </button>
-        <button className={`protocol-subtab${viewMode === "preview" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("preview")}>
-          Preview
-        </button>
-        <button className={`protocol-subtab${viewMode === "transfer" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("transfer")}>
-          Transfer
-        </button>
-        <span className="protocol-subbar-spacer" />
-        {editor?.draftId ? (
-          <SubmissionHistoryLink
-            visible
-            history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
-            linkLabel="Submission history"
-          />
-        ) : null}
-        <button type="button" className="protocol-subbar-back" onClick={() => setSidebarTab("library")}>
-          ← Back to library
-        </button>
-        <span className="protocol-subbar-divider" aria-hidden="true" />
-      </nav>
-    ) : (
-      <nav className="protocol-subbar-tabs" aria-label="Protocol manager sections">
-        <button className={`protocol-subtab${sidebarTab === "overview" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("overview")}>
-          Overview
-        </button>
-        <button className={`protocol-subtab${sidebarTab === "library" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("library")}>
-          Library
-        </button>
-        {visibleReviewsTab ? (
-          <button className={`protocol-subtab${sidebarTab === "reviews" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("reviews")}>
-            Reviews
-            {pendingSubmissions.length > 0 ? (
-              <span className="protocol-subtab-badge">{pendingSubmissions.length}</span>
-            ) : null}
-          </button>
-        ) : null}
-        <button className={`protocol-subtab${sidebarTab === "recycle" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("recycle")}>
-          Recycle bin
-        </button>
-        <span className="protocol-subbar-spacer" />
-        <button type="button" className="protocol-subbar-strong" onClick={() => setNewProtocolModalOpen(true)}>
-          + New protocol
-        </button>
-      </nav>
-    );
+      ) : null}
+      <button className={`protocol-subtab${sidebarTab === "recycle" ? " is-active" : ""}`} type="button" onClick={() => setSidebarTab("recycle")}>
+        Recycle bin
+      </button>
+      <span className="protocol-subbar-spacer" />
+      <button type="button" className="protocol-subbar-strong" onClick={() => setNewProtocolModalOpen(true)}>
+        + New protocol
+      </button>
+    </nav>
+  );
+
+  const topbarTitle = sidebarTab === "view" ? VIEW_MODE_LABELS[viewMode] : SIDEBAR_TAB_LABELS[sidebarTab];
 
   return (
     <LabShell
@@ -2281,14 +2266,44 @@ export const App = () => {
       topbar={
         <LabTopbar
           kicker="PROTOCOLS"
-          title="Protocol Manager"
+          title={topbarTitle}
           subtitle="Authoring, review, and rendering for the active lab's protocols."
         />
       }
       subbar={subbar}
       bodyClassName={sidebarTab === "view" ? "protocol-body--workspace" : ""}
     >
-      {sidebarTab === "view" ? viewWorkspace : libraryAndOverview}
+      {sidebarTab === "view" ? (
+        <>
+          <nav className="protocol-subsubbar-tabs" aria-label="Protocol editor modes">
+            <button type="button" className="protocol-subbar-back" onClick={() => setSidebarTab("library")}>
+              ← Back to library
+            </button>
+            <span className="protocol-subsubbar-spacer" />
+            <button className={`protocol-subsubtab${viewMode === "summary" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("summary")}>
+              Summary
+            </button>
+            <button className={`protocol-subsubtab${viewMode === "step" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("step")}>
+              Editor
+            </button>
+            <button className={`protocol-subsubtab${viewMode === "preview" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("preview")}>
+              Preview
+            </button>
+            <button className={`protocol-subsubtab${viewMode === "transfer" ? " is-active" : ""}`} type="button" onClick={() => openViewMode("transfer")}>
+              Transfer
+            </button>
+            <span className="protocol-subsubbar-spacer" />
+            {editor?.draftId ? (
+              <SubmissionHistoryLink
+                visible
+                history={workspace?.drafts.find((d) => d.id === editor.draftId)?.submissionHistory ?? []}
+                linkLabel="Submission history"
+              />
+            ) : null}
+          </nav>
+          {viewWorkspace}
+        </>
+      ) : libraryAndOverview}
 
           {newProtocolModalOpen ? (
             <div className="step-modal-overlay" onClick={() => setNewProtocolModalOpen(false)}>
