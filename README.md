@@ -80,4 +80,4 @@ Set repository secrets for build-time env injection:
 
 ## License
 
-See [`LICENSE`](LICENSE) if present; otherwise follow repository owner guidance.
+See [`LICENSE`](LICENSE).
