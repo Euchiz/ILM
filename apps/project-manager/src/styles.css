@@ -133,19 +133,6 @@
 ========================================================= */
 .pm-panel-body { display: flex; flex-direction: column; gap: 1.4rem; }
 
-.pm-panel-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.pm-panel-header h2 {
-  margin: 0;
-  font-family: var(--rl-font-display);
-  font-size: 1.35rem;
-}
-.pm-panel-header p { margin: 0.15rem 0 0; color: var(--rl-muted); }
-
 .pm-panel-section {
   background: var(--rl-surface);
   border: 1px solid var(--rl-line);
