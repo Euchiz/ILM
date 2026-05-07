@@ -32,6 +32,11 @@ import {
   stringifyProjectExport,
   type NormalizedProjectImportPlan,
 } from "./lib/projectIO";
+import {
+  AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT,
+  AI_IMPORT_PROJECT_PANEL_TITLE,
+  AI_IMPORT_PROJECT_TEMPLATE,
+} from "@ilm/ai-import";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -485,6 +490,45 @@ const NewProjectModal = ({
 // experiments under the active lab.
 // ---------------------------------------------------------------------------
 
+const downloadJsonFile = (filename: string, content: string) => {
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to legacy path
+    }
+  }
+  if (typeof document === "undefined") return false;
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "absolute";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  try {
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    document.body.removeChild(area);
+    return false;
+  }
+};
+
 const ImportProjectModal = ({
   onClose,
   onImport,
@@ -494,6 +538,7 @@ const ImportProjectModal = ({
 }) => {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async (rawText: string) => {
@@ -529,9 +574,22 @@ const ImportProjectModal = ({
     await submit(text);
   };
 
+  const handleCopyInstructions = async () => {
+    const ok = await copyToClipboard(AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT);
+    setStatus(ok ? "AI instructions copied to clipboard." : "Could not copy — copy manually from the field below.");
+  };
+
+  const handleDownloadTemplate = () => {
+    downloadJsonFile(
+      "project-template.json",
+      JSON.stringify(AI_IMPORT_PROJECT_TEMPLATE, null, 2)
+    );
+    setStatus("Downloaded project-template.json.");
+  };
+
   return (
     <div className="pm-modal-backdrop" role="dialog" aria-modal="true">
-      <form className="pm-modal" onSubmit={handleSubmit}>
+      <form className="pm-modal pm-modal--wide" onSubmit={handleSubmit}>
         <div className="pm-modal-head">
           <h2>Import project from JSON</h2>
           <button type="button" className="pm-text-button" onClick={onClose} disabled={busy}>
@@ -543,16 +601,53 @@ const ImportProjectModal = ({
           file. A new draft project is created in the active lab; you'll be added as a project lead.
         </p>
         {error ? <p className="pm-inline-error">{error}</p> : null}
+        {status ? <p className="pm-modal-note" aria-live="polite">{status}</p> : null}
         <label className="pm-field">
           <span>Project JSON</span>
           <textarea
-            rows={12}
+            rows={10}
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder='{"version":1,"kind":"ilm.project", ... }'
             disabled={busy}
           />
         </label>
+
+        <fieldset className="pm-field" style={{ border: "1px solid var(--rl-border, #d6d8dc)", padding: "0.6rem 0.8rem" }}>
+          <legend style={{ padding: "0 0.35rem", fontSize: "0.8rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            {AI_IMPORT_PROJECT_PANEL_TITLE}
+          </legend>
+          <p className="pm-modal-note" style={{ marginTop: 0 }}>
+            Copy these instructions into an AI assistant alongside your plain-language project
+            description (or an exported plan from another tool) to produce a valid Project Manager
+            JSON payload. Or download the template below to author one by hand.
+          </p>
+          <div className="pm-inline-actions" style={{ marginBottom: "0.5rem" }}>
+            <button
+              type="button"
+              className="pm-text-button"
+              onClick={() => void handleCopyInstructions()}
+              disabled={busy}
+            >
+              Copy AI instructions
+            </button>
+            <button
+              type="button"
+              className="pm-text-button"
+              onClick={handleDownloadTemplate}
+              disabled={busy}
+            >
+              Download template example
+            </button>
+          </div>
+          <textarea
+            readOnly
+            rows={10}
+            value={AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT}
+            aria-label={AI_IMPORT_PROJECT_PANEL_TITLE}
+          />
+        </fieldset>
+
         <div className="pm-form-footer">
           <label className="pm-text-button" style={{ cursor: busy ? "not-allowed" : "pointer" }}>
             Upload file
