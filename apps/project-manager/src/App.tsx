@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   LabShell,
   LabTopbar,
@@ -26,6 +26,17 @@ import {
   ProjectOutlinePanel,
   type ProjectOutlineSelection,
 } from "./components/ProjectOutlinePanel";
+import {
+  buildProjectExport,
+  parseProjectImportFromText,
+  stringifyProjectExport,
+  type NormalizedProjectImportPlan,
+} from "./lib/projectIO";
+import {
+  AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT,
+  AI_IMPORT_PROJECT_PANEL_TITLE,
+  AI_IMPORT_PROJECT_TEMPLATE,
+} from "@ilm/ai-import";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -474,6 +485,199 @@ const NewProjectModal = ({
 };
 
 // ---------------------------------------------------------------------------
+// Import Project modal — paste JSON or upload a file. The parsed plan is
+// handed back to the App which re-creates the project + milestones +
+// experiments under the active lab.
+// ---------------------------------------------------------------------------
+
+const downloadJsonFile = (filename: string, content: string) => {
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to legacy path
+    }
+  }
+  if (typeof document === "undefined") return false;
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "absolute";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  try {
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    document.body.removeChild(area);
+    return false;
+  }
+};
+
+const ImportProjectModal = ({
+  onClose,
+  onImport,
+}: {
+  onClose: () => void;
+  onImport: (plan: NormalizedProjectImportPlan) => Promise<ProjectRecord>;
+}) => {
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (rawText: string) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const plan = parseProjectImportFromText(rawText);
+      await onImport(plan);
+      onClose();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleFile = async (file: File) => {
+    try {
+      const contents = await file.text();
+      setText(contents);
+      await submit(contents);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!text.trim()) {
+      setError("Paste JSON or upload a file before importing.");
+      return;
+    }
+    await submit(text);
+  };
+
+  const handleCopyInstructions = async () => {
+    const ok = await copyToClipboard(AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT);
+    setStatus(ok ? "AI instructions copied to clipboard." : "Could not copy — copy manually from the field below.");
+  };
+
+  const handleDownloadTemplate = () => {
+    downloadJsonFile(
+      "project-template.json",
+      JSON.stringify(AI_IMPORT_PROJECT_TEMPLATE, null, 2)
+    );
+    setStatus("Downloaded project-template.json.");
+  };
+
+  return (
+    <div className="pm-modal-backdrop" role="dialog" aria-modal="true">
+      <form className="pm-modal pm-modal--wide" onSubmit={handleSubmit}>
+        <div className="pm-modal-head">
+          <h2>Import project from JSON</h2>
+          <button type="button" className="pm-text-button" onClick={onClose} disabled={busy}>
+            Close
+          </button>
+        </div>
+        <p className="pm-modal-note">
+          Paste a JSON payload exported from another project, or upload a <code>.project.json</code>{" "}
+          file. A new draft project is created in the active lab; you'll be added as a project lead.
+        </p>
+        {error ? <p className="pm-inline-error">{error}</p> : null}
+        {status ? <p className="pm-modal-note" aria-live="polite">{status}</p> : null}
+        <label className="pm-field">
+          <span>Project JSON</span>
+          <textarea
+            rows={10}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder='{"version":1,"kind":"ilm.project", ... }'
+            disabled={busy}
+          />
+        </label>
+
+        <fieldset className="pm-field" style={{ border: "1px solid var(--rl-border, #d6d8dc)", padding: "0.6rem 0.8rem" }}>
+          <legend style={{ padding: "0 0.35rem", fontSize: "0.8rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            {AI_IMPORT_PROJECT_PANEL_TITLE}
+          </legend>
+          <p className="pm-modal-note" style={{ marginTop: 0 }}>
+            Copy these instructions into an AI assistant alongside your plain-language project
+            description (or an exported plan from another tool) to produce a valid Project Manager
+            JSON payload. Or download the template below to author one by hand.
+          </p>
+          <div className="pm-inline-actions" style={{ marginBottom: "0.5rem" }}>
+            <button
+              type="button"
+              className="pm-text-button"
+              onClick={() => void handleCopyInstructions()}
+              disabled={busy}
+            >
+              Copy AI instructions
+            </button>
+            <button
+              type="button"
+              className="pm-text-button"
+              onClick={handleDownloadTemplate}
+              disabled={busy}
+            >
+              Download template example
+            </button>
+          </div>
+          <textarea
+            readOnly
+            rows={10}
+            value={AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT}
+            aria-label={AI_IMPORT_PROJECT_PANEL_TITLE}
+          />
+        </fieldset>
+
+        <div className="pm-form-footer">
+          <label className="pm-text-button" style={{ cursor: busy ? "not-allowed" : "pointer" }}>
+            Upload file
+            <input
+              type="file"
+              accept="application/json,.json"
+              hidden
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void handleFile(file);
+              }}
+            />
+          </label>
+          <div className="pm-inline-actions">
+            <button type="button" className="pm-text-button" onClick={onClose} disabled={busy}>
+              Cancel
+            </button>
+            <button type="submit" className="pm-primary-button" disabled={busy}>
+              {busy ? "Importing…" : "Import"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // App root
 // ---------------------------------------------------------------------------
 
@@ -517,12 +721,23 @@ export const App = () => {
     reorderExperiments,
   } = workspace;
 
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
-    if (typeof window === "undefined") return "overview";
-    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
-    if (hash === "review" || hash === "library" || hash === "overview") return hash as SidebarTab;
-    return "overview";
-  });
+  // Hash supports both bare tabs (e.g. `#/library`) and deep links to a
+  // specific record (e.g. `#/library/{projectId}`) emitted by the global
+  // search. The ID part is stripped before the tab lookup.
+  const initialHashRef = useRef<{ tab: SidebarTab; selectId: string | null }>(
+    (() => {
+      if (typeof window === "undefined") return { tab: "overview" as SidebarTab, selectId: null };
+      const stripped = window.location.hash.replace(/^#\/?/, "");
+      const [primary = "", maybeId = ""] = stripped.split("/");
+      const lower = primary.toLowerCase();
+      const tab: SidebarTab =
+        lower === "review" || lower === "library" || lower === "overview"
+          ? (lower as SidebarTab)
+          : "overview";
+      return { tab, selectId: maybeId ? decodeURIComponent(maybeId) : null };
+    })()
+  );
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(initialHashRef.current.tab);
   const [viewSubTab, setViewSubTab] = useState<ViewSubTab>("info");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -597,6 +812,26 @@ export const App = () => {
       setActiveProjectId(activePublishedProjects[0]?.id ?? publishedProjects[0]?.id ?? projects[0].id);
     }
   }, [sidebarTab, projects, activePublishedProjects, publishedProjects, activeProjectId]);
+
+  // Honor the global-search deep link `#/library/{projectId}` once the
+  // project list has hydrated. Runs once per initial selectId.
+  const initialSelectAppliedRef = useRef(false);
+  useEffect(() => {
+    if (initialSelectAppliedRef.current) return;
+    const targetId = initialHashRef.current.selectId;
+    if (!targetId) {
+      initialSelectAppliedRef.current = true;
+      return;
+    }
+    if (!projects.length) return;
+    if (projects.some((p) => p.id === targetId)) {
+      setActiveProjectId(targetId);
+      setSidebarTab("view");
+      setViewSubTab("info");
+      setOutlineSelection(null);
+    }
+    initialSelectAppliedRef.current = true;
+  }, [projects]);
 
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeProjectId) ?? null,
@@ -792,6 +1027,87 @@ export const App = () => {
       openProject(created.id);
     },
     [createProjectDraft, openProject]
+  );
+
+  // ---------------------------------------------------------------------
+  // Project JSON import / export — mirrors the protocol-manager transfer
+  // feature. Export bundles the active project's metadata + milestones +
+  // experiments into a versioned JSON; import creates a fresh draft and
+  // recreates that hierarchy under the active lab.
+  // ---------------------------------------------------------------------
+
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleExportProject = useCallback(
+    (project: ProjectRecord) => {
+      try {
+        const payload = buildProjectExport({ project, milestones, experiments });
+        const text = stringifyProjectExport(payload);
+        const blob = new Blob([text], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const slug = project.name.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "") || "project";
+        link.download = `${slug}.project.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        setActionError(errorMessage(err));
+      }
+    },
+    [milestones, experiments]
+  );
+
+  const handleImportProject = useCallback(
+    async (plan: NormalizedProjectImportPlan) => {
+      // Stage 1: create the draft project, so we get an id under RLS.
+      const created = await createProjectDraft({
+        name: plan.project.name,
+        description: plan.project.description ?? undefined,
+        status: plan.project.status,
+        approvalRequired: plan.project.approvalRequired,
+      });
+      // Stage 2: recreate milestones + their experiments. createMilestone /
+      // createExperiment auto-append sort_order in the workspace hook, so
+      // sequential calls preserve the JSON's intended order.
+      for (const milestone of plan.milestones) {
+        const createdMilestone = await createMilestone({
+          projectId: created.id,
+          title: milestone.title,
+          description: milestone.description ?? undefined,
+          dueDate: milestone.dueDate,
+          status: milestone.status,
+        });
+        for (const experiment of milestone.experiments) {
+          await createExperiment({
+            projectId: created.id,
+            milestoneId: createdMilestone.id,
+            title: experiment.title,
+            notes: experiment.notes ?? undefined,
+            status: experiment.status,
+            startedAt: experiment.startedAt,
+            completedAt: experiment.completedAt,
+          });
+        }
+      }
+      // Stage 3: ungrouped experiments (not attached to any milestone).
+      for (const experiment of plan.ungroupedExperiments) {
+        await createExperiment({
+          projectId: created.id,
+          milestoneId: null,
+          title: experiment.title,
+          notes: experiment.notes ?? undefined,
+          status: experiment.status,
+          startedAt: experiment.startedAt,
+          completedAt: experiment.completedAt,
+        });
+      }
+      openProject(created.id);
+      return created;
+    },
+    [createProjectDraft, createMilestone, createExperiment, openProject]
   );
 
   const handleWithdraw = useCallback(
@@ -1549,6 +1865,14 @@ export const App = () => {
             actorNames={memberNameById}
             linkLabel="Submission history"
           />
+          <button
+            type="button"
+            className="pm-text-button"
+            onClick={() => handleExportProject(activeProject)}
+            title="Download this project (info + milestones + experiments) as JSON."
+          >
+            Export JSON
+          </button>
           <div className="pm-tab-nav-right">{projectStateTag(activeProject)}</div>
         </nav>
 
@@ -1752,6 +2076,14 @@ export const App = () => {
       </button>
       <button
         type="button"
+        className="pm-text-button"
+        onClick={() => setImportOpen(true)}
+        title="Import a project from a previously-exported JSON file."
+      >
+        Import JSON
+      </button>
+      <button
+        type="button"
         className="pm-primary-button"
         onClick={() => setNewProjectOpen(true)}
       >
@@ -1788,6 +2120,13 @@ export const App = () => {
         <NewProjectModal
           onClose={() => setNewProjectOpen(false)}
           onCreate={handleCreateProject}
+        />
+      ) : null}
+
+      {importOpen ? (
+        <ImportProjectModal
+          onClose={() => setImportOpen(false)}
+          onImport={handleImportProject}
         />
       ) : null}
     </LabShell>

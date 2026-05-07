@@ -199,7 +199,17 @@ export const App = () => {
     if (hash === "my-datasets" || hash === "requests") return hash;
     return "library";
   });
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  // Honor `#dataset/{id}` deep links from the global search by pre-selecting
+  // the dataset on first mount; the existing detail view handles the rest.
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const hash = window.location.hash.replace(/^#\/?/, "");
+    if (hash.startsWith("dataset/")) {
+      const id = hash.slice("dataset/".length);
+      return id ? decodeURIComponent(id) : null;
+    }
+    return null;
+  });
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [actionError, setActionError] = useState<string | null>(null);

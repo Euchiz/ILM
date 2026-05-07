@@ -1,6 +1,88 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@ilm/utils";
 
+// ---------------------------------------------------------------------------
+// Recurrence — minimal v1, mirrors apps/scheduler/src/lib/datetime.ts so the
+// dashboard can expand recurring calendar events without depending on the
+// scheduler app. If new frequencies are added there, mirror them here.
+// ---------------------------------------------------------------------------
+
+type RecurrenceFreq = "none" | "daily" | "weekly" | "biweekly" | "monthly";
+
+const ruleToFreq = (rule: string | null | undefined): RecurrenceFreq => {
+  if (!rule) return "none";
+  const upper = rule.toUpperCase();
+  if (upper.includes("BIWEEKLY")) return "biweekly";
+  if (upper.includes("DAILY")) return "daily";
+  if (upper.includes("WEEKLY")) return "weekly";
+  if (upper.includes("MONTHLY")) return "monthly";
+  return "none";
+};
+
+const advance = (date: Date, freq: RecurrenceFreq): Date => {
+  const next = new Date(date);
+  switch (freq) {
+    case "daily":
+      next.setDate(next.getDate() + 1);
+      return next;
+    case "weekly":
+      next.setDate(next.getDate() + 7);
+      return next;
+    case "biweekly":
+      next.setDate(next.getDate() + 14);
+      return next;
+    case "monthly":
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    default:
+      return next;
+  }
+};
+
+const expandRecurrence = (args: {
+  rule: string | null | undefined;
+  baseStartIso: string;
+  baseEndIso: string | null;
+  windowStart: Date;
+  windowEnd: Date;
+  exceptions?: string[];
+  maxInstances?: number;
+}): Array<{ start: string; end: string }> => {
+  const freq = ruleToFreq(args.rule);
+  const baseStart = new Date(args.baseStartIso);
+  const baseEnd = args.baseEndIso ? new Date(args.baseEndIso) : new Date(baseStart.getTime() + 30 * 60_000);
+  const span = baseEnd.getTime() - baseStart.getTime();
+  if (Number.isNaN(span) || span <= 0) return [];
+
+  const exceptions = new Set((args.exceptions ?? []).map((iso) => new Date(iso).getTime()));
+  const out: Array<{ start: string; end: string }> = [];
+
+  if (freq === "none") {
+    if (
+      baseEnd.getTime() > args.windowStart.getTime() &&
+      baseStart.getTime() < args.windowEnd.getTime()
+    ) {
+      out.push({ start: baseStart.toISOString(), end: baseEnd.toISOString() });
+    }
+    return out;
+  }
+
+  const cap = args.maxInstances ?? 64;
+  let cursor = new Date(baseStart);
+  for (let i = 0; i < cap; i += 1) {
+    const cursorEnd = new Date(cursor.getTime() + span);
+    if (cursor.getTime() >= args.windowEnd.getTime()) break;
+    if (
+      cursorEnd.getTime() > args.windowStart.getTime() &&
+      !exceptions.has(cursor.getTime())
+    ) {
+      out.push({ start: cursor.toISOString(), end: cursorEnd.toISOString() });
+    }
+    cursor = advance(cursor, freq);
+  }
+  return out;
+};
+
 export type ProjectStateCounts = {
   draft: number;
   published: number;
@@ -62,7 +144,7 @@ export type ScheduleEntry = {
 
 export type ActivityEntry = {
   id: string;
-  kind: "protocol" | "project" | "item" | "order" | "booking";
+  kind: "protocol" | "project" | "item" | "order" | "booking" | "dataset" | "event";
   label: string;
   context: string;
   timestamp: string;
@@ -179,8 +261,11 @@ export const useDashboardData = (
           pendingBookingsRes,
           pendingDatasetRequestsRes,
           eventsRes,
+          recurringEventsRes,
           bookingsRes,
           recentOrdersRes,
+          recentBookingsRes,
+          recentDatasetsRes,
           projectLeadRes,
           inOrderItemsRes,
         ] = await Promise.all([
@@ -234,12 +319,25 @@ export const useDashboardData = (
             .limit(200),
           supabase
             .from("calendar_events")
-            .select("id, title, start_time, end_time, location, status")
+            .select("id, title, start_time, end_time, location, status, recurrence_rule, recurrence_exceptions")
             .eq("lab_id", labId)
             .gte("start_time", nowIso)
             .neq("status", "cancelled")
             .order("start_time", { ascending: true })
-            .limit(8),
+            .limit(16),
+          // Recurring events whose first instance has already happened need
+          // separate fetching — `gte("start_time", nowIso)` would filter them
+          // out even though the rule still produces upcoming instances. We
+          // expand them client-side against a 14-day window below.
+          supabase
+            .from("calendar_events")
+            .select("id, title, start_time, end_time, location, status, recurrence_rule, recurrence_exceptions, updated_at")
+            .eq("lab_id", labId)
+            .lt("start_time", nowIso)
+            .neq("status", "cancelled")
+            .not("recurrence_rule", "is", null)
+            .order("start_time", { ascending: false })
+            .limit(64),
           supabase
             .from("bookings")
             .select("id, title, start_time, end_time, status")
@@ -252,6 +350,19 @@ export const useDashboardData = (
             .from("order_requests")
             .select("id, reason, status, updated_at")
             .eq("lab_id", labId)
+            .order("updated_at", { ascending: false })
+            .limit(6),
+          supabase
+            .from("bookings")
+            .select("id, title, status, updated_at")
+            .eq("lab_id", labId)
+            .order("updated_at", { ascending: false })
+            .limit(6),
+          supabase
+            .from("datasets")
+            .select("id, name, updated_at, archived_at")
+            .eq("lab_id", labId)
+            .is("archived_at", null)
             .order("updated_at", { ascending: false })
             .limit(6),
           userId
@@ -419,6 +530,9 @@ export const useDashboardData = (
           end_time: string | null;
           location: string | null;
           status: string;
+          recurrence_rule?: string | null;
+          recurrence_exceptions?: string[] | null;
+          updated_at?: string;
         };
         type BookingRow = {
           id: string;
@@ -428,15 +542,51 @@ export const useDashboardData = (
           status: string;
         };
         const eventRows = (eventsRes.data as EventRow[] | null) ?? [];
+        const recurringEventRows = (recurringEventsRes.data as EventRow[] | null) ?? [];
         const bookingRows = (bookingsRes.data as BookingRow[] | null) ?? [];
+
+        // Expand recurring events whose first instance is in the past — only
+        // their next-future occurrences should land in the upcoming list.
+        const now = new Date();
+        const windowEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        type ExpandedEvent = {
+          row: EventRow;
+          startIso: string;
+          endIso: string | null;
+        };
+        const expandedRecurringEvents: ExpandedEvent[] = [];
+        for (const row of recurringEventRows) {
+          if (!row.recurrence_rule) continue;
+          const instances = expandRecurrence({
+            rule: row.recurrence_rule,
+            baseStartIso: row.start_time,
+            baseEndIso: row.end_time,
+            windowStart: now,
+            windowEnd,
+            exceptions: row.recurrence_exceptions ?? undefined,
+          });
+          for (const inst of instances) {
+            if (new Date(inst.start).getTime() < now.getTime()) continue;
+            expandedRecurringEvents.push({ row, startIso: inst.start, endIso: inst.end });
+          }
+        }
+
         const schedule: ScheduleEntry[] = [
           ...eventRows.map((e) => ({
-            id: `event-${e.id}`,
+            id: `event-${e.id}-${e.start_time}`,
             title: e.title,
             startTime: e.start_time,
             endTime: e.end_time,
             kind: "event" as const,
             location: e.location,
+          })),
+          ...expandedRecurringEvents.map((e) => ({
+            id: `event-${e.row.id}-${e.startIso}`,
+            title: e.row.title,
+            startTime: e.startIso,
+            endTime: e.endIso,
+            kind: "event" as const,
+            location: e.row.location,
           })),
           ...bookingRows.map((b) => ({
             id: `booking-${b.id}`,
@@ -450,9 +600,15 @@ export const useDashboardData = (
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .slice(0, 5);
 
-        // Activity feed: union recent updates across protocols/projects/items/orders/bookings
+        // Activity feed: union recent updates across every domain that has a
+        // user-visible "updated_at". Bookings and datasets used to be missing
+        // even though they're part of the type union — they're now included.
         type OrderRow = { id: string; reason: string | null; status: string; updated_at: string };
+        type BookingActivityRow = { id: string; title: string | null; status: string; updated_at: string };
+        type DatasetActivityRow = { id: string; name: string; updated_at: string; archived_at: string | null };
         const orderRows = (recentOrdersRes.data as OrderRow[] | null) ?? [];
+        const bookingActivityRows = (recentBookingsRes.data as BookingActivityRow[] | null) ?? [];
+        const datasetActivityRows = (recentDatasetsRes.data as DatasetActivityRow[] | null) ?? [];
         const stream: ActivityEntry[] = [];
         for (const r of protocolRows.slice(0, 6)) {
           stream.push({
@@ -490,6 +646,24 @@ export const useDashboardData = (
             timestamp: r.updated_at,
           });
         }
+        for (const r of bookingActivityRows) {
+          stream.push({
+            id: `booking-${r.id}`,
+            kind: "booking",
+            label: `Booking "${r.title ?? "resource"}" ${r.status}`,
+            context: formatRelative(r.updated_at),
+            timestamp: r.updated_at,
+          });
+        }
+        for (const r of datasetActivityRows) {
+          stream.push({
+            id: `dataset-${r.id}`,
+            kind: "dataset",
+            label: `Dataset "${r.name}" updated`,
+            context: formatRelative(r.updated_at),
+            timestamp: r.updated_at,
+          });
+        }
         stream.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
         // Project lead?
@@ -503,7 +677,7 @@ export const useDashboardData = (
           team,
           pending,
           schedule,
-          activity: stream.slice(0, 6),
+          activity: stream.slice(0, 8),
           isProjectLead: leadRows.length > 0,
           loading: false,
           refreshing: false,
@@ -539,6 +713,20 @@ export const useDashboardData = (
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [labId, load]);
+
+  // Periodic background refresh so the dashboard reflects writes from other
+  // sessions / apps without the user manually clicking refresh. Skipped while
+  // the tab is hidden — the visibilitychange listener above picks it up when
+  // the user returns.
+  useEffect(() => {
+    if (typeof window === "undefined" || !labId) return;
+    const intervalMs = 60_000;
+    const id = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void load("refresh");
+    }, intervalMs);
+    return () => window.clearInterval(id);
   }, [labId, load]);
 
   const refresh = useCallback(async () => {
