@@ -251,14 +251,23 @@ export const App = () => {
   const [saveState, setSaveState] = useState<DraftSaveState>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [autosaveTick, setAutosaveTick] = useState(0);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
-    if (typeof window === "undefined") return "overview";
-    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
-    if (hash === "reviews" || hash === "library" || hash === "overview" || hash === "recycle") {
-      return hash as SidebarTab;
-    }
-    return "overview";
-  });
+  // Hash supports bare tabs (`#/library`) and deep links to a specific
+  // protocol from the global search (`#/library/{protocolId}`). The id part
+  // is stripped before tab lookup and applied once the workspace hydrates.
+  const initialHashRef = useRef<{ tab: SidebarTab; selectId: string | null }>(
+    (() => {
+      if (typeof window === "undefined") return { tab: "overview" as SidebarTab, selectId: null };
+      const stripped = window.location.hash.replace(/^#\/?/, "");
+      const [primary = "", maybeId = ""] = stripped.split("/");
+      const lower = primary.toLowerCase();
+      const tab: SidebarTab =
+        lower === "reviews" || lower === "library" || lower === "overview" || lower === "recycle"
+          ? (lower as SidebarTab)
+          : "overview";
+      return { tab, selectId: maybeId ? decodeURIComponent(maybeId) : null };
+    })()
+  );
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(initialHashRef.current.tab);
   const [viewMode, setViewMode] = useState<ViewMode>("step");
   const [importMode, setImportMode] = useState<ValidationMode>("assisted");
   const [jsonText, setJsonText] = useState("");
@@ -902,6 +911,32 @@ export const App = () => {
       },
     });
   };
+
+  // Honor the global-search deep link `#/library/{protocolId}` once the
+  // workspace has hydrated — open the matching published protocol or draft.
+  const initialSelectAppliedRef = useRef(false);
+  useEffect(() => {
+    if (initialSelectAppliedRef.current) return;
+    const targetId = initialHashRef.current.selectId;
+    if (!targetId) {
+      initialSelectAppliedRef.current = true;
+      return;
+    }
+    if (!workspace) return;
+    const published = publishedProtocols.find((p) => p.id === targetId);
+    const draft = drafts.find((d) => d.id === targetId);
+    if (published) {
+      void openProtocolFromLibrary(targetId);
+      initialSelectAppliedRef.current = true;
+    } else if (draft) {
+      void openDraftFromLibrary(targetId);
+      initialSelectAppliedRef.current = true;
+    } else if (publishedProtocols.length > 0 || drafts.length > 0) {
+      // workspace is hydrated and the id was not found — give up.
+      initialSelectAppliedRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace, publishedProtocols, drafts]);
 
   const openProtocolFromLibrary = async (protocolId: string) => {
     try {

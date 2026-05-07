@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Badge,
   Button,
@@ -208,17 +208,45 @@ export const App = () => {
   const workspace = useSupplyWorkspace(activeLab?.id ?? null, user?.id ?? null);
   const { status, error, refresh } = workspace;
 
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
-    if (typeof window === "undefined") return "warehouse";
-    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
-    if (hash === "review" || hash === "orders" || hash === "warehouse" || hash === "my-items") {
-      return hash as SidebarTab;
-    }
-    return "warehouse";
-  });
+  // Hash supports bare tabs (`#/warehouse`) and deep links to a specific
+  // item from the global search (`#/warehouse/{itemId}`). The id part is
+  // stripped before tab lookup; the edit modal is opened once the workspace
+  // has hydrated.
+  const initialHashRef = useRef<{ tab: SidebarTab; selectId: string | null }>(
+    (() => {
+      if (typeof window === "undefined") return { tab: "warehouse" as SidebarTab, selectId: null };
+      const stripped = window.location.hash.replace(/^#\/?/, "");
+      const [primary = "", maybeId = ""] = stripped.split("/");
+      const lower = primary.toLowerCase();
+      const tab: SidebarTab =
+        lower === "review" || lower === "orders" || lower === "warehouse" || lower === "my-items"
+          ? (lower as SidebarTab)
+          : "warehouse";
+      return { tab, selectId: maybeId ? decodeURIComponent(maybeId) : null };
+    })()
+  );
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(initialHashRef.current.tab);
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [actionError, setActionError] = useState<string | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  // Honor the global-search deep link `#/warehouse/{itemId}` once the
+  // workspace has hydrated — open the matching item in its edit modal.
+  const initialSelectAppliedRef = useRef(false);
+  useEffect(() => {
+    if (initialSelectAppliedRef.current) return;
+    const targetId = initialHashRef.current.selectId;
+    if (!targetId) {
+      initialSelectAppliedRef.current = true;
+      return;
+    }
+    if (status !== "ready") return;
+    if (workspace.items.some((item) => item.id === targetId)) {
+      setSidebarTab("warehouse");
+      setModal({ kind: "edit-item", itemId: targetId });
+    }
+    initialSelectAppliedRef.current = true;
+  }, [status, workspace.items]);
 
   const toggleItemSelected = (id: string) => {
     setSelectedItemIds((prev) => {

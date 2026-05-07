@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
+import { getSupabaseClient } from "@ilm/utils";
 import { appUrl } from "./AppSwitcher";
+import { useAuth } from "./auth/AuthProvider";
 
 // Static page registry. Each entry is a navigable destination — either a
 // top-level app or a major subtab inside one. Keep this in sync when an app
@@ -103,6 +105,169 @@ const navigateTo = (href: string) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Record search — query the active lab's tables by name and surface direct
+// links to the matching record. Each result navigates to the parent app with
+// a `#/{tab}/{id}` deep link; the apps below opt-in to that route shape and
+// open the record on mount.
+// ---------------------------------------------------------------------------
+
+type RecordKind = "project" | "protocol" | "item" | "dataset" | "event";
+
+type RecordEntry = {
+  id: string;
+  recordId: string;
+  kind: RecordKind;
+  label: string;
+  group: string;
+  href: string;
+};
+
+const RECORD_GROUP_LABEL: Record<RecordKind, string> = {
+  project: "Project",
+  protocol: "Protocol",
+  item: "Item",
+  dataset: "Dataset",
+  event: "Event",
+};
+
+const buildRecordHref = (kind: RecordKind, recordId: string, baseUrl: string): string => {
+  const escaped = encodeURIComponent(recordId);
+  switch (kind) {
+    case "project":
+      return `${appUrl(APP_HREF["project-manager"], baseUrl)}#/library/${escaped}`;
+    case "protocol":
+      return `${appUrl(APP_HREF["protocol-manager"], baseUrl)}#/library/${escaped}`;
+    case "item":
+      return `${appUrl(APP_HREF["supply-manager"], baseUrl)}#/warehouse/${escaped}`;
+    case "dataset":
+      return `${appUrl(APP_HREF["data-hub"], baseUrl)}#dataset/${escaped}`;
+    case "event":
+      return `${appUrl(APP_HREF["scheduler"], baseUrl)}#/calendar/${escaped}`;
+  }
+};
+
+const escapeIlikeWildcards = (value: string) =>
+  value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+
+async function searchRecords(
+  query: string,
+  labId: string,
+  baseUrl: string
+): Promise<RecordEntry[]> {
+  const trimmed = query.trim();
+  if (!trimmed || !labId) return [];
+  const supabase = getSupabaseClient();
+  const pattern = `%${escapeIlikeWildcards(trimmed)}%`;
+  const limit = 5;
+
+  type ProjectRow = { id: string; name: string };
+  type ProtocolRow = { id: string; title: string };
+  type ItemRow = { id: string; name: string };
+  type DatasetRow = { id: string; name: string };
+  type EventRow = { id: string; title: string };
+
+  const [projectsRes, protocolsRes, itemsRes, datasetsRes, eventsRes] =
+    await Promise.all([
+      supabase
+        .from("projects")
+        .select("id, name")
+        .eq("lab_id", labId)
+        .neq("state", "deleted")
+        .ilike("name", pattern)
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("protocols")
+        .select("id, title")
+        .eq("lab_id", labId)
+        .ilike("title", pattern)
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("items")
+        .select("id, name")
+        .eq("lab_id", labId)
+        .eq("is_active", true)
+        .ilike("name", pattern)
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("datasets")
+        .select("id, name")
+        .eq("lab_id", labId)
+        .is("archived_at", null)
+        .ilike("name", pattern)
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("calendar_events")
+        .select("id, title")
+        .eq("lab_id", labId)
+        .neq("status", "cancelled")
+        .ilike("title", pattern)
+        .order("start_time", { ascending: false })
+        .limit(limit),
+    ]);
+
+  const out: RecordEntry[] = [];
+  for (const row of (projectsRes.data as ProjectRow[] | null) ?? []) {
+    out.push({
+      id: `record-project-${row.id}`,
+      recordId: row.id,
+      kind: "project",
+      label: row.name,
+      group: RECORD_GROUP_LABEL.project,
+      href: buildRecordHref("project", row.id, baseUrl),
+    });
+  }
+  for (const row of (protocolsRes.data as ProtocolRow[] | null) ?? []) {
+    out.push({
+      id: `record-protocol-${row.id}`,
+      recordId: row.id,
+      kind: "protocol",
+      label: row.title,
+      group: RECORD_GROUP_LABEL.protocol,
+      href: buildRecordHref("protocol", row.id, baseUrl),
+    });
+  }
+  for (const row of (itemsRes.data as ItemRow[] | null) ?? []) {
+    out.push({
+      id: `record-item-${row.id}`,
+      recordId: row.id,
+      kind: "item",
+      label: row.name,
+      group: RECORD_GROUP_LABEL.item,
+      href: buildRecordHref("item", row.id, baseUrl),
+    });
+  }
+  for (const row of (datasetsRes.data as DatasetRow[] | null) ?? []) {
+    out.push({
+      id: `record-dataset-${row.id}`,
+      recordId: row.id,
+      kind: "dataset",
+      label: row.name,
+      group: RECORD_GROUP_LABEL.dataset,
+      href: buildRecordHref("dataset", row.id, baseUrl),
+    });
+  }
+  for (const row of (eventsRes.data as EventRow[] | null) ?? []) {
+    out.push({
+      id: `record-event-${row.id}`,
+      recordId: row.id,
+      kind: "event",
+      label: row.title,
+      group: RECORD_GROUP_LABEL.event,
+      href: buildRecordHref("event", row.id, baseUrl),
+    });
+  }
+  return out;
+}
+
+type SearchEntry =
+  | ({ entryKind: "page" } & PageEntry)
+  | ({ entryKind: "record" } & RecordEntry);
+
 export interface GlobalSearchProps {
   /** Pass `import.meta.env.BASE_URL` from the host app. */
   baseUrl: string;
@@ -113,25 +278,69 @@ export interface GlobalSearchProps {
 
 export const GlobalSearch = ({
   baseUrl,
-  placeholder = "Search projects, protocols, inventory…",
+  placeholder = "Search records, projects, protocols, inventory…",
   className,
   style,
 }: GlobalSearchProps) => {
+  const { activeLab } = useAuth();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [records, setRecords] = useState<RecordEntry[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listboxId = useId();
 
-  const matches = useMemo(() => {
+  const pageMatches = useMemo<PageEntry[]>(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return [] as PageEntry[];
-    const scored = PAGES.map((page) => ({ page, score: matchScore(page, q) }))
+    if (!q) return [];
+    return PAGES.map((page) => ({ page, score: matchScore(page, q) }))
       .filter((entry) => entry.score >= 0)
-      .sort((a, b) => a.score - b.score || a.page.label.localeCompare(b.page.label));
-    return scored.slice(0, 12).map((entry) => entry.page);
+      .sort((a, b) => a.score - b.score || a.page.label.localeCompare(b.page.label))
+      .slice(0, 8)
+      .map((entry) => entry.page);
   }, [query]);
+
+  // Debounced record search. We keep the previous results visible while a
+  // new query is in flight to avoid the dropdown collapsing on each keystroke.
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed || !activeLab?.id) {
+      setRecords([]);
+      setRecordsLoading(false);
+      return;
+    }
+    setRecordsLoading(true);
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      void searchRecords(trimmed, activeLab.id, baseUrl)
+        .then((results) => {
+          if (cancelled) return;
+          setRecords(results);
+          setRecordsLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setRecords([]);
+          setRecordsLoading(false);
+        });
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [query, activeLab?.id, baseUrl]);
+
+  const entries = useMemo<SearchEntry[]>(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const list: SearchEntry[] = [];
+    // Records first — they're the more specific match for a name query.
+    for (const r of records) list.push({ entryKind: "record", ...r });
+    for (const p of pageMatches) list.push({ entryKind: "page", ...p });
+    return list;
+  }, [pageMatches, records, query]);
 
   useEffect(() => {
     setActiveIdx(0);
@@ -147,24 +356,25 @@ export const GlobalSearch = ({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
 
-  const choose = (page: PageEntry) => {
-    const href = buildPageHref(page, baseUrl);
+  const choose = (entry: SearchEntry) => {
+    const href =
+      entry.entryKind === "page" ? buildPageHref(entry, baseUrl) : entry.href;
     navigateTo(href);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      if (matches.length === 0) return;
-      setActiveIdx((idx) => (idx + 1) % matches.length);
+      if (entries.length === 0) return;
+      setActiveIdx((idx) => (idx + 1) % entries.length);
       setOpen(true);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      if (matches.length === 0) return;
-      setActiveIdx((idx) => (idx - 1 + matches.length) % matches.length);
+      if (entries.length === 0) return;
+      setActiveIdx((idx) => (idx - 1 + entries.length) % entries.length);
       setOpen(true);
     } else if (event.key === "Enter") {
-      const target = matches[activeIdx];
+      const target = entries[activeIdx];
       if (target) {
         event.preventDefault();
         choose(target);
@@ -174,6 +384,11 @@ export const GlobalSearch = ({
       inputRef.current?.blur();
     }
   };
+
+  const trimmed = query.trim();
+  const showDropdown = open && trimmed.length > 0;
+  const showLoading = recordsLoading && entries.length === 0;
+  const showEmpty = !recordsLoading && entries.length === 0;
 
   return (
     <div
@@ -197,30 +412,35 @@ export const GlobalSearch = ({
         }}
         onKeyDown={onKeyDown}
         role="combobox"
-        aria-expanded={open && matches.length > 0}
+        aria-expanded={showDropdown && entries.length > 0}
         aria-controls={listboxId}
         aria-autocomplete="list"
         aria-activedescendant={
-          open && matches[activeIdx] ? `${listboxId}-${activeIdx}` : undefined
+          showDropdown && entries[activeIdx] ? `${listboxId}-${activeIdx}` : undefined
         }
       />
       <span className="ils-search-glyph" aria-hidden="true">⌕</span>
-      {open && query.trim().length > 0 ? (
+      {showDropdown ? (
         <ul className="ils-search-results" id={listboxId} role="listbox">
-          {matches.length === 0 ? (
+          {showLoading ? (
             <li className="ils-search-empty" role="presentation">
-              No matching pages.
+              Searching records…
+            </li>
+          ) : showEmpty ? (
+            <li className="ils-search-empty" role="presentation">
+              No matching records or pages.
             </li>
           ) : (
-            matches.map((page, idx) => (
+            entries.map((entry, idx) => (
               <li
-                key={page.id}
+                key={entry.id}
                 id={`${listboxId}-${idx}`}
                 role="option"
                 aria-selected={idx === activeIdx}
                 className={[
                   "ils-search-result",
                   idx === activeIdx ? "is-active" : null,
+                  entry.entryKind === "record" ? "is-record" : "is-page",
                 ]
                   .filter(Boolean)
                   .join(" ")}
@@ -228,11 +448,11 @@ export const GlobalSearch = ({
                 onMouseDown={(event) => {
                   // mousedown so the click fires before blur dismisses the list
                   event.preventDefault();
-                  choose(page);
+                  choose(entry);
                 }}
               >
-                <span className="ils-search-result-label">{page.label}</span>
-                <span className="ils-search-result-group">{page.group}</span>
+                <span className="ils-search-result-label">{entry.label}</span>
+                <span className="ils-search-result-group">{entry.group}</span>
               </li>
             ))
           )}

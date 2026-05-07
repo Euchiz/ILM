@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ErrorBanner,
   LabShell,
@@ -59,18 +59,45 @@ export const App = () => {
     userId: user?.id ?? null,
   });
 
-  const [tab, setTab] = useState<SchedulerTab>(() => {
-    if (typeof window === "undefined") return "calendar";
-    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
-    if (hash === "bookings" || hash === "calendar" || hash === "unscheduled" || hash === "resources") {
-      return hash as SchedulerTab;
-    }
-    return "calendar";
-  });
+  // Hash supports bare tabs (`#/calendar`) and deep links to a specific
+  // event (`#/calendar/{eventId}`) emitted by the global search.
+  const initialHashRef = useRef<{ tab: SchedulerTab; selectId: string | null }>(
+    (() => {
+      if (typeof window === "undefined") return { tab: "calendar" as SchedulerTab, selectId: null };
+      const stripped = window.location.hash.replace(/^#\/?/, "");
+      const [primary = "", maybeId = ""] = stripped.split("/");
+      const lower = primary.toLowerCase();
+      const tab: SchedulerTab =
+        lower === "bookings" || lower === "calendar" || lower === "unscheduled" || lower === "resources"
+          ? (lower as SchedulerTab)
+          : "calendar";
+      return { tab, selectId: maybeId ? decodeURIComponent(maybeId) : null };
+    })()
+  );
+  const [tab, setTab] = useState<SchedulerTab>(initialHashRef.current.tab);
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
 
   const closeModal = () => setModal({ kind: "none" });
+
+  // Open the matching calendar event in its detail modal once the workspace
+  // has hydrated. Only fires once per initial selectId.
+  const initialSelectAppliedRef = useRef(false);
+  useEffect(() => {
+    if (initialSelectAppliedRef.current) return;
+    const targetId = initialHashRef.current.selectId;
+    if (!targetId) {
+      initialSelectAppliedRef.current = true;
+      return;
+    }
+    if (workspace.events.length === 0) return;
+    const match = workspace.events.find((event) => event.id === targetId);
+    if (match) {
+      setTab("calendar");
+      setModal({ kind: "event-form", event: match, startIso: null, endIso: null });
+    }
+    initialSelectAppliedRef.current = true;
+  }, [workspace.events]);
 
   const renderTab = () => {
     switch (tab) {
