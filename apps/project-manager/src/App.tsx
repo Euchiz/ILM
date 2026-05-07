@@ -1770,6 +1770,7 @@ export const App = () => {
           kicker="PROJECTS"
           title={sidebarTab === "view" && activeProject ? activeProject.name : statusLabel(sidebarTab)}
           subtitle="Projects, milestones, experiments, and reviews for the active lab."
+          baseUrl={APP_BASE_URL}
         />
       }
       subbar={subbar}

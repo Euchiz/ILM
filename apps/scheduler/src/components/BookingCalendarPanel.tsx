@@ -220,9 +220,11 @@ export const BookingCalendarPanel = ({ bookings, resources }: BookingCalendarPan
                     }}
                     title={`${labelTitle} • ${entry.booking.status} • ${formatTime(entry.start)} – ${formatTime(entry.end)}`}
                   >
-                    <span className="sch-cal-event-title">{labelTitle}</span>
-                    <span className="sch-cal-event-meta">
-                      {formatTime(entry.start)} – {formatTime(entry.end)}
+                    <span className="sch-cal-event-card">
+                      <span className="sch-cal-event-title">{labelTitle}</span>
+                      <span className="sch-cal-event-meta">
+                        {formatTime(entry.start)} – {formatTime(entry.end)}
+                      </span>
                     </span>
                   </div>
                 );

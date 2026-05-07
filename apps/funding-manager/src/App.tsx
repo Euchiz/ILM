@@ -162,6 +162,7 @@ export const App = () => {
           kicker="FUNDING DIRECTORY"
           title="Funding Directory"
           subtitle="Manage PI-approved funding aliases and grant identifiers for order routing. No budget or cost tracking is stored."
+          baseUrl={APP_BASE_URL}
         />
       }
     >

@@ -204,7 +204,8 @@ export async function listSupplyWorkspace(
     ordersResult,
     stockLotsResult,
     projectsResult,
-    myProjectsResult,
+    myProjectMembersResult,
+    myProjectLeadsResult,
     fundingSourcesResult,
     fundingDefaultsResult,
   ] = await Promise.all([
@@ -217,6 +218,7 @@ export async function listSupplyWorkspace(
     client().from("stock_lots").select(STOCK_LOT_FIELDS).order("received_at", { ascending: false }),
     client().from("projects").select("id, name").eq("lab_id", labId).order("name", { ascending: true }),
     client().from("project_members").select("project_id").eq("user_id", userId),
+    client().from("project_leads").select("project_id").eq("user_id", userId),
     client().rpc("list_funding_sources", { p_lab_id: labId }),
     // funding_defaults is admin-only at the SQL boundary; members get an
     // empty list back (RLS suppresses rows) and the suggestion engine
@@ -232,14 +234,19 @@ export async function listSupplyWorkspace(
   if (ordersResult.error) throw ordersResult.error;
   if (stockLotsResult.error) throw stockLotsResult.error;
   if (projectsResult.error) throw projectsResult.error;
-  if (myProjectsResult.error) throw myProjectsResult.error;
+  if (myProjectMembersResult.error) throw myProjectMembersResult.error;
+  if (myProjectLeadsResult.error) throw myProjectLeadsResult.error;
   if (fundingSourcesResult.error) throw fundingSourcesResult.error;
   // funding_defaults selection failure is non-fatal — members can't read it
   // and the suggestion engine handles an empty list gracefully.
 
-  const myProjectIds = ((myProjectsResult.data ?? []) as Array<{ project_id: string }>).map(
+  const memberProjectIds = ((myProjectMembersResult.data ?? []) as Array<{ project_id: string }>).map(
     (row) => row.project_id
   );
+  const leadProjectIds = ((myProjectLeadsResult.data ?? []) as Array<{ project_id: string }>).map(
+    (row) => row.project_id
+  );
+  const myProjectIds = Array.from(new Set([...memberProjectIds, ...leadProjectIds]));
 
   return {
     items: (itemsResult.data as ItemRecord[]) ?? [],

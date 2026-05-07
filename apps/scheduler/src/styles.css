@@ -235,27 +235,63 @@
   border-bottom: 1px dashed var(--rl-border-soft, var(--rl-border));
 }
 
+/* The outer event block is sized exactly to the event's duration and
+   carries only the colored edge marker; the inner card overlays the
+   block, has a fixed minimum height, and is vertically centered so
+   short events still show a fully readable label without truncation. */
 .sch-cal-event {
   position: absolute;
   left: 4px;
   right: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 5px;
-  border: 1px solid var(--rl-border);
-  background: var(--rl-surface);
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
   text-align: left;
   cursor: pointer;
   font: inherit;
   color: var(--rl-ink);
-  overflow: hidden;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  overflow: visible;
+  z-index: 1;
 }
 
 .sch-cal-event:hover {
+  z-index: 4;
+}
+
+.sch-cal-event::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-left: 3px solid currentColor;
+  border-radius: 4px;
+  background: var(--sch-cal-event-bg, transparent);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.sch-cal-event-card {
+  position: absolute;
+  left: 6px;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: calc(var(--sch-cal-row) * 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 5px;
+  border: 1px solid var(--rl-border);
+  background: var(--rl-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  z-index: 2;
+}
+
+.sch-cal-event:hover .sch-cal-event-card {
   border-color: var(--rl-accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .sch-cal-event-title {
@@ -271,26 +307,26 @@
   color: var(--rl-muted);
 }
 
-.sch-cal-event--meeting     { border-left: 3px solid #4080c0; }
-.sch-cal-event--experiment  { border-left: 3px solid #1f9d6c; }
-.sch-cal-event--reminder    { border-left: 3px solid #8a8a8a; }
-.sch-cal-event--deadline    { border-left: 3px solid #c0392b; }
-.sch-cal-event--maintenance { border-left: 3px solid #d39e00; }
-.sch-cal-event--general     { border-left: 3px solid #555;   }
+.sch-cal-event--meeting     { color: #4080c0; --sch-cal-event-bg: #eaf2fa; }
+.sch-cal-event--experiment  { color: #1f9d6c; --sch-cal-event-bg: #e9f6f0; }
+.sch-cal-event--reminder    { color: #8a8a8a; --sch-cal-event-bg: #f1f1f3; }
+.sch-cal-event--deadline    { color: #c0392b; --sch-cal-event-bg: #fbeae8; }
+.sch-cal-event--maintenance { color: #d39e00; --sch-cal-event-bg: #fff5da; }
+.sch-cal-event--general     { color: #555;    --sch-cal-event-bg: #ececec; }
 
 /* Booking blocks reuse the .sch-cal-event grid positioning but key off
    booking status instead of event type. Inactive (completed / cancelled
    / no_show / denied) renders gray so the historical context stays
    visible without competing with active reservations. */
-.sch-cal-booking--requested { border-left: 3px solid #d39e00; background: #fff8e6; }
-.sch-cal-booking--approved  { border-left: 3px solid #1f9d6c; background: #e9f6f0; }
-.sch-cal-booking--active    { border-left: 3px solid #1a7048; background: #d6efdf; }
+.sch-cal-booking--requested { color: #d39e00; --sch-cal-event-bg: #fff8e6; }
+.sch-cal-booking--approved  { color: #1f9d6c; --sch-cal-event-bg: #e9f6f0; }
+.sch-cal-booking--active    { color: #1a7048; --sch-cal-event-bg: #d6efdf; }
 .sch-cal-booking--completed,
 .sch-cal-booking--cancelled,
 .sch-cal-booking--no_show,
 .sch-cal-booking--denied {
-  border-left: 3px solid #c0c4ca;
-  background: #f1f3f6;
+  color: #c0c4ca;
+  --sch-cal-event-bg: #f1f3f6;
 }
 
 .sch-cal-event.is-inactive {

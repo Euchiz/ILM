@@ -419,6 +419,7 @@ export const App = () => {
           kicker="DATA HUB"
           title={TAB_LABELS[tab]}
           subtitle="Find, register, request, and reuse lab datasets without storing raw files in ILM."
+          baseUrl={APP_BASE_URL}
         />
       }
       subbar={

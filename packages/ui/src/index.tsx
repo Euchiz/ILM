@@ -17,4 +17,5 @@ export {
   type LabTopbarProps,
 } from "./LabShell";
 export { SubmissionHistoryLink, type SubmissionHistoryEntry } from "./SubmissionHistoryLink";
+export { GlobalSearch, type GlobalSearchProps } from "./GlobalSearch";
 export { LabSettingsPanel } from "./admin/LabSettingsPanel";

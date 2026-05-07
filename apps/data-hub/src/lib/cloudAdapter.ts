@@ -330,8 +330,14 @@ export async function createDataset(args: {
       p_source_type: args.data.source_type ?? "internal-generated",
       p_status: args.data.status ?? "planned",
       p_access_level: args.data.access_level ?? "request-required",
-      p_owner_user_id: args.data.owner_user_id ?? args.userId,
-      p_contact_user_id: args.data.contact_user_id ?? args.data.owner_user_id ?? args.userId,
+      p_owner_user_id:
+        args.data.owner_user_id === undefined ? args.userId : args.data.owner_user_id,
+      p_contact_user_id:
+        args.data.contact_user_id === undefined
+          ? args.data.owner_user_id === undefined
+            ? args.userId
+            : args.data.owner_user_id
+          : args.data.contact_user_id,
       p_organism: args.data.organism ?? null,
       p_sample_type: args.data.sample_type ?? null,
       p_assay_platform: args.data.assay_platform ?? null,
