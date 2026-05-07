@@ -1286,6 +1286,7 @@ export const App = () => {
           kicker="INVENTORY"
           title={statusLabel(sidebarTab.replace(/-/g, " "))}
           subtitle="Items, vendor orders, and inventory checks for the active lab."
+          baseUrl={APP_BASE_URL}
           meta={
             <Button size="sm" onClick={() => void refresh()} disabled={status === "loading"}>
               {status === "loading" ? "Refreshing…" : "Refresh"}

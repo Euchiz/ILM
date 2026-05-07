@@ -147,6 +147,7 @@ export const App = () => {
           kicker="SCHEDULER"
           title={TAB_LABELS[tab]}
           subtitle="Plan lab work, meetings, and equipment usage."
+          baseUrl={APP_BASE_URL}
         />
       }
       subbar={

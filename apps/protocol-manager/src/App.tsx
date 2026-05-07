@@ -2115,6 +2115,7 @@ export const App = () => {
           kicker="PROTOCOLS"
           title={topbarTitle}
           subtitle="Authoring, review, and rendering for the active lab's protocols."
+          baseUrl={APP_BASE_URL}
         />
       }
       subbar={subbar}

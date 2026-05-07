@@ -202,13 +202,15 @@ export const CalendarView = ({
                   onClick={() => onSelectEvent(entry.event)}
                   aria-label={`${entry.event.title} at ${formatTime(entry.start)}`}
                 >
-                  <span className="sch-cal-event-title">{entry.event.title}</span>
-                  <span className="sch-cal-event-meta">
-                    {formatTime(entry.start)} – {formatTime(entry.end)}
+                  <span className="sch-cal-event-card">
+                    <span className="sch-cal-event-title">{entry.event.title}</span>
+                    <span className="sch-cal-event-meta">
+                      {formatTime(entry.start)} – {formatTime(entry.end)}
+                    </span>
+                    <Badge tone={EVENT_TYPE_TONES[entry.event.event_type]}>
+                      {entry.event.event_type}
+                    </Badge>
                   </span>
-                  <Badge tone={EVENT_TYPE_TONES[entry.event.event_type]}>
-                    {entry.event.event_type}
-                  </Badge>
                 </button>
               ))}
             </div>

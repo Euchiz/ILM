@@ -175,6 +175,7 @@ const HomeShell = ({ onOpenLabPicker }: { onOpenLabPicker: () => void }) => {
           kicker={ROUTE_KICKER[route.kind]}
           title={ROUTE_TITLE[route.kind]}
           subtitle={ROUTE_SUBTITLE[route.kind]}
+          baseUrl={APP_BASE_URL}
         />
       }
     >

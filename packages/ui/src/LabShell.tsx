@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { appUrl } from "./AppSwitcher";
 import { useAuth } from "./auth/AuthProvider";
+import { GlobalSearch } from "./GlobalSearch";
 
 // Single source of truth for the product + OS branding. The sidebar brand
 // mark reads PRODUCT_NAME; the brand-tag and topbar pill read OS_NAME /
@@ -221,11 +222,17 @@ export interface LabTopbarProps {
   subtitle?: ReactNode;
   /** Replaces the search field on the right. Passing null hides it entirely. */
   search?: ReactNode | null;
+  /**
+   * App's base URL (typically `import.meta.env.BASE_URL`). When provided,
+   * the default search slot renders an interactive global page-search.
+   * Without it, the slot falls back to a placeholder.
+   */
+  baseUrl?: string;
   /** Far-right slot. Defaults to the active lab name + the {@link OS_LABEL} pill. */
   meta?: ReactNode;
 }
 
-export const LabTopbar = ({ kicker, title, subtitle, search, meta }: LabTopbarProps) => {
+export const LabTopbar = ({ kicker, title, subtitle, search, baseUrl, meta }: LabTopbarProps) => {
   const defaultMeta = (
     <div className="ils-org">
       <strong>{PRODUCT_NAME}</strong>
@@ -233,7 +240,9 @@ export const LabTopbar = ({ kicker, title, subtitle, search, meta }: LabTopbarPr
     </div>
   );
 
-  const defaultSearch = (
+  const defaultSearch = baseUrl ? (
+    <GlobalSearch baseUrl={baseUrl} />
+  ) : (
     <div className="ils-search" role="search">
       <span>Search projects, protocols, inventory…</span>
       <span aria-hidden="true">⌕</span>
