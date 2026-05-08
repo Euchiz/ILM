@@ -216,12 +216,14 @@ const PRINT_STYLES = `
     page-break-inside: auto;
   }
   .section + .section { margin-top: 26px; }
-  /* Each top-level section starts on a fresh page when printed. The
-     adjacent-sibling selector skips the very first section (it follows
-     the TOC on page 1) and only matches the 2nd, 3rd, … top-level
-     sections. Nested subsections do not get the break — they flow
-     inside their parent section. */
-  .section-top + .section-top {
+  /* Every top-level section starts on its own page when printed —
+     including the first one, so the cover page (title + metadata +
+     materials + TOC) is never crowded by the first section. Browsers
+     ignore `break-before: page` on the very first node in a print job,
+     so this also produces clean output if the user prints from a single
+     section without the cover. Nested subsections do not get the break
+     — they flow inside their parent section. */
+  .section-top {
     break-before: page;
     page-break-before: always;
     margin-top: 0;
