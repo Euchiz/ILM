@@ -66,6 +66,8 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
     updateProfile,
     updatePassword,
     renameLab,
+    deleteLab,
+    deleteMyAccount,
     refreshLabs,
   } = useAuth();
   const tier: MembershipTier = (activeLab?.role as MembershipTier | undefined) ?? "member";
@@ -93,6 +95,27 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
+
+  // Danger-zone state. We split delete-lab and delete-account into two
+  // independent rows, each with a separate confirmation step. The user
+  // must type the lab name (or the literal word "delete") before the
+  // destructive RPC fires, mirroring GitHub's pattern.
+  const [labDeleteOpen, setLabDeleteOpen] = useState(false);
+  const [labDeleteText, setLabDeleteText] = useState("");
+  const [labDeleteBusy, setLabDeleteBusy] = useState(false);
+  const [labDeleteError, setLabDeleteError] = useState<string | null>(null);
+  const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
+  const [accountDeleteText, setAccountDeleteText] = useState("");
+  const [accountDeleteBusy, setAccountDeleteBusy] = useState(false);
+  const [accountDeleteError, setAccountDeleteError] = useState<string | null>(null);
+
+  // Reset danger-zone confirmations whenever the active lab changes — a stale
+  // confirmation typed against the previous lab should not auto-apply here.
+  useEffect(() => {
+    setLabDeleteOpen(false);
+    setLabDeleteText("");
+    setLabDeleteError(null);
+  }, [activeLab?.id]);
 
   // Re-sync local state when the underlying profile/lab changes.
   useEffect(() => {
@@ -197,6 +220,45 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
       setLabError(errorMessage(err));
     } finally {
       setLabBusy(false);
+    }
+  };
+
+  const labDeleteConfirmationOk =
+    !!activeLab && labDeleteText.trim() === activeLab.name.trim() && activeLab.name.trim().length > 0;
+
+  const handleDeleteLab = async () => {
+    if (!activeLab || !labDeleteConfirmationOk) return;
+    setLabDeleteError(null);
+    setLabDeleteBusy(true);
+    try {
+      await deleteLab(activeLab.id);
+      await refreshLabs();
+      setLabDeleteOpen(false);
+      setLabDeleteText("");
+    } catch (err) {
+      setLabDeleteError(errorMessage(err));
+    } finally {
+      setLabDeleteBusy(false);
+    }
+  };
+
+  const ACCOUNT_DELETE_PHRASE = "delete my account";
+  const accountDeleteConfirmationOk =
+    accountDeleteText.trim().toLowerCase() === ACCOUNT_DELETE_PHRASE;
+
+  const handleDeleteAccount = async () => {
+    if (!accountDeleteConfirmationOk) return;
+    setAccountDeleteError(null);
+    setAccountDeleteBusy(true);
+    try {
+      await deleteMyAccount();
+      // The auth provider already reset session/profile state; the
+      // protected-route guard will surface the sign-in screen on the next
+      // render. Nothing left for this view to do.
+    } catch (err) {
+      setAccountDeleteError(errorMessage(err));
+    } finally {
+      setAccountDeleteBusy(false);
     }
   };
 
@@ -408,6 +470,144 @@ export const SettingsView = ({ onOpenLabPicker }: { onOpenLabPicker: () => void 
             ) : null}
           </form>
         )}
+      </section>
+
+      <section className="acct-card acct-danger-zone" aria-label="Danger zone">
+        <div className="acct-card-header">
+          <div>
+            <h2>Danger zone</h2>
+            <p>Irreversible actions. Read the warning text and confirm carefully.</p>
+          </div>
+        </div>
+
+        {isOwner && activeLab ? (
+          <div className="acct-danger-row">
+            <div className="acct-danger-copy">
+              <strong>Delete this lab</strong>
+              <p>
+                Permanently removes <em>{activeLab.name}</em> and every project, protocol,
+                inventory item, dataset, schedule entry, and funding record scoped to it.
+                Co-workers in this lab will lose access immediately. This cannot be undone.
+              </p>
+            </div>
+            {!labDeleteOpen ? (
+              <button
+                type="button"
+                className="acct-danger-button"
+                onClick={() => {
+                  setLabDeleteOpen(true);
+                  setLabDeleteError(null);
+                  setLabDeleteText("");
+                }}
+              >
+                Delete lab…
+              </button>
+            ) : (
+              <div className="acct-danger-confirm">
+                <label className="acct-field">
+                  <span>
+                    Type the lab name <code>{activeLab.name}</code> to confirm.
+                  </span>
+                  <input
+                    type="text"
+                    value={labDeleteText}
+                    onChange={(event) => setLabDeleteText(event.target.value)}
+                    placeholder={activeLab.name}
+                    disabled={labDeleteBusy}
+                    autoFocus
+                  />
+                </label>
+                {labDeleteError ? <p className="acct-error">{labDeleteError}</p> : null}
+                <div className="acct-row-actions">
+                  <button
+                    type="button"
+                    className="acct-text-button"
+                    onClick={() => {
+                      setLabDeleteOpen(false);
+                      setLabDeleteText("");
+                      setLabDeleteError(null);
+                    }}
+                    disabled={labDeleteBusy}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="acct-danger-button"
+                    onClick={() => void handleDeleteLab()}
+                    disabled={labDeleteBusy || !labDeleteConfirmationOk}
+                  >
+                    {labDeleteBusy ? "Deleting…" : "I understand — delete this lab"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <div className="acct-danger-row">
+          <div className="acct-danger-copy">
+            <strong>Delete your account</strong>
+            <p>
+              Permanently removes your sign-in, profile, and lab memberships. You will be
+              signed out immediately and will not be able to recover this account. Labs you
+              co-own with other admins keep working; labs you are the sole owner of must be
+              deleted (or transferred) first.
+            </p>
+          </div>
+          {!accountDeleteOpen ? (
+            <button
+              type="button"
+              className="acct-danger-button"
+              onClick={() => {
+                setAccountDeleteOpen(true);
+                setAccountDeleteError(null);
+                setAccountDeleteText("");
+              }}
+            >
+              Delete account…
+            </button>
+          ) : (
+            <div className="acct-danger-confirm">
+              <label className="acct-field">
+                <span>
+                  Type <code>{ACCOUNT_DELETE_PHRASE}</code> to confirm.
+                </span>
+                <input
+                  type="text"
+                  value={accountDeleteText}
+                  onChange={(event) => setAccountDeleteText(event.target.value)}
+                  placeholder={ACCOUNT_DELETE_PHRASE}
+                  disabled={accountDeleteBusy}
+                  autoFocus
+                />
+              </label>
+              {accountDeleteError ? <p className="acct-error">{accountDeleteError}</p> : null}
+              <div className="acct-row-actions">
+                <button
+                  type="button"
+                  className="acct-text-button"
+                  onClick={() => {
+                    setAccountDeleteOpen(false);
+                    setAccountDeleteText("");
+                    setAccountDeleteError(null);
+                  }}
+                  disabled={accountDeleteBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="acct-danger-button"
+                  onClick={() => void handleDeleteAccount()}
+                  disabled={accountDeleteBusy || !accountDeleteConfirmationOk}
+                >
+                  {accountDeleteBusy ? "Deleting…" : "I understand — delete my account"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

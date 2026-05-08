@@ -931,6 +931,67 @@
 .acct-danger-button:hover:not(:disabled) { background: var(--ilm-red-soft); }
 .acct-danger-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ---------- Danger zone (mirrors GitHub's settings layout) -------- */
+.acct-danger-zone {
+  border: 1px solid var(--ilm-red, #c0392b);
+  background: #fff8f7;
+  box-shadow: 0 0 0 1px rgba(192, 57, 43, 0.05) inset;
+}
+.acct-danger-zone .acct-card-header h2 {
+  color: var(--ilm-red, #c0392b);
+}
+.acct-danger-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.85rem 0;
+  border-top: 1px solid rgba(192, 57, 43, 0.18);
+}
+.acct-danger-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.acct-danger-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.acct-danger-copy strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--ilm-ink, #14181d);
+  margin-bottom: 0.2rem;
+}
+.acct-danger-copy p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ilm-muted, #5b6470);
+  line-height: 1.45;
+}
+.acct-danger-copy em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ilm-ink, #14181d);
+}
+.acct-danger-confirm {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #fff;
+  border: 1px dashed #d89593;
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+}
+.acct-danger-confirm .acct-field span code {
+  background: #fbeae8;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 0.78rem;
+  color: var(--ilm-red, #c0392b);
+}
+
 .acct-text-button {
   appearance: none;
   border: 1px solid var(--ilm-line);
