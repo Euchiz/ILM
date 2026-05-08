@@ -86,10 +86,12 @@ const PRINT_STYLES = `
     margin-top: 22px;
     page-break-inside: avoid;
   }
-  /* Each milestone (and the unassigned-experiments tail) starts on a new
-     page when printed. The first roadmap section follows the document
-     header on page 1; the adjacent-sibling selector skips it. */
-  .roadmap-section + .roadmap-section {
+  /* Every milestone (and the unassigned-experiments tail) starts on its
+     own page when printed — including the first one, so the cover page
+     (project title + metadata + summary) stays clean. Browsers ignore
+     `break-before: page` on the very first node of the print job, so
+     this is also safe for single-section prints. */
+  .roadmap-section {
     margin-top: 0;
     break-before: page;
     page-break-before: always;
