@@ -32,6 +32,7 @@ import {
   stringifyProjectExport,
   type NormalizedProjectImportPlan,
 } from "./lib/projectIO";
+import { printProjectRoadmap } from "./lib/printRoadmap";
 import {
   AI_IMPORT_PROJECT_INSTRUCTIONS_TEXT,
   AI_IMPORT_PROJECT_PANEL_TITLE,
@@ -2011,12 +2012,36 @@ export const App = () => {
           ) : null}
 
           {viewSubTab === "roadmap" ? (
-            <ProjectRoadmapPreview
-              milestones={activeProjectMilestones}
-              experimentsByMilestone={experimentsByMilestone}
-              protocolTitles={protocolTitles}
-              unassignedExperiments={activeUnassignedExperiments}
-            />
+            <>
+              <div className="pm-roadmap-toolbar" style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginBottom: "0.6rem" }}>
+                <button
+                  type="button"
+                  className="pm-text-button"
+                  onClick={() => {
+                    const opened = printProjectRoadmap({
+                      project: activeProject,
+                      milestones: activeProjectMilestones,
+                      experimentsByMilestone,
+                      unassignedExperiments: activeUnassignedExperiments,
+                      protocolTitles,
+                      labName: activeLab?.name ?? null,
+                    });
+                    if (!opened) {
+                      setActionError("Could not open the print preview — your browser may be blocking pop-ups.");
+                    }
+                  }}
+                  title="Open a printable view of this roadmap (use the browser's print dialog to save as PDF)."
+                >
+                  Print roadmap
+                </button>
+              </div>
+              <ProjectRoadmapPreview
+                milestones={activeProjectMilestones}
+                experimentsByMilestone={experimentsByMilestone}
+                protocolTitles={protocolTitles}
+                unassignedExperiments={activeUnassignedExperiments}
+              />
+            </>
           ) : null}
         </div>
       </section>
