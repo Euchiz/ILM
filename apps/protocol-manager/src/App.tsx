@@ -63,6 +63,7 @@ import {
   reorderSections,
   type Selection,
 } from "./state/protocolState";
+import { printProtocol } from "./lib/printProtocol";
 
 const APP_BASE_URL = import.meta.env.BASE_URL;
 
@@ -1327,32 +1328,15 @@ export const App = () => {
   };
 
   const handlePrintPreview = () => {
-    const previewMarkup = previewRef.current?.innerHTML;
-    if (!previewMarkup) {
+    if (!doc?.protocol) {
       setStatus(["Preview content is not ready for printing yet."]);
       return;
     }
-
-    const printWindow = window.open("", "_blank", "width=1100,height=900");
-    if (!printWindow) {
+    const opened = printProtocol({ doc, labName: activeLab?.name ?? null });
+    if (!opened) {
       setStatus(["Could not open the print window. Please allow pop-ups and try again."]);
       return;
     }
-
-    printWindow.document.write(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(doc.protocol.title)} - Print</title>
-    <style>${PRINT_WINDOW_STYLES}</style>
-  </head>
-  <body class="print-window-body">
-    <main class="print-document">
-      ${previewMarkup}
-    </main>
-  </body>
-</html>`);
-    printWindow.document.close();
     setStatus(["Opened a print-ready document in a separate window. Use the browser dialog to save as PDF."]);
   };
 
@@ -2233,62 +2217,3 @@ const formatStepKind = (value?: ProtocolStep["stepKind"]) => {
   return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-const PRINT_WINDOW_STYLES = `
-  :root {
-    color: #1e1e1e;
-    background: #ffffff;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  body.print-window-body {
-    margin: 0;
-    padding: 24px;
-    background: #ffffff;
-    color: #1e1e1e;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  }
-
-  body.print-window-body {
-    --print-recommended-scale: 0.8;
-  }
-
-  .print-document {
-    max-width: 900px;
-    margin: 0 auto;
-    zoom: var(--print-recommended-scale);
-    transform-origin: top center;
-  }
-
-  @supports not (zoom: 1) {
-    .print-document {
-      transform: scale(var(--print-recommended-scale));
-      width: calc(100% / var(--print-recommended-scale));
-    }
-  }
-
-  .preview-section,
-  .preview-step,
-  .preview-subcard,
-  .preview-note,
-  .preview-caution,
-  .preview-qc {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .preview-step {
-    border-top: 1px solid #d6d0c3;
-    padding-top: 14px;
-  }
-`;
