@@ -86,7 +86,14 @@ const PRINT_STYLES = `
     margin-top: 22px;
     page-break-inside: avoid;
   }
-  .roadmap-section + .roadmap-section { margin-top: 28px; }
+  /* Each milestone (and the unassigned-experiments tail) starts on a new
+     page when printed. The first roadmap section follows the document
+     header on page 1; the adjacent-sibling selector skips it. */
+  .roadmap-section + .roadmap-section {
+    margin-top: 0;
+    break-before: page;
+    page-break-before: always;
+  }
   .section-head {
     border-left: 4px solid #1f9d6c;
     padding: 4px 0 4px 12px;

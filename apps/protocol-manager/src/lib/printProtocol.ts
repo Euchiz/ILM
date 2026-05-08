@@ -216,6 +216,16 @@ const PRINT_STYLES = `
     page-break-inside: auto;
   }
   .section + .section { margin-top: 26px; }
+  /* Each top-level section starts on a fresh page when printed. The
+     adjacent-sibling selector skips the very first section (it follows
+     the TOC on page 1) and only matches the 2nd, 3rd, … top-level
+     sections. Nested subsections do not get the break — they flow
+     inside their parent section. */
+  .section-top + .section-top {
+    break-before: page;
+    page-break-before: always;
+    margin-top: 0;
+  }
   .section-head {
     border-left: 4px solid #1f9d6c;
     padding: 4px 0 4px 12px;
@@ -511,8 +521,11 @@ const renderSection = (section: ProtocolSection, path: string, depth: number): s
     ? `<p class="section-description">${escapeHtml(section.description)}</p>`
     : "";
   const anchorId = `section-${escapeHtml(section.id)}`;
+  // Mark depth-0 sections so the print stylesheet can put each one on its
+  // own page. Subsections share the parent's page by design.
+  const className = depth === 0 ? "section section-top" : "section";
   return `
-    <section class="section" id="${anchorId}">
+    <section class="${className}" id="${anchorId}">
       <header class="section-head">
         <div class="section-marker">${escapeHtml(marker)}</div>
         <${headingTag}>${escapeHtml(path)} ${escapeHtml(section.title || "Untitled section")}</${headingTag}>
