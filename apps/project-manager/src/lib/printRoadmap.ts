@@ -89,7 +89,7 @@ const PRINT_STYLES = `
   /* Every milestone (and the unassigned-experiments tail) starts on its
      own page when printed — including the first one, so the cover page
      (project title + metadata + summary) stays clean. Browsers ignore
-     `break-before: page` on the very first node of the print job, so
+     break-before:page on the very first node of the print job, so
      this is also safe for single-section prints. */
   .roadmap-section {
     margin-top: 0;
