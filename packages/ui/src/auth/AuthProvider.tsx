@@ -37,7 +37,11 @@ type AuthContextValue = {
   selectLab: (labId: string | null) => void;
   createLab: (name: string, slug?: string) => Promise<LabWithRole>;
   renameLab: (labId: string, name: string) => Promise<LabWithRole>;
+  deleteLab: (labId: string) => Promise<void>;
   refreshLabs: () => Promise<void>;
+
+  // Destructive account action
+  deleteMyAccount: () => Promise<void>;
 };
 
 const ACTIVE_LAB_STORAGE_KEY = "ilm.activeLabId";
@@ -363,6 +367,44 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     [labs, supabase, user]
   );
 
+  const deleteLab = useCallback(
+    async (labId: string): Promise<void> => {
+      if (!user) throw new Error("Not signed in");
+      setError(null);
+      const { error: err } = await supabase.rpc("delete_lab", { p_lab_id: labId });
+      if (err) {
+        setError(err.message);
+        throw err;
+      }
+      setLabs((prev) => prev.filter((entry) => entry.id !== labId));
+      if (activeLabId === labId) setActiveLabId(null);
+    },
+    [activeLabId, supabase, user]
+  );
+
+  const deleteMyAccount = useCallback(async (): Promise<void> => {
+    if (!user) throw new Error("Not signed in");
+    setError(null);
+    const { error: err } = await supabase.rpc("delete_my_account");
+    if (err) {
+      setError(err.message);
+      throw err;
+    }
+    // The user row is gone; the existing session token is no longer valid.
+    // signOut clears local state so the auth shell drops back to the
+    // landing page rather than spinning on a stale session.
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore — we'll clear local state regardless.
+    }
+    setActiveLabId(null);
+    setLabs([]);
+    setProfile(null);
+    setSession(null);
+    setStatus("signed-out");
+  }, [supabase, user]);
+
   const value: AuthContextValue = {
     status,
     session,
@@ -380,7 +422,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     selectLab,
     createLab,
     renameLab,
+    deleteLab,
     refreshLabs,
+    deleteMyAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
